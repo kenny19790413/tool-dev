@@ -2,7 +2,9 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1F3864">
   <title>🪣 My Bucket List</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -279,18 +281,171 @@
       flex-shrink: 0;
     }
 
-    @media (max-width: 700px) {
-      header { padding: 14px 16px; }
-      main { padding: 16px; }
-      .toolbar { padding: 10px 16px; }
-      .legend { padding: 10px 16px; }
-      .list-header,
-      .item-row {
-        grid-template-columns: 28px 1fr 70px 60px 36px 1fr 72px;
-        font-size: .78rem;
+    /* ── Mobile / Safari friendly ── */
+    .header-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-left: 16px;
+    }
+    .signout-btn {
+      padding: 6px 14px;
+      background: rgba(255,255,255,.2);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.4);
+      border-radius: 12px;
+      font-size: .78rem;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      min-height: 36px;
+    }
+    .login-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px 20px;
+      background: #fff;
+      border: 1.5px solid #ddd;
+      border-radius: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      font-family: inherit;
+      min-height: 48px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .login-btn:active { background: #f5f5f5; }
+    .login-note { color: #888; font-size: .78rem; margin-top: 14px; line-height: 1.5; }
+
+    .item-card {
+      border-bottom: 1px solid #ddd;
+      padding: 14px 16px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .item-card:last-child { border-radius: 0 0 8px 8px; }
+    .card-main {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .card-body { flex: 1; min-width: 0; }
+    .card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 8px;
+    }
+    .card-memo {
+      font-size: .82rem;
+      color: #666;
+      margin-top: 8px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .card-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .fab-add {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 14px 16px;
+        padding-top: max(14px, env(safe-area-inset-top));
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
       }
-      .memo { display: none; }
-      .list-header span:nth-child(6) { display: none; }
+      header h1 { font-size: 1.35rem; }
+      .header-stats {
+        margin-left: 0;
+        justify-content: space-around;
+        width: 100%;
+      }
+      .header-user {
+        margin-left: 0;
+        justify-content: space-between;
+        width: 100%;
+      }
+      #userName { max-width: none; flex: 1; font-size: .85rem; }
+
+      main {
+        padding: 12px 16px 88px;
+        padding-bottom: max(88px, calc(72px + env(safe-area-inset-bottom)));
+      }
+      .toolbar {
+        padding: 10px 16px;
+        gap: 8px;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+      .toolbar::-webkit-scrollbar { display: none; }
+      .filter-btn {
+        flex-shrink: 0;
+        padding: 8px 14px;
+        font-size: .82rem;
+        min-height: 40px;
+      }
+      .add-btn { display: none; }
+      .fab-add {
+        display: flex;
+        position: fixed;
+        right: 20px;
+        bottom: max(20px, env(safe-area-inset-bottom));
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        font-size: 1.6rem;
+        font-weight: bold;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 16px rgba(46,117,182,.45);
+        z-index: 50;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .legend {
+        padding: 10px 16px;
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+        font-size: .72rem;
+        gap: 10px;
+      }
+      .list-header { display: none; }
+      .item-row { display: none; }
+      .item-card { display: block; }
+      .check-btn, .icon-btn {
+        width: 44px;
+        height: 44px;
+        font-size: 1.1rem;
+      }
+      .modal {
+        padding: 24px 20px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .form-2col { grid-template-columns: 1fr; }
+      .btn-cancel, .btn-save {
+        min-height: 44px;
+        flex: 1;
+      }
+      .modal-actions { flex-wrap: wrap; }
+    }
+
+    @media (min-width: 769px) {
+      .item-card { display: none; }
+      .fab-add { display: none !important; }
     }
   </style>
   <!-- Firebase SDK -->
@@ -310,9 +465,9 @@
     <div class="stat"><div class="num" id="stat-done">0</div><div class="lbl">達成済み</div></div>
     <div class="stat"><div class="num" id="stat-pct">0%</div><div class="lbl">達成率</div></div>
   </div>
-  <div style="display:flex;align-items:center;gap:10px;margin-left:16px">
+  <div class="header-user">
     <span id="userName" style="font-size:.82rem;opacity:.8;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-    <button onclick="signOut()" style="padding:4px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:12px;font-size:.78rem;cursor:pointer;font-family:inherit;white-space:nowrap">サインアウト</button>
+    <button type="button" class="signout-btn" onclick="signOut()">サインアウト</button>
   </div>
 </header>
 
@@ -338,6 +493,8 @@
   <div class="item-list" id="itemList"></div>
 </main>
 
+<button type="button" class="fab-add" id="fabAdd" aria-label="項目を追加">＋</button>
+
 <div class="legend">
   <div class="legend-item"><div class="legend-dot" style="background:var(--travel)"></div>旅行</div>
   <div class="legend-item"><div class="legend-dot" style="background:var(--experience)"></div>体験・スキル</div>
@@ -351,11 +508,12 @@
   <div class="modal" style="text-align:center;max-width:380px;padding:40px 32px">
     <div style="font-size:3.5rem;margin-bottom:12px">🪣</div>
     <h2 style="margin-bottom:8px;color:#1F3864">My Bucket List</h2>
-    <p style="color:#666;font-size:.9rem;margin-bottom:28px;line-height:1.6">Googleアカウントでサインインして<br>どこからでもリストにアクセスできます</p>
-    <button onclick="signIn()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 20px;background:#fff;border:1.5px solid #ddd;border-radius:8px;font-size:.95rem;cursor:pointer;font-family:inherit;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.15)'" onmouseout="this.style.boxShadow=''">
-      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+    <p style="color:#666;font-size:.9rem;margin-bottom:28px;line-height:1.6">Googleアカウントでサインインして<br>PC・iPhone（Safari）どこからでも使えます</p>
+    <button type="button" class="login-btn" onclick="signIn()">
+      <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
       Googleでサインイン
     </button>
+    <p class="login-note">iPhone / Safari では Google の画面に移動します</p>
   </div>
 </div>
 
@@ -460,6 +618,20 @@
     return Object.keys(val).sort((a, b) => +a - +b).map(k => val[k]);
   }
 
+  // Safari / iPhone ではポップアップがブロックされるためリダイレクト方式を使う
+  function prefersRedirectSignIn() {
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS/i.test(ua);
+    return isIOS || isSafari;
+  }
+
+  auth.getRedirectResult().catch(err => {
+    if (err.code && err.code !== 'auth/no-auth-event') {
+      alert('サインインに失敗しました: ' + err.message);
+    }
+  });
+
   // ── Auth ──────────────────────────────────────────────────
   auth.onAuthStateChanged(user => {
     currentUser = user;
@@ -497,7 +669,10 @@
 
   function signIn() {
     const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).catch(err => alert('サインインに失敗しました: ' + err.message));
+    const signInPromise = prefersRedirectSignIn()
+      ? auth.signInWithRedirect(provider)
+      : auth.signInWithPopup(provider);
+    signInPromise.catch(err => alert('サインインに失敗しました: ' + err.message));
   }
 
   function signOut() {
@@ -534,6 +709,11 @@
       const bg = item.done
         ? 'var(--done-bg)'
         : { '旅行': 'var(--travel)', '体験・スキル': 'var(--experience)', 'モノ': 'var(--thing)', '人とのつながり': 'var(--people)' }[item.cat] || '#fff';
+      const actions = `
+            <button type="button" class="check-btn ${item.done ? 'checked' : ''}" data-action="toggle" data-id="${item.id}" title="${item.done ? '未達成に戻す' : '達成！'}">${item.done ? '✅' : ''}</button>
+            <button type="button" class="icon-btn" data-action="edit" data-id="${item.id}" title="編集">✏</button>
+            <button type="button" class="icon-btn del" data-action="delete" data-id="${item.id}" title="削除">🗑</button>`;
+      const memoBlock = item.memo ? `<div class="card-memo">${esc(item.memo)}</div>` : '';
       return `
         <div class="item-row ${item.done ? 'done-row' : ''}" style="background:${bg}" data-id="${item.id}">
           <span style="text-align:center;color:#888;font-size:.82rem">${idx + 1}</span>
@@ -542,11 +722,25 @@
           <span class="pri pri-${esc(item.priority)}">${esc(item.priority)}</span>
           <span class="year">${item.year || '—'}</span>
           <span class="memo" title="${esc(item.memo || '')}">${esc(item.memo || '')}</span>
-          <span class="actions">
-            <button class="check-btn ${item.done ? 'checked' : ''}" data-action="toggle" data-id="${item.id}" title="${item.done ? '未達成に戻す' : '達成！'}">${item.done ? '✅' : ''}</button>
-            <button class="icon-btn" data-action="edit" data-id="${item.id}" title="編集">✏</button>
-            <button class="icon-btn del" data-action="delete" data-id="${item.id}" title="削除">🗑</button>
-          </span>
+          <span class="actions">${actions}</span>
+        </div>
+        <div class="item-card ${item.done ? 'done-row' : ''}" style="background:${bg}" data-id="${item.id}">
+          <div class="card-main">
+            <button type="button" class="check-btn ${item.done ? 'checked' : ''}" data-action="toggle" data-id="${item.id}">${item.done ? '✅' : ''}</button>
+            <div class="card-body">
+              <div class="item-name ${item.done ? 'done-text' : ''}">${esc(item.item)}</div>
+              <div class="card-meta">
+                <span class="cat-tag cat-${esc(item.cat)}">${esc(item.cat)}</span>
+                <span class="pri pri-${esc(item.priority)}">${esc(item.priority)}</span>
+                <span class="year">${item.year ? item.year + '年' : '—'}</span>
+              </div>
+              ${memoBlock}
+            </div>
+            <div class="card-actions">
+              <button type="button" class="icon-btn" data-action="edit" data-id="${item.id}" title="編集">✏</button>
+              <button type="button" class="icon-btn del" data-action="delete" data-id="${item.id}" title="削除">🗑</button>
+            </div>
+          </div>
         </div>`;
     }).join('');
     updateStats();
@@ -577,7 +771,7 @@
   });
 
   document.getElementById('itemList').addEventListener('dblclick', e => {
-    const row = e.target.closest('.item-row');
+    const row = e.target.closest('.item-row, .item-card');
     if (!row) return;
     openEdit(+row.dataset.id);
   });
@@ -646,6 +840,7 @@
   }
 
   document.getElementById('openAdd').addEventListener('click', openAdd);
+  document.getElementById('fabAdd').addEventListener('click', openAdd);
   document.getElementById('closeModal').addEventListener('click', closeModal);
   document.getElementById('saveItem').addEventListener('click', saveItem);
   document.getElementById('overlay').addEventListener('click', e => {
