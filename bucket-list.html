@@ -517,7 +517,7 @@
       Googleでサインイン
     </button>
     <p id="authStatus"></p>
-    <p class="login-note">ボタンを押すと Google の画面に移動し、<br>完了後にこのページへ戻ります</p>
+    <p class="login-note">PC: 認証ウィンドウが開きます<br>iPhone/Safari: Google の画面に移動します</p>
   </div>
 </div>
 
@@ -641,14 +641,26 @@
     document.getElementById('loginOverlay').classList.remove('hidden');
   }
 
-  // 以前のポップアップ認証で開いた別ウィンドウ → 親を更新して自動で閉じる
+  function isOAuthReturn() {
+    return /[?&#](state|apiKey)=/.test(window.location.href);
+  }
+
+  function useRedirectSignIn() {
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS/i.test(ua);
+    return isIOS || isSafari;
+  }
+
+  // 以前のポップアップ認証で開いた別ウィンドウのみ処理
   function handleLegacyOAuthPopup() {
     if (!window.opener || window.opener === window) return false;
+    if (!/__\/auth\//.test(window.location.href) && !(window.name || '').includes('firebase')) return false;
     document.body.innerHTML = [
       '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;',
       'padding:24px;font-family:sans-serif;text-align:center;background:#f4f7fb">',
       '<div><p style="font-size:1.1rem;margin-bottom:12px">サインイン完了</p>',
-      '<p style="color:#666;margin-bottom:20px">このウィンドウは自動で閉じます。<br>閉じない場合は手動で閉じてください。</p>',
+      '<p style="color:#666;margin-bottom:20px">このウィンドウを閉じてください。</p>',
       '<button onclick="window.close()" style="padding:10px 24px;font-size:1rem;cursor:pointer">閉じる</button>',
       '</div></div>'
     ].join('');
@@ -665,8 +677,11 @@
 
   const isLegacyPopup = handleLegacyOAuthPopup();
 
-  // リダイレクトから戻った直後はログイン画面を出さない
-  if (sessionStorage.getItem('authRedirectPending') === '1') {
+  // 前回の認証途中で止まった状態をリセット
+  if (!isOAuthReturn()) sessionStorage.removeItem('authRedirectPending');
+  setSignInBusy(false);
+
+  if (isOAuthReturn()) {
     hideLoginOverlay();
     setAuthStatus('サインイン処理中…');
   }
@@ -731,16 +746,59 @@
 
   function signIn() {
     const provider = new firebase.auth.GoogleAuthProvider();
-    sessionStorage.setItem('authRedirectPending', '1');
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const redirect = useRedirectSignIn();
+
     setSignInBusy(true);
-    setAuthStatus('Googleに移動しています…');
-    auth.signInWithRedirect(provider).catch(err => {
+    setAuthStatus(redirect ? 'Googleに移動しています…' : '認証ウィンドウを開いています…');
+
+    const fail = (err) => {
       sessionStorage.removeItem('authRedirectPending');
       setSignInBusy(false);
       setAuthStatus('');
-      alert('サインインに失敗しました: ' + err.message);
-    });
+      alert('サインインに失敗しました: ' + (err && err.message ? err.message : err));
+    };
+
+    const tryRedirect = () => {
+      sessionStorage.setItem('authRedirectPending', '1');
+      return auth.signInWithRedirect(provider);
+    };
+
+    const tryPopup = () => {
+      sessionStorage.removeItem('authRedirectPending');
+      return auth.signInWithPopup(provider).then(result => {
+        setSignInBusy(false);
+        setAuthStatus('');
+        return result;
+      });
+    };
+
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .then(() => redirect ? tryRedirect() : tryPopup())
+      .catch(err => {
+        if (redirect) {
+          setAuthStatus('別の方法で試しています…');
+          return tryPopup().catch(fail);
+        }
+        if (err.code === 'auth/popup-blocked') {
+          setAuthStatus('Googleに移動しています…');
+          return tryRedirect().catch(fail);
+        }
+        fail(err);
+      });
+
+    // リダイレクトが始まらない場合にボタンを復帰
+    setTimeout(() => {
+      if (!auth.currentUser && document.visibilityState === 'visible') {
+        setSignInBusy(false);
+        if (sessionStorage.getItem('authRedirectPending') === '1' && !isOAuthReturn()) {
+          sessionStorage.removeItem('authRedirectPending');
+          setAuthStatus('移動できませんでした。もう一度お試しください。');
+        }
+      }
+    }, 4000);
   }
+  window.signIn = signIn;
 
   function signOut() {
     if (confirm('サインアウトしますか？')) auth.signOut();
