@@ -464,6 +464,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -523,12 +524,9 @@
     <div style="font-size:3.5rem;margin-bottom:12px">🪣</div>
     <h2 style="margin-bottom:8px;color:#1F3864">My Bucket List</h2>
     <p style="color:#666;font-size:.9rem;margin-bottom:28px;line-height:1.6">Googleアカウントでサインインして<br>PC・iPhone（Safari）どこからでも使えます</p>
-    <button type="button" class="login-btn" id="googleSignInBtn" onclick="signIn()">
-      <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-      Googleでサインイン
-    </button>
+    <div id="googleSignInDiv" style="display:flex;justify-content:center;min-height:50px"></div>
     <p id="authStatus"></p>
-    <p class="login-note">PC: 認証ウィンドウが開きます<br>iPhone/Safari: Google の画面に移動します</p>
+    <p class="login-note">Googleボタンをタップしてサインイン<br>（Safari でもページ移動なしで完了します）</p>
   </div>
 </div>
 
@@ -640,8 +638,9 @@
   }
 
   function setSignInBusy(busy) {
-    const btn = document.getElementById('googleSignInBtn');
-    if (btn) btn.disabled = busy;
+    const div = document.getElementById('googleSignInDiv');
+    if (div) div.style.pointerEvents = busy ? 'none' : '';
+    if (div) div.style.opacity = busy ? '0.5' : '1';
   }
 
   function hideLoginOverlay() {
@@ -679,35 +678,90 @@
     return /[?&#](state|apiKey|access_token)=/.test(window.location.href + h);
   }
 
-  function isReturningFromSignIn() {
-    return isOAuthReturn() || sessionStorage.getItem('authRedirectPending') === '1';
-  }
-
-  function waitForAuthUser(maxMs) {
-    return new Promise(resolve => {
-      if (auth.currentUser) return resolve(auth.currentUser);
-      let settled = false;
-      const done = u => {
-        if (settled) return;
-        settled = true;
-        unsub();
-        resolve(u || null);
-      };
-      const unsub = auth.onAuthStateChanged(u => { if (u) done(u); });
-      setTimeout(() => done(auth.currentUser), maxMs);
-    });
-  }
-
   function clearOAuthUrl() {
     if (!isOAuthReturn()) return;
     history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
-  function useRedirectSignIn() {
-    const ua = navigator.userAgent;
-    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isSafari = /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS/i.test(ua);
-    return isIOS || isSafari;
+  let googleClientId = null;
+  let googleBtnReady = false;
+
+  function waitForGoogleLib(maxMs) {
+    return new Promise((resolve, reject) => {
+      if (window.google && google.accounts && google.accounts.id) return resolve();
+      const start = Date.now();
+      const timer = setInterval(() => {
+        if (window.google && google.accounts && google.accounts.id) {
+          clearInterval(timer);
+          resolve();
+        } else if (Date.now() - start > maxMs) {
+          clearInterval(timer);
+          reject(new Error('Google Sign-In の読み込みに失敗しました'));
+        }
+      }, 100);
+    });
+  }
+
+  async function fetchGoogleClientId() {
+    if (googleClientId) return googleClientId;
+    const res = await fetch(
+      'https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key=' +
+      encodeURIComponent(firebaseConfig.apiKey)
+    );
+    const data = await res.json();
+    googleClientId = data.oauthClientId || (data.projectConfig && data.projectConfig.oauthClientId);
+    if (!googleClientId) throw new Error('OAuth Client ID が取得できません');
+    return googleClientId;
+  }
+
+  function handleGoogleCredential(response) {
+    showAuthLoading('サインイン処理中…');
+    const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
+    auth.signInWithCredential(credential).catch(err => {
+      hideAuthLoading();
+      showLoginOverlay();
+      alert('サインインに失敗しました: ' + err.message);
+    });
+  }
+
+  async function initGoogleSignIn() {
+    if (googleBtnReady || auth.currentUser) return;
+    const container = document.getElementById('googleSignInDiv');
+    if (!container) return;
+    try {
+      setAuthStatus('ボタンを読み込み中…');
+      await waitForGoogleLib(8000);
+      const clientId = await fetchGoogleClientId();
+      container.innerHTML = '';
+      google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredential,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      google.accounts.id.renderButton(container, {
+        theme: 'outline',
+        size: 'large',
+        width: Math.min(280, container.offsetWidth || 280),
+        text: 'signin_with',
+        locale: 'ja',
+      });
+      googleBtnReady = true;
+      setAuthStatus('');
+    } catch (err) {
+      setAuthStatus('');
+      container.innerHTML = '';
+      const p = document.createElement('p');
+      p.style.cssText = 'color:#c00;font-size:.85rem;line-height:1.5';
+      p.textContent = err.message;
+      container.appendChild(p);
+    }
+  }
+
+  function resetGoogleSignIn() {
+    googleBtnReady = false;
+    const container = document.getElementById('googleSignInDiv');
+    if (container) container.innerHTML = '';
   }
 
   // 認証用ポップアップ（同じページが開く）→ 親を更新して閉じる
@@ -777,107 +831,25 @@
     currentUser = null;
     attachedUid = null;
     setSignInBusy(false);
+    resetGoogleSignIn();
     showLoginOverlay();
     if (dbRef) { dbRef.off(); dbRef = null; }
     seededDefaults = false;
     items = [];
     render();
+    initGoogleSignIn();
   }
 
   if (!isOAuthPopup) {
-    let oauthGracePeriod = isReturningFromSignIn();
-    if (!oauthGracePeriod) sessionStorage.removeItem('authRedirectPending');
-    setSignInBusy(false);
-    if (oauthGracePeriod) showAuthLoading('サインイン処理中…');
-
-    auth.getRedirectResult()
-      .then(result => result.user || null)
-      .catch(err => {
-        if (err.code && err.code !== 'auth/no-auth-event') {
-          alert('サインインに失敗しました: ' + err.message);
-        }
-        return null;
-      })
-      .then(user => user || (oauthGracePeriod ? waitForAuthUser(12000) : null))
-      .then(user => {
-        authReady = true;
-        oauthGracePeriod = false;
-        sessionStorage.removeItem('authRedirectPending');
-        if (user) onUserSignedIn(user);
-        else if (!isReturningFromSignIn()) onUserSignedOut();
-        else {
-          hideAuthLoading();
-          setAuthStatus('');
-          alert('サインインを完了できませんでした。もう一度お試しください。');
-          showLoginOverlay();
-        }
-      });
+    sessionStorage.removeItem('authRedirectPending');
+    auth.getRedirectResult().catch(() => {});
 
     auth.onAuthStateChanged(user => {
-      if (user) {
-        oauthGracePeriod = false;
-        onUserSignedIn(user);
-      } else if (authReady && !oauthGracePeriod) {
-        onUserSignedOut();
-      }
+      authReady = true;
+      if (user) onUserSignedIn(user);
+      else onUserSignedOut();
     });
   }
-
-  function signIn() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    const redirect = useRedirectSignIn();
-
-    setSignInBusy(true);
-    setAuthStatus(redirect ? 'Googleに移動しています…' : '認証ウィンドウを開いています…');
-
-    const fail = (err) => {
-      sessionStorage.removeItem('authRedirectPending');
-      setSignInBusy(false);
-      setAuthStatus('');
-      alert('サインインに失敗しました: ' + (err && err.message ? err.message : err));
-    };
-
-    const tryRedirect = () => {
-      sessionStorage.setItem('authRedirectPending', '1');
-      return auth.signInWithRedirect(provider);
-    };
-
-    const tryPopup = () => {
-      sessionStorage.removeItem('authRedirectPending');
-      return auth.signInWithPopup(provider).then(result => {
-        setSignInBusy(false);
-        setAuthStatus('');
-        return result;
-      });
-    };
-
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-      .then(() => redirect ? tryRedirect() : tryPopup())
-      .catch(err => {
-        if (redirect) {
-          setAuthStatus('別の方法で試しています…');
-          return tryPopup().catch(fail);
-        }
-        if (err.code === 'auth/popup-blocked') {
-          setAuthStatus('Googleに移動しています…');
-          return tryRedirect().catch(fail);
-        }
-        fail(err);
-      });
-
-    // リダイレクトが始まらない場合にボタンを復帰
-    setTimeout(() => {
-      if (!auth.currentUser && document.visibilityState === 'visible') {
-        setSignInBusy(false);
-        if (sessionStorage.getItem('authRedirectPending') === '1' && !isOAuthReturn()) {
-          sessionStorage.removeItem('authRedirectPending');
-          setAuthStatus('移動できませんでした。もう一度お試しください。');
-        }
-      }
-    }, 4000);
-  }
-  window.signIn = signIn;
 
   function signOut() {
     if (confirm('サインアウトしますか？')) auth.signOut();
