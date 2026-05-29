@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🪣 My Bucket List</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --header-bg:   #1F3864;
+      --accent:      #2E75B6;
+      --travel:      #D6E4F7;
+      --experience:  #D9F7D6;
+      --thing:       #FFF3CD;
+      --people:      #F7D6E8;
+      --done-bg:     #E8E8E8;
+      --done-text:   #999;
+      --pri-high:    #C00000;
+      --pri-mid:     #E07000;
+      --pri-low:     #666;
+    }
+
+    body {
+      font-family: 'Arial', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      background: #f4f7fb;
+      color: #222;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--header-bg);
+      color: #fff;
+      padding: 20px 32px 16px;
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 1.8rem; letter-spacing: .04em; }
+    header .subtitle { font-size: .85rem; opacity: .7; margin-bottom: 2px; }
+    .header-stats {
+      margin-left: auto;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .stat { text-align: center; }
+    .stat .num { font-size: 1.6rem; font-weight: bold; color: #7EC8F0; }
+    .stat .lbl { font-size: .7rem; opacity: .7; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      background: #fff;
+      border-bottom: 2px solid #e0e8f0;
+      padding: 12px 32px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 2px solid transparent;
+      font-size: .85rem;
+      cursor: pointer;
+      font-family: inherit;
+      background: #f0f4f8;
+      color: #444;
+      transition: all .15s;
+    }
+    .filter-btn:hover { background: #dde8f5; }
+    .filter-btn.active {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+    .filter-btn[data-cat="旅行"].active        { background: #4a8fd6; border-color: #4a8fd6; }
+    .filter-btn[data-cat="体験・スキル"].active { background: #4caf50; border-color: #4caf50; }
+    .filter-btn[data-cat="モノ"].active         { background: #e0a030; border-color: #e0a030; }
+    .filter-btn[data-cat="人とのつながり"].active{ background: #c75090; border-color: #c75090; }
+
+    .add-btn {
+      margin-left: auto;
+      padding: 8px 20px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: .9rem;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+      transition: background .15s;
+    }
+    .add-btn:hover { background: #1F5C9A; }
+
+    /* ── List ── */
+    main { padding: 24px 32px; }
+
+    .list-header {
+      display: grid;
+      grid-template-columns: 40px 1fr 90px 80px 50px 180px 80px;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--header-bg);
+      color: #fff;
+      border-radius: 8px 8px 0 0;
+      font-size: .78rem;
+      font-weight: bold;
+      letter-spacing: .05em;
+    }
+    .list-header span { text-align: center; }
+    .list-header span:nth-child(2),
+    .list-header span:nth-child(6) { text-align: left; }
+
+    .item-list { display: flex; flex-direction: column; }
+
+    .item-row {
+      display: grid;
+      grid-template-columns: 40px 1fr 90px 80px 50px 180px 80px;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #ddd;
+      align-items: center;
+      transition: opacity .2s;
+    }
+    .item-row:last-child { border-radius: 0 0 8px 8px; }
+    .item-row.done-row { opacity: .6; }
+
+    .cat-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: .75rem;
+      font-weight: bold;
+    }
+    .cat-旅行           { background: var(--travel);     color: #1a5a8a; }
+    .cat-体験・スキル    { background: var(--experience); color: #1a6a1a; }
+    .cat-モノ            { background: var(--thing);      color: #7a5000; }
+    .cat-人とのつながり  { background: var(--people);     color: #8a1a5a; }
+
+    .item-name { font-size: .92rem; }
+    .item-name.done-text { text-decoration: line-through; color: var(--done-text); }
+
+    .pri { font-size: .82rem; font-weight: bold; text-align: center; }
+    .pri-高 { color: var(--pri-high); }
+    .pri-中 { color: var(--pri-mid); }
+    .pri-低 { color: var(--pri-low); }
+
+    .year { text-align: center; font-size: .85rem; color: #555; }
+
+    .check-btn {
+      width: 28px; height: 28px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+      transition: all .15s;
+    }
+    .check-btn.checked { background: #4caf50; border-color: #4caf50; }
+    .check-btn:hover { border-color: #4caf50; }
+
+    .memo { font-size: .78rem; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .actions { display: flex; gap: 4px; justify-content: center; }
+    .icon-btn {
+      width: 26px; height: 26px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: .85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      color: #aaa;
+      transition: all .12s;
+    }
+    .icon-btn:hover { background: #f0f4f8; color: #555; }
+    .icon-btn.del:hover { background: #fde8e8; color: #c00; }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 0;
+      color: #aaa;
+      font-size: 1rem;
+    }
+
+    /* ── Modal ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+    .overlay.hidden { display: none; }
+
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px 32px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+    }
+    .modal h2 { font-size: 1.2rem; color: var(--header-bg); margin-bottom: 20px; }
+
+    .form-row { margin-bottom: 14px; }
+    .form-row label { display: block; font-size: .82rem; font-weight: bold; color: #555; margin-bottom: 4px; }
+    .form-row input,
+    .form-row select,
+    .form-row textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1.5px solid #ccd4e0;
+      border-radius: 6px;
+      font-size: .92rem;
+      font-family: inherit;
+      transition: border-color .15s;
+    }
+    .form-row input:focus,
+    .form-row select:focus,
+    .form-row textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .form-row textarea { resize: vertical; min-height: 60px; }
+
+    .form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-cancel {
+      padding: 8px 20px;
+      border: 1.5px solid #ccc;
+      border-radius: 7px;
+      background: #fff;
+      font-family: inherit;
+      font-size: .9rem;
+      cursor: pointer;
+    }
+    .btn-save {
+      padding: 8px 24px;
+      border: none;
+      border-radius: 7px;
+      background: var(--accent);
+      color: #fff;
+      font-family: inherit;
+      font-size: .9rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-save:hover { background: #1F5C9A; }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 12px 32px;
+      background: #fff;
+      border-top: 1px solid #e0e8f0;
+      font-size: .78rem;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot {
+      width: 12px; height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 700px) {
+      header { padding: 14px 16px; }
+      main { padding: 16px; }
+      .toolbar { padding: 10px 16px; }
+      .legend { padding: 10px 16px; }
+      .list-header,
+      .item-row {
+        grid-template-columns: 28px 1fr 70px 60px 36px 1fr 72px;
+        font-size: .78rem;
+      }
+      .memo { display: none; }
+      .list-header span:nth-child(6) { display: none; }
+    }
+  </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🪣 My Bucket List</h1>
+    <div class="subtitle" id="subtitle">死ぬまでにやりたいことリスト</div>
+  </div>
+  <div class="header-stats">
+    <div class="stat"><div class="num" id="stat-total">0</div><div class="lbl">合計</div></div>
+    <div class="stat"><div class="num" id="stat-done">0</div><div class="lbl">達成済み</div></div>
+    <div class="stat"><div class="num" id="stat-pct">0%</div><div class="lbl">達成率</div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-left:16px">
+    <span id="userName" style="font-size:.82rem;opacity:.8;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <button onclick="signOut()" style="padding:4px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:12px;font-size:.78rem;cursor:pointer;font-family:inherit;white-space:nowrap">サインアウト</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <button class="filter-btn active" data-cat="all">すべて</button>
+  <button class="filter-btn" data-cat="旅行">✈ 旅行</button>
+  <button class="filter-btn" data-cat="体験・スキル">⚡ 体験・スキル</button>
+  <button class="filter-btn" data-cat="モノ">🎁 モノ</button>
+  <button class="filter-btn" data-cat="人とのつながり">❤ 人とのつながり</button>
+  <button class="add-btn" id="openAdd">＋ 追加</button>
+</div>
+
+<main>
+  <div class="list-header">
+    <span>#</span>
+    <span>項目</span>
+    <span>カテゴリ</span>
+    <span>優先度</span>
+    <span>年</span>
+    <span>メモ</span>
+    <span></span>
+  </div>
+  <div class="item-list" id="itemList"></div>
+</main>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--travel)"></div>旅行</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--experience)"></div>体験・スキル</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--thing)"></div>モノ</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--people)"></div>人とのつながり</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--done-bg); border:1px solid #ccc"></div>達成済み</div>
+</div>
+
+<!-- Login -->
+<div class="overlay" id="loginOverlay">
+  <div class="modal" style="text-align:center;max-width:380px;padding:40px 32px">
+    <div style="font-size:3.5rem;margin-bottom:12px">🪣</div>
+    <h2 style="margin-bottom:8px;color:#1F3864">My Bucket List</h2>
+    <p style="color:#666;font-size:.9rem;margin-bottom:28px;line-height:1.6">Googleアカウントでサインインして<br>どこからでもリストにアクセスできます</p>
+    <button onclick="signIn()" style="display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 20px;background:#fff;border:1.5px solid #ddd;border-radius:8px;font-size:.95rem;cursor:pointer;font-family:inherit;transition:box-shadow .15s" onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.15)'" onmouseout="this.style.boxShadow=''">
+      <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Googleでサインイン
+    </button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="overlay hidden" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">項目を追加</h2>
+    <div class="form-row">
+      <label>項目 <span style="color:#c00">*</span></label>
+      <input type="text" id="fItem" placeholder="やりたいことを具体的に…">
+    </div>
+    <div class="form-2col">
+      <div class="form-row">
+        <label>カテゴリ</label>
+        <select id="fCat">
+          <option value="旅行">旅行</option>
+          <option value="体験・スキル">体験・スキル</option>
+          <option value="モノ">モノ</option>
+          <option value="人とのつながり">人とのつながり</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>優先度</label>
+        <select id="fPri">
+          <option value="高">高</option>
+          <option value="中" selected>中</option>
+          <option value="低">低</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-2col">
+      <div class="form-row">
+        <label>目標年</label>
+        <input type="number" id="fYear" min="2024" max="2099" placeholder="例: 2027">
+      </div>
+      <div class="form-row">
+        <label>達成状況</label>
+        <select id="fDone">
+          <option value="false">未達成 ⬜</option>
+          <option value="true">達成済み ✅</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>メモ</label>
+      <textarea id="fMemo" placeholder="詳細・備考など…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="closeModal">キャンセル</button>
+      <button class="btn-save" id="saveItem">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // Firebase 設定 — ご自身のプロジェクトの値に書き換えてください
+  // ============================================================
+  const firebaseConfig = {
+    apiKey:            "AIzaSyAOOw461kpoaIU8iUqzqhKuTa594Y8CO0M",
+    authDomain:        "bucket-list-a486e.firebaseapp.com",
+    databaseURL:       "https://bucket-list-a486e-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId:         "bucket-list-a486e",
+    storageBucket:     "bucket-list-a486e.firebasestorage.app",
+    messagingSenderId: "735695765139",
+    appId:             "1:735695765139:web:ecf09b708e922d7b6c9766",
+    measurementId:     "G-BT67TZ53KS"
+  };
+  // ============================================================
+
+  firebase.initializeApp(firebaseConfig);
+  const auth     = firebase.auth();
+  const database = firebase.database();
+
+  const DEFAULT_ITEMS = [
+    { id: 1, cat: '旅行',           item: 'オーロラを見に行く（アイスランド）', priority: '高', year: 2027, done: false, memo: '11〜2月が狙い目' },
+    { id: 2, cat: '旅行',           item: '京都の茶道体験をする',               priority: '中', year: 2026, done: false, memo: '嵐山エリアを検討中' },
+    { id: 3, cat: '旅行',           item: '屋久島でトレッキング',               priority: '中', year: 2027, done: false, memo: '縄文杉コースを歩きたい' },
+    { id: 4, cat: '体験・スキル',   item: 'スキューバダイビングの資格を取る',   priority: '高', year: 2026, done: false, memo: 'PADIオープンウォーター' },
+    { id: 5, cat: '体験・スキル',   item: 'ギターを弾けるようになる',           priority: '低', year: 2028, done: false, memo: '好きなアーティストの曲を1曲' },
+    { id: 6, cat: '体験・スキル',   item: '英語でプレゼンをする',               priority: '中', year: 2026, done: true,  memo: '社内勉強会で達成！' },
+    { id: 7, cat: 'モノ',           item: 'コーヒーミルを手に入れる',           priority: '低', year: 2026, done: true,  memo: 'Comandante C40 を購入' },
+    { id: 8, cat: 'モノ',           item: '理想のデスク環境を整える',           priority: '中', year: 2027, done: false, memo: 'スタンディングデスク導入' },
+    { id: 9, cat: 'モノ',           item: 'フルサイズミラーレスカメラを買う',   priority: '中', year: 2028, done: false, memo: 'Sony α7シリーズ検討中' },
+    { id:10, cat: '人とのつながり', item: '恩師に手紙を書く',                   priority: '高', year: 2026, done: false, memo: '大学のゼミの先生' },
+    { id:11, cat: '人とのつながり', item: '親と国内旅行に行く',                 priority: '高', year: 2026, done: false, memo: '両親の希望を聞く' },
+    { id:12, cat: '人とのつながり', item: '憧れの人にメッセージを送る',         priority: '低', year: 2027, done: false, memo: 'SNSで繋がるところから' },
+  ];
+
+  let items = [];
+  let activeFilter = 'all';
+  let editingId = null;
+  let nextId = 1;
+  let currentUser = null;
+  let dbRef = null;
+
+  // ── Auth ──────────────────────────────────────────────────
+  auth.onAuthStateChanged(user => {
+    currentUser = user;
+    if (user) {
+      document.getElementById('loginOverlay').classList.add('hidden');
+      document.getElementById('userName').textContent = user.displayName || user.email;
+      dbRef = database.ref(`users/${user.uid}/bucket-list`);
+      dbRef.on('value', snapshot => {
+        const data = snapshot.val();
+        if (data && data.items) {
+          items  = data.items;
+          nextId = data.nextId || (Math.max(...items.map(i => i.id)) + 1);
+        } else {
+          items  = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+          nextId = DEFAULT_ITEMS.length + 1;
+          save();
+        }
+        render();
+      });
+    } else {
+      document.getElementById('loginOverlay').classList.remove('hidden');
+      if (dbRef) { dbRef.off(); dbRef = null; }
+      items = [];
+      render();
+    }
+  });
+
+  function signIn() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(err => alert('サインインに失敗しました: ' + err.message));
+  }
+
+  function signOut() {
+    if (confirm('サインアウトしますか？')) auth.signOut();
+  }
+
+  function save() {
+    if (!currentUser || !dbRef) return;
+    dbRef.set({ items, nextId });
+  }
+
+  // ── UI ────────────────────────────────────────────────────
+  function updateStats() {
+    document.getElementById('stat-total').textContent = items.length;
+    document.getElementById('stat-done').textContent  = items.filter(i => i.done).length;
+    const pct = items.length ? Math.round(items.filter(i => i.done).length / items.length * 100) : 0;
+    document.getElementById('stat-pct').textContent   = pct + '%';
+  }
+
+  function render() {
+    const list     = document.getElementById('itemList');
+    const filtered = activeFilter === 'all' ? items : items.filter(i => i.cat === activeFilter);
+
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty-state">項目がありません。「＋ 追加」から追加してください。</div>';
+      updateStats();
+      return;
+    }
+
+    list.innerHTML = filtered.map((item, idx) => {
+      const bg = item.done
+        ? 'var(--done-bg)'
+        : { '旅行': 'var(--travel)', '体験・スキル': 'var(--experience)', 'モノ': 'var(--thing)', '人とのつながり': 'var(--people)' }[item.cat] || '#fff';
+      return `
+        <div class="item-row ${item.done ? 'done-row' : ''}" style="background:${bg}" data-id="${item.id}">
+          <span style="text-align:center;color:#888;font-size:.82rem">${idx + 1}</span>
+          <span class="item-name ${item.done ? 'done-text' : ''}">${esc(item.item)}</span>
+          <span><span class="cat-tag cat-${esc(item.cat)}">${esc(item.cat)}</span></span>
+          <span class="pri pri-${esc(item.priority)}">${esc(item.priority)}</span>
+          <span class="year">${item.year || '—'}</span>
+          <span class="memo" title="${esc(item.memo || '')}">${esc(item.memo || '')}</span>
+          <span class="actions">
+            <button class="check-btn ${item.done ? 'checked' : ''}" data-action="toggle" data-id="${item.id}" title="${item.done ? '未達成に戻す' : '達成！'}">${item.done ? '✅' : ''}</button>
+            <button class="icon-btn" data-action="edit" data-id="${item.id}" title="編集">✏</button>
+            <button class="icon-btn del" data-action="delete" data-id="${item.id}" title="削除">🗑</button>
+          </span>
+        </div>`;
+    }).join('');
+    updateStats();
+  }
+
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  document.getElementById('itemList').addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const id     = +btn.dataset.id;
+    const action =  btn.dataset.action;
+    if (action === 'toggle') {
+      const item = items.find(i => i.id === id);
+      if (item) { item.done = !item.done; save(); render(); }
+    } else if (action === 'edit') {
+      openEdit(id);
+    } else if (action === 'delete') {
+      const item = items.find(i => i.id === id);
+      if (item && confirm(`「${item.item}」を削除しますか？`)) {
+        items = items.filter(i => i.id !== id);
+        save();
+        render();
+      }
+    }
+  });
+
+  document.getElementById('itemList').addEventListener('dblclick', e => {
+    const row = e.target.closest('.item-row');
+    if (!row) return;
+    openEdit(+row.dataset.id);
+  });
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.cat;
+      render();
+    });
+  });
+
+  function openAdd() {
+    editingId = null;
+    document.getElementById('modalTitle').textContent = '項目を追加';
+    document.getElementById('fItem').value  = '';
+    document.getElementById('fCat').value   = activeFilter !== 'all' ? activeFilter : '旅行';
+    document.getElementById('fPri').value   = '中';
+    document.getElementById('fYear').value  = new Date().getFullYear() + 1;
+    document.getElementById('fDone').value  = 'false';
+    document.getElementById('fMemo').value  = '';
+    document.getElementById('overlay').classList.remove('hidden');
+    document.getElementById('fItem').focus();
+  }
+
+  function openEdit(id) {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+    editingId = id;
+    document.getElementById('modalTitle').textContent = '項目を編集';
+    document.getElementById('fItem').value  = item.item;
+    document.getElementById('fCat').value   = item.cat;
+    document.getElementById('fPri').value   = item.priority;
+    document.getElementById('fYear').value  = item.year || '';
+    document.getElementById('fDone').value  = String(item.done);
+    document.getElementById('fMemo').value  = item.memo || '';
+    document.getElementById('overlay').classList.remove('hidden');
+    document.getElementById('fItem').focus();
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.add('hidden');
+  }
+
+  function saveItem() {
+    const itemText = document.getElementById('fItem').value.trim();
+    if (!itemText) { document.getElementById('fItem').focus(); return; }
+    const data = {
+      cat:      document.getElementById('fCat').value,
+      item:     itemText,
+      priority: document.getElementById('fPri').value,
+      year:     +document.getElementById('fYear').value || null,
+      done:     document.getElementById('fDone').value === 'true',
+      memo:     document.getElementById('fMemo').value.trim(),
+    };
+    if (editingId !== null) {
+      const idx = items.findIndex(i => i.id === editingId);
+      if (idx !== -1) items[idx] = { ...items[idx], ...data };
+    } else {
+      items.push({ id: nextId++, ...data });
+    }
+    save();
+    render();
+    closeModal();
+  }
+
+  document.getElementById('openAdd').addEventListener('click', openAdd);
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  document.getElementById('saveItem').addEventListener('click', saveItem);
+  document.getElementById('overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('overlay')) closeModal();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  const today = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('subtitle').textContent = `死ぬまでにやりたいことリスト　— 更新日：${today}`;
+</script>
+</body>
+</html>
