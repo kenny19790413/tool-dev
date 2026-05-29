@@ -451,6 +451,14 @@
   let nextId = 1;
   let currentUser = null;
   let dbRef = null;
+  let seededDefaults = false;
+
+  // Firebase は配列をオブジェクトとして保存するため、読み込み時に配列へ戻す
+  function toItemArray(val) {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    return Object.keys(val).sort((a, b) => +a - +b).map(k => val[k]);
+  }
 
   // ── Auth ──────────────────────────────────────────────────
   auth.onAuthStateChanged(user => {
@@ -459,21 +467,29 @@
       document.getElementById('loginOverlay').classList.add('hidden');
       document.getElementById('userName').textContent = user.displayName || user.email;
       dbRef = database.ref(`users/${user.uid}/bucket-list`);
+      dbRef.off();
+      seededDefaults = false;
       dbRef.on('value', snapshot => {
         const data = snapshot.val();
-        if (data && data.items) {
-          items  = data.items;
-          nextId = data.nextId || (Math.max(...items.map(i => i.id)) + 1);
-        } else {
+        const loaded = toItemArray(data && data.items);
+        if (loaded.length > 0) {
+          items  = loaded;
+          nextId = (data && data.nextId) || (Math.max(...items.map(i => i.id)) + 1);
+        } else if (!seededDefaults) {
+          seededDefaults = true;
           items  = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
           nextId = DEFAULT_ITEMS.length + 1;
           save();
         }
         render();
+      }, err => {
+        alert('データの読み込みに失敗しました: ' + err.message);
+        console.error(err);
       });
     } else {
       document.getElementById('loginOverlay').classList.remove('hidden');
       if (dbRef) { dbRef.off(); dbRef = null; }
+      seededDefaults = false;
       items = [];
       render();
     }
@@ -490,7 +506,10 @@
 
   function save() {
     if (!currentUser || !dbRef) return;
-    dbRef.set({ items, nextId });
+    dbRef.set({ items, nextId }).catch(err => {
+      alert('保存に失敗しました: ' + err.message);
+      console.error(err);
+    });
   }
 
   // ── UI ────────────────────────────────────────────────────
