@@ -208,6 +208,16 @@
     }
     .overlay.hidden { display: none !important; }
 
+    #authLoading {
+      position: fixed; inset: 0;
+      background: rgba(244, 247, 251, .97);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+      font-size: 1.05rem; color: #1F3864;
+      padding: 24px; text-align: center;
+    }
+    #authLoading.hidden { display: none !important; }
+
     .modal {
       background: #fff;
       border-radius: 12px;
@@ -505,6 +515,8 @@
   <div class="legend-item"><div class="legend-dot" style="background:var(--done-bg); border:1px solid #ccc"></div>達成済み</div>
 </div>
 
+<div id="authLoading" class="hidden">サインイン処理中…</div>
+
 <!-- Login -->
 <div class="overlay" id="loginOverlay">
   <div class="modal" style="text-align:center;max-width:380px;padding:40px 32px">
@@ -641,14 +653,49 @@
 
   function showLoginOverlay() {
     if (auth.currentUser) return;
+    hideAuthLoading();
     const el = document.getElementById('loginOverlay');
     if (!el) return;
     el.classList.remove('hidden');
-    el.style.display = '';
+    el.style.display = 'flex';
+  }
+
+  function showAuthLoading(msg) {
+    hideLoginOverlay();
+    const el = document.getElementById('authLoading');
+    if (!el) return;
+    el.textContent = msg || 'サインイン処理中…';
+    el.classList.remove('hidden');
+  }
+
+  function hideAuthLoading() {
+    const el = document.getElementById('authLoading');
+    if (!el) return;
+    el.classList.add('hidden');
   }
 
   function isOAuthReturn() {
-    return /[?&#](state|apiKey)=/.test(window.location.href);
+    const h = window.location.hash || '';
+    return /[?&#](state|apiKey|access_token)=/.test(window.location.href + h);
+  }
+
+  function isReturningFromSignIn() {
+    return isOAuthReturn() || sessionStorage.getItem('authRedirectPending') === '1';
+  }
+
+  function waitForAuthUser(maxMs) {
+    return new Promise(resolve => {
+      if (auth.currentUser) return resolve(auth.currentUser);
+      let settled = false;
+      const done = u => {
+        if (settled) return;
+        settled = true;
+        unsub();
+        resolve(u || null);
+      };
+      const unsub = auth.onAuthStateChanged(u => { if (u) done(u); });
+      setTimeout(() => done(auth.currentUser), maxMs);
+    });
   }
 
   function clearOAuthUrl() {
@@ -719,6 +766,7 @@
     sessionStorage.removeItem('authRedirectPending');
     setSignInBusy(false);
     setAuthStatus('');
+    hideAuthLoading();
     hideLoginOverlay();
     clearOAuthUrl();
     document.getElementById('userName').textContent = user.displayName || user.email;
@@ -737,27 +785,41 @@
   }
 
   if (!isOAuthPopup) {
-    if (!isOAuthReturn()) sessionStorage.removeItem('authRedirectPending');
+    let oauthGracePeriod = isReturningFromSignIn();
+    if (!oauthGracePeriod) sessionStorage.removeItem('authRedirectPending');
     setSignInBusy(false);
-    if (isOAuthReturn()) hideLoginOverlay();
+    if (oauthGracePeriod) showAuthLoading('サインイン処理中…');
 
     auth.getRedirectResult()
-      .then(result => { if (result.user) onUserSignedIn(result.user); })
+      .then(result => result.user || null)
       .catch(err => {
         if (err.code && err.code !== 'auth/no-auth-event') {
           alert('サインインに失敗しました: ' + err.message);
         }
+        return null;
       })
-      .finally(() => {
+      .then(user => user || (oauthGracePeriod ? waitForAuthUser(12000) : null))
+      .then(user => {
         authReady = true;
+        oauthGracePeriod = false;
         sessionStorage.removeItem('authRedirectPending');
-        if (auth.currentUser) onUserSignedIn(auth.currentUser);
-        else onUserSignedOut();
+        if (user) onUserSignedIn(user);
+        else if (!isReturningFromSignIn()) onUserSignedOut();
+        else {
+          hideAuthLoading();
+          setAuthStatus('');
+          alert('サインインを完了できませんでした。もう一度お試しください。');
+          showLoginOverlay();
+        }
       });
 
     auth.onAuthStateChanged(user => {
-      if (user) onUserSignedIn(user);
-      else if (authReady) onUserSignedOut();
+      if (user) {
+        oauthGracePeriod = false;
+        onUserSignedIn(user);
+      } else if (authReady && !oauthGracePeriod) {
+        onUserSignedOut();
+      }
     });
   }
 
