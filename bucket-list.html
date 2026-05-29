@@ -207,7 +207,6 @@
       padding: 16px;
     }
     .overlay.hidden { display: none !important; }
-    #loginOverlay.hidden { visibility: hidden; pointer-events: none; }
 
     .modal {
       background: #fff;
@@ -634,15 +633,27 @@
   }
 
   function hideLoginOverlay() {
-    document.getElementById('loginOverlay').classList.add('hidden');
+    const el = document.getElementById('loginOverlay');
+    if (!el) return;
+    el.classList.add('hidden');
+    el.style.display = 'none';
   }
 
   function showLoginOverlay() {
-    document.getElementById('loginOverlay').classList.remove('hidden');
+    if (auth.currentUser) return;
+    const el = document.getElementById('loginOverlay');
+    if (!el) return;
+    el.classList.remove('hidden');
+    el.style.display = '';
   }
 
   function isOAuthReturn() {
     return /[?&#](state|apiKey)=/.test(window.location.href);
+  }
+
+  function clearOAuthUrl() {
+    if (!isOAuthReturn()) return;
+    history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
   function useRedirectSignIn() {
@@ -652,17 +663,14 @@
     return isIOS || isSafari;
   }
 
-  // 以前のポップアップ認証で開いた別ウィンドウのみ処理
-  function handleLegacyOAuthPopup() {
+  // 認証用ポップアップ（同じページが開く）→ 親を更新して閉じる
+  function handleOAuthPopupWindow() {
     if (!window.opener || window.opener === window) return false;
-    if (!/__\/auth\//.test(window.location.href) && !(window.name || '').includes('firebase')) return false;
     document.body.innerHTML = [
       '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;',
       'padding:24px;font-family:sans-serif;text-align:center;background:#f4f7fb">',
-      '<div><p style="font-size:1.1rem;margin-bottom:12px">サインイン完了</p>',
-      '<p style="color:#666;margin-bottom:20px">このウィンドウを閉じてください。</p>',
-      '<button onclick="window.close()" style="padding:10px 24px;font-size:1rem;cursor:pointer">閉じる</button>',
-      '</div></div>'
+      '<p style="font-size:1rem">サインイン完了。このウィンドウを閉じています…</p>',
+      '</div>'
     ].join('');
     const finish = () => {
       try {
@@ -670,79 +678,88 @@
       } catch (e) { /* ignore */ }
       window.close();
     };
+    auth.getRedirectResult().catch(() => {});
     auth.onAuthStateChanged(user => { if (user) finish(); });
-    setTimeout(() => { if (auth.currentUser) finish(); }, 800);
+    if (auth.currentUser) finish();
+    setTimeout(finish, 1200);
     return true;
   }
 
-  const isLegacyPopup = handleLegacyOAuthPopup();
+  const isOAuthPopup = handleOAuthPopupWindow();
+  let authReady = false;
+  let attachedUid = null;
 
-  // 前回の認証途中で止まった状態をリセット
-  if (!isOAuthReturn()) sessionStorage.removeItem('authRedirectPending');
-  setSignInBusy(false);
-
-  if (isOAuthReturn()) {
-    hideLoginOverlay();
-    setAuthStatus('サインイン処理中…');
+  function attachDatabase(user) {
+    if (attachedUid === user.uid && dbRef) return;
+    if (dbRef) dbRef.off();
+    attachedUid = user.uid;
+    dbRef = database.ref(`users/${user.uid}`);
+    seededDefaults = false;
+    dbRef.on('value', snapshot => {
+      const data = snapshot.val();
+      const loaded = toItemArray(data && data.items);
+      if (loaded.length > 0) {
+        items  = loaded;
+        nextId = (data && data.nextId) || (Math.max(...items.map(i => i.id)) + 1);
+      } else if (!seededDefaults) {
+        seededDefaults = true;
+        items  = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+        nextId = DEFAULT_ITEMS.length + 1;
+        save();
+      }
+      render();
+    }, err => {
+      alert('データの読み込みに失敗しました: ' + err.message);
+      console.error(err);
+    });
   }
 
-  auth.getRedirectResult()
-    .then(result => {
-      sessionStorage.removeItem('authRedirectPending');
-      if (result.user) {
-        hideLoginOverlay();
-        setAuthStatus('読み込み中…');
-      }
-    })
-    .catch(err => {
-      sessionStorage.removeItem('authRedirectPending');
-      if (err.code && err.code !== 'auth/no-auth-event') {
-        setSignInBusy(false);
-        setAuthStatus('');
-        alert('サインインに失敗しました: ' + err.message);
-      }
-    });
-
-  // ── Auth ──────────────────────────────────────────────────
-  if (!isLegacyPopup) auth.onAuthStateChanged(user => {
+  function onUserSignedIn(user) {
     currentUser = user;
-    if (user) {
-      sessionStorage.removeItem('authRedirectPending');
-      setSignInBusy(false);
-      setAuthStatus('');
-      hideLoginOverlay();
-      document.getElementById('userName').textContent = user.displayName || user.email;
-      dbRef = database.ref(`users/${user.uid}`);
-      dbRef.off();
-      seededDefaults = false;
-      dbRef.on('value', snapshot => {
-        const data = snapshot.val();
-        const loaded = toItemArray(data && data.items);
-        if (loaded.length > 0) {
-          items  = loaded;
-          nextId = (data && data.nextId) || (Math.max(...items.map(i => i.id)) + 1);
-        } else if (!seededDefaults) {
-          seededDefaults = true;
-          items  = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
-          nextId = DEFAULT_ITEMS.length + 1;
-          save();
-        }
-        render();
-      }, err => {
-        alert('データの読み込みに失敗しました: ' + err.message);
-        console.error(err);
-      });
-    } else {
-      setSignInBusy(false);
-      showLoginOverlay();
-      if (dbRef) { dbRef.off(); dbRef = null; }
-      seededDefaults = false;
-      items = [];
-      render();
-    }
-  });
+    sessionStorage.removeItem('authRedirectPending');
+    setSignInBusy(false);
+    setAuthStatus('');
+    hideLoginOverlay();
+    clearOAuthUrl();
+    document.getElementById('userName').textContent = user.displayName || user.email;
+    attachDatabase(user);
+  }
 
-  if (!isLegacyPopup && auth.currentUser) hideLoginOverlay();
+  function onUserSignedOut() {
+    currentUser = null;
+    attachedUid = null;
+    setSignInBusy(false);
+    showLoginOverlay();
+    if (dbRef) { dbRef.off(); dbRef = null; }
+    seededDefaults = false;
+    items = [];
+    render();
+  }
+
+  if (!isOAuthPopup) {
+    if (!isOAuthReturn()) sessionStorage.removeItem('authRedirectPending');
+    setSignInBusy(false);
+    if (isOAuthReturn()) hideLoginOverlay();
+
+    auth.getRedirectResult()
+      .then(result => { if (result.user) onUserSignedIn(result.user); })
+      .catch(err => {
+        if (err.code && err.code !== 'auth/no-auth-event') {
+          alert('サインインに失敗しました: ' + err.message);
+        }
+      })
+      .finally(() => {
+        authReady = true;
+        sessionStorage.removeItem('authRedirectPending');
+        if (auth.currentUser) onUserSignedIn(auth.currentUser);
+        else onUserSignedOut();
+      });
+
+    auth.onAuthStateChanged(user => {
+      if (user) onUserSignedIn(user);
+      else if (authReady) onUserSignedOut();
+    });
+  }
 
   function signIn() {
     const provider = new firebase.auth.GoogleAuthProvider();
