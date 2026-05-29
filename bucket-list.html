@@ -466,7 +466,7 @@
     if (user) {
       document.getElementById('loginOverlay').classList.add('hidden');
       document.getElementById('userName').textContent = user.displayName || user.email;
-      dbRef = database.ref(`users/${user.uid}/bucket-list`);
+      dbRef = database.ref(`users/${user.uid}`);
       dbRef.off();
       seededDefaults = false;
       dbRef.on('value', snapshot => {
