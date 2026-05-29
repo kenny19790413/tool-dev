@@ -526,7 +526,7 @@
     <p style="color:#666;font-size:.9rem;margin-bottom:28px;line-height:1.6">Googleアカウントでサインインして<br>PC・iPhone（Safari）どこからでも使えます</p>
     <div id="googleSignInDiv" style="display:flex;justify-content:center;min-height:50px"></div>
     <p id="authStatus"></p>
-    <p class="login-note">Googleボタンをタップしてサインイン<br>（Safari でもページ移動なしで完了します）</p>
+    <p class="login-note">Googleボタンをタップしてサインイン</p>
   </div>
 </div>
 
@@ -593,7 +593,10 @@
     storageBucket:     "bucket-list-a486e.firebasestorage.app",
     messagingSenderId: "735695765139",
     appId:             "1:735695765139:web:ecf09b708e922d7b6c9766",
-    measurementId:     "G-BT67TZ53KS"
+    measurementId:     "G-BT67TZ53KS",
+    // 任意: Firebase Console → Authentication → Google →「Web SDK 構成」の Web client ID
+    // 設定すると Safari でも高速サインイン（未設定時は Firebase 認証を使用）
+    googleClientId:    ""
   };
   // ============================================================
 
@@ -683,7 +686,6 @@
     history.replaceState(null, '', window.location.pathname + window.location.search);
   }
 
-  let googleClientId = null;
   let googleBtnReady = false;
 
   function waitForGoogleLib(maxMs) {
@@ -702,16 +704,31 @@
     });
   }
 
-  async function fetchGoogleClientId() {
-    if (googleClientId) return googleClientId;
-    const res = await fetch(
-      'https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key=' +
-      encodeURIComponent(firebaseConfig.apiKey)
-    );
-    const data = await res.json();
-    googleClientId = data.oauthClientId || (data.projectConfig && data.projectConfig.oauthClientId);
-    if (!googleClientId) throw new Error('OAuth Client ID が取得できません');
-    return googleClientId;
+  function createGoogleSignInButton(onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'login-btn';
+    btn.innerHTML = [
+      '<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">',
+      '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>',
+      '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>',
+      '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>',
+      '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>',
+      '</svg> Googleでサインイン'
+    ].join('');
+    btn.onclick = onClick;
+    return btn;
+  }
+
+  function firebaseRedirectSignIn() {
+    hideLoginOverlay();
+    showAuthLoading('Googleに移動しています…');
+    auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider())
+      .catch(err => {
+        hideAuthLoading();
+        showLoginOverlay();
+        alert('サインインに失敗しました: ' + err.message);
+      });
   }
 
   function handleGoogleCredential(response) {
@@ -724,38 +741,45 @@
     });
   }
 
-  async function initGoogleSignIn() {
+  async function initGoogleSignInWithClient(clientId) {
+    await waitForGoogleLib(8000);
+    const container = document.getElementById('googleSignInDiv');
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    });
+    google.accounts.id.renderButton(container, {
+      theme: 'outline',
+      size: 'large',
+      width: Math.min(280, container.offsetWidth || 280),
+      text: 'signin_with',
+      locale: 'ja',
+    });
+  }
+
+  async function initSignInButton() {
     if (googleBtnReady || auth.currentUser) return;
     const container = document.getElementById('googleSignInDiv');
     if (!container) return;
-    try {
-      setAuthStatus('ボタンを読み込み中…');
-      await waitForGoogleLib(8000);
-      const clientId = await fetchGoogleClientId();
-      container.innerHTML = '';
-      google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleCredential,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-      google.accounts.id.renderButton(container, {
-        theme: 'outline',
-        size: 'large',
-        width: Math.min(280, container.offsetWidth || 280),
-        text: 'signin_with',
-        locale: 'ja',
-      });
-      googleBtnReady = true;
-      setAuthStatus('');
-    } catch (err) {
-      setAuthStatus('');
-      container.innerHTML = '';
-      const p = document.createElement('p');
-      p.style.cssText = 'color:#c00;font-size:.85rem;line-height:1.5';
-      p.textContent = err.message;
-      container.appendChild(p);
+    container.innerHTML = '';
+    setAuthStatus('');
+
+    const clientId = (firebaseConfig.googleClientId || '').trim();
+    if (clientId) {
+      try {
+        setAuthStatus('ボタンを読み込み中…');
+        await initGoogleSignInWithClient(clientId);
+        setAuthStatus('');
+      } catch (err) {
+        setAuthStatus('');
+        container.appendChild(createGoogleSignInButton(firebaseRedirectSignIn));
+      }
+    } else {
+      container.appendChild(createGoogleSignInButton(firebaseRedirectSignIn));
     }
+    googleBtnReady = true;
   }
 
   function resetGoogleSignIn() {
@@ -837,18 +861,31 @@
     seededDefaults = false;
     items = [];
     render();
-    initGoogleSignIn();
+    initSignInButton();
   }
 
   if (!isOAuthPopup) {
     sessionStorage.removeItem('authRedirectPending');
+    const returning = isOAuthReturn();
+    if (returning) showAuthLoading('サインイン処理中…');
+
     auth.getRedirectResult().catch(() => {});
 
     auth.onAuthStateChanged(user => {
       authReady = true;
       if (user) onUserSignedIn(user);
-      else onUserSignedOut();
+      else if (!returning) onUserSignedOut();
     });
+
+    if (returning) {
+      setTimeout(() => {
+        if (auth.currentUser) onUserSignedIn(auth.currentUser);
+        else {
+          hideAuthLoading();
+          onUserSignedOut();
+        }
+      }, 8000);
+    }
   }
 
   function signOut() {
