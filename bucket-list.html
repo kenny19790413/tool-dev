@@ -205,6 +205,7 @@
       justify-content: center;
       z-index: 100;
       padding: 16px;
+      -webkit-overflow-scrolling: touch;
     }
     .overlay.hidden { display: none !important; }
 
@@ -237,7 +238,7 @@
       padding: 8px 10px;
       border: 1.5px solid #ccd4e0;
       border-radius: 6px;
-      font-size: .92rem;
+      font-size: 16px; /* iOSの自動ズームを防ぐ（16px未満だとズームする） */
       font-family: inherit;
       transition: border-color .15s;
     }
@@ -381,6 +382,7 @@
         justify-content: space-around;
         width: 100%;
       }
+      .stat .num { font-size: 1.3rem; }
       .header-user {
         margin-left: 0;
         justify-content: space-between;
@@ -403,30 +405,31 @@
       .toolbar::-webkit-scrollbar { display: none; }
       .filter-btn {
         flex-shrink: 0;
-        padding: 8px 14px;
-        font-size: .82rem;
-        min-height: 40px;
+        padding: 10px 16px;
+        font-size: .85rem;
+        min-height: 44px;
       }
       .add-btn { display: none; }
       .fab-add {
         display: flex;
         position: fixed;
         right: 20px;
-        bottom: max(20px, env(safe-area-inset-bottom));
-        width: 56px;
-        height: 56px;
+        bottom: max(24px, env(safe-area-inset-bottom));
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
         background: var(--accent);
         color: #fff;
         border: none;
-        font-size: 1.6rem;
+        font-size: 1.8rem;
         font-weight: bold;
         cursor: pointer;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 16px rgba(46,117,182,.45);
+        box-shadow: 0 4px 20px rgba(46,117,182,.5);
         z-index: 50;
         -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
       }
       .legend {
         padding: 10px 16px;
@@ -437,22 +440,47 @@
       .list-header { display: none; }
       .item-row { display: none; }
       .item-card { display: block; }
-      .check-btn, .icon-btn {
+      .check-btn {
         width: 44px;
         height: 44px;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+      .icon-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+      }
+      /* モーダル：キーボード表示時も使いやすくする */
+      .overlay {
+        align-items: flex-start;
+        padding-top: max(16px, env(safe-area-inset-top));
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
       }
       .modal {
         padding: 24px 20px;
-        max-height: 90vh;
+        max-height: calc(100dvh - 40px);
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: auto 0;
       }
       .form-2col { grid-template-columns: 1fr; }
       .btn-cancel, .btn-save {
-        min-height: 44px;
+        min-height: 48px;
         flex: 1;
+        font-size: 1rem;
       }
-      .modal-actions { flex-wrap: wrap; }
+      .modal-actions { flex-wrap: wrap; gap: 10px; }
+
+      /* カードのタップ領域を広げる */
+      .item-card { padding: 16px; }
+      .card-memo { font-size: .85rem; }
+      .cat-tag { font-size: .8rem; padding: 4px 10px; }
+
+      /* ログインモーダル */
+      #loginOverlay .modal { max-width: 100%; margin: 0 16px; }
+      .login-btn { min-height: 52px; font-size: 1rem; }
     }
 
     @media (min-width: 769px) {
