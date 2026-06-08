@@ -736,33 +736,16 @@
     showAuthLoading('サインイン処理中…');
 
     try {
-      // デスクトップ・モバイル共通: まずポップアップで試みる
-      // iOS Safari 16.4+ はユーザージェスチャー起点のポップアップに対応
       await auth.signInWithPopup(provider);
       hideAuthLoading();
     } catch (err) {
-      if (err.code === 'auth/popup-blocked') {
-        // ポップアップがブロックされた場合のみリダイレクトにフォールバック
-        localStorage.setItem('bk_auth_pending', '1');
-        showAuthLoading('Googleに移動しています…');
-        auth.signInWithRedirect(provider).catch(e => {
-          localStorage.removeItem('bk_auth_pending');
-          hideAuthLoading();
-          showLoginOverlay();
-          setAuthStatus('エラー: ' + e.message);
-          initSignInButton();
-        });
-      } else if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-        // ユーザーがキャンセル → ログイン画面に戻るだけ
-        hideAuthLoading();
-        showLoginOverlay();
-        initSignInButton();
-      } else {
-        hideAuthLoading();
-        showLoginOverlay();
-        setAuthStatus('エラー: ' + err.message);
-        initSignInButton();
-      }
+      hideAuthLoading();
+      showLoginOverlay();
+      // エラーコードを大きく表示（原因特定のため）
+      const msg = '【エラー】\n' + err.code + '\n' + err.message;
+      setAuthStatus(err.code + ': ' + err.message);
+      alert(msg);
+      initSignInButton();
     }
   }
 
