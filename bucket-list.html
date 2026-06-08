@@ -733,38 +733,35 @@
   async function handleSignIn() {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('email');
+    showAuthLoading('サインイン処理中…');
 
-    if (isMobileBrowser()) {
-      // モバイル: リダイレクト認証（localStorage でリダイレクト状態を記録）
-      localStorage.setItem('bk_auth_pending', '1');
-      showAuthLoading('Googleに移動しています…');
-      try {
-        await auth.signInWithRedirect(provider);
-      } catch (err) {
-        localStorage.removeItem('bk_auth_pending');
+    try {
+      // デスクトップ・モバイル共通: まずポップアップで試みる
+      // iOS Safari 16.4+ はユーザージェスチャー起点のポップアップに対応
+      await auth.signInWithPopup(provider);
+      hideAuthLoading();
+    } catch (err) {
+      if (err.code === 'auth/popup-blocked') {
+        // ポップアップがブロックされた場合のみリダイレクトにフォールバック
+        localStorage.setItem('bk_auth_pending', '1');
+        showAuthLoading('Googleに移動しています…');
+        auth.signInWithRedirect(provider).catch(e => {
+          localStorage.removeItem('bk_auth_pending');
+          hideAuthLoading();
+          showLoginOverlay();
+          setAuthStatus('エラー: ' + e.message);
+          initSignInButton();
+        });
+      } else if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        // ユーザーがキャンセル → ログイン画面に戻るだけ
+        hideAuthLoading();
+        showLoginOverlay();
+        initSignInButton();
+      } else {
         hideAuthLoading();
         showLoginOverlay();
         setAuthStatus('エラー: ' + err.message);
         initSignInButton();
-      }
-    } else {
-      // デスクトップ: ポップアップ → ブロック時はリダイレクト
-      showAuthLoading('サインイン処理中…');
-      try {
-        await auth.signInWithPopup(provider);
-        hideAuthLoading();
-      } catch (err) {
-        const popupErr = ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request'];
-        if (popupErr.includes(err.code)) {
-          localStorage.setItem('bk_auth_pending', '1');
-          showAuthLoading('Googleに移動しています…');
-          await auth.signInWithRedirect(provider);
-        } else {
-          hideAuthLoading();
-          showLoginOverlay();
-          setAuthStatus('エラー: ' + err.message);
-          initSignInButton();
-        }
       }
     }
   }
