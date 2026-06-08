@@ -707,7 +707,8 @@
   // ── 認証ユーティリティ ──
   let authReady = false;
   let attachedUid = null;
-  let redirectPending = false;
+  // onAuthStateChanged より前に設定しないと、先に null で発火したとき誤ログアウトする
+  let redirectPending = localStorage.getItem('bk_auth_pending') === '1';
 
   function isMobileBrowser() {
     return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -842,7 +843,7 @@
   });
 
   async function initAuth() {
-    redirectPending = localStorage.getItem('bk_auth_pending') === '1';
+    // redirectPending は変数宣言時に設定済み
     if (redirectPending) {
       showAuthLoading('サインイン処理中…');
     }
@@ -850,8 +851,9 @@
     try {
       const result = await auth.getRedirectResult();
       if (result && result.user) {
-        // リダイレクト認証成功 → onAuthStateChanged が続けて発火する
+        // リダイレクト認証成功
         redirectPending = false;
+        onUserSignedIn(result.user); // onAuthStateChanged が来なくても確実に処理
         return;
       }
       // リダイレクト戻りではない（通常アクセス）
@@ -861,9 +863,14 @@
       console.error('getRedirectResult:', err);
       redirectPending = false;
       localStorage.removeItem('bk_auth_pending');
-      hideAuthLoading();
-      // onAuthStateChanged の null 発火でログアウト画面が出る
       setAuthStatus('サインインに失敗しました。再度お試しください。');
+    }
+
+    // getRedirectResult が空または失敗 → 現在のユーザー状態で確定処理
+    if (auth.currentUser) {
+      onUserSignedIn(auth.currentUser);
+    } else {
+      onUserSignedOut();
     }
   }
 
