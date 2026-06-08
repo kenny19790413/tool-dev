@@ -704,32 +704,13 @@
     el.classList.add('hidden');
   }
 
-  function isOAuthReturn() {
-    const h = window.location.hash || '';
-    return /[?&#](state|apiKey|access_token)=/.test(window.location.href + h);
-  }
+  // ── 認証ユーティリティ ──
+  let authReady = false;
+  let attachedUid = null;
+  let redirectPending = false;
 
-  function clearOAuthUrl() {
-    if (!isOAuthReturn()) return;
-    history.replaceState(null, '', window.location.pathname + window.location.search);
-  }
-
-  let googleBtnReady = false;
-
-  function waitForGoogleLib(maxMs) {
-    return new Promise((resolve, reject) => {
-      if (window.google && google.accounts && google.accounts.id) return resolve();
-      const start = Date.now();
-      const timer = setInterval(() => {
-        if (window.google && google.accounts && google.accounts.id) {
-          clearInterval(timer);
-          resolve();
-        } else if (Date.now() - start > maxMs) {
-          clearInterval(timer);
-          reject(new Error('Google Sign-In の読み込みに失敗しました'));
-        }
-      }, 100);
-    });
+  function isMobileBrowser() {
+    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   }
 
   function createGoogleSignInButton(onClick) {
@@ -748,99 +729,58 @@
     return btn;
   }
 
-  function firebaseRedirectSignIn() {
-    hideLoginOverlay();
-    showAuthLoading('Googleに移動しています…');
-    auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider())
-      .catch(err => {
+  async function handleSignIn() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('email');
+
+    if (isMobileBrowser()) {
+      // モバイル: リダイレクト認証（localStorage でリダイレクト状態を記録）
+      localStorage.setItem('bk_auth_pending', '1');
+      showAuthLoading('Googleに移動しています…');
+      try {
+        await auth.signInWithRedirect(provider);
+      } catch (err) {
+        localStorage.removeItem('bk_auth_pending');
         hideAuthLoading();
         showLoginOverlay();
-        alert('サインインに失敗しました: ' + err.message);
-      });
+        setAuthStatus('エラー: ' + err.message);
+        initSignInButton();
+      }
+    } else {
+      // デスクトップ: ポップアップ → ブロック時はリダイレクト
+      showAuthLoading('サインイン処理中…');
+      try {
+        await auth.signInWithPopup(provider);
+        hideAuthLoading();
+      } catch (err) {
+        const popupErr = ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request'];
+        if (popupErr.includes(err.code)) {
+          localStorage.setItem('bk_auth_pending', '1');
+          showAuthLoading('Googleに移動しています…');
+          await auth.signInWithRedirect(provider);
+        } else {
+          hideAuthLoading();
+          showLoginOverlay();
+          setAuthStatus('エラー: ' + err.message);
+          initSignInButton();
+        }
+      }
+    }
   }
 
-  function handleGoogleCredential(response) {
-    showAuthLoading('サインイン処理中…');
-    const credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
-    auth.signInWithCredential(credential).catch(err => {
-      hideAuthLoading();
-      showLoginOverlay();
-      alert('サインインに失敗しました: ' + err.message);
-    });
-  }
-
-  async function initGoogleSignInWithClient(clientId) {
-    await waitForGoogleLib(8000);
-    const container = document.getElementById('googleSignInDiv');
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: handleGoogleCredential,
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    });
-    google.accounts.id.renderButton(container, {
-      theme: 'outline',
-      size: 'large',
-      width: Math.min(280, container.offsetWidth || 280),
-      text: 'signin_with',
-      locale: 'ja',
-    });
-  }
-
-  async function initSignInButton() {
-    if (googleBtnReady || auth.currentUser) return;
+  function initSignInButton() {
+    if (auth.currentUser) return;
     const container = document.getElementById('googleSignInDiv');
     if (!container) return;
     container.innerHTML = '';
     setAuthStatus('');
-
-    const clientId = (firebaseConfig.googleClientId || '').trim();
-    if (clientId) {
-      try {
-        setAuthStatus('ボタンを読み込み中…');
-        await initGoogleSignInWithClient(clientId);
-        setAuthStatus('');
-      } catch (err) {
-        setAuthStatus('');
-        container.appendChild(createGoogleSignInButton(firebaseRedirectSignIn));
-      }
-    } else {
-      container.appendChild(createGoogleSignInButton(firebaseRedirectSignIn));
-    }
-    googleBtnReady = true;
+    container.appendChild(createGoogleSignInButton(handleSignIn));
   }
 
   function resetGoogleSignIn() {
-    googleBtnReady = false;
     const container = document.getElementById('googleSignInDiv');
     if (container) container.innerHTML = '';
   }
-
-  // 認証用ポップアップ（同じページが開く）→ 親を更新して閉じる
-  function handleOAuthPopupWindow() {
-    if (!window.opener || window.opener === window) return false;
-    document.body.innerHTML = [
-      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;',
-      'padding:24px;font-family:sans-serif;text-align:center;background:#f4f7fb">',
-      '<p style="font-size:1rem">サインイン完了。このウィンドウを閉じています…</p>',
-      '</div>'
-    ].join('');
-    const finish = () => {
-      try {
-        if (window.opener && !window.opener.closed) window.opener.location.reload();
-      } catch (e) { /* ignore */ }
-      window.close();
-    };
-    auth.getRedirectResult().catch(() => {});
-    auth.onAuthStateChanged(user => { if (user) finish(); });
-    if (auth.currentUser) finish();
-    setTimeout(finish, 1200);
-    return true;
-  }
-
-  const isOAuthPopup = handleOAuthPopupWindow();
-  let authReady = false;
-  let attachedUid = null;
 
   function attachDatabase(user) {
     if (attachedUid === user.uid && dbRef) return;
@@ -869,12 +809,11 @@
 
   function onUserSignedIn(user) {
     currentUser = user;
-    sessionStorage.removeItem('authRedirectPending');
-    setSignInBusy(false);
-    setAuthStatus('');
+    redirectPending = false;
+    localStorage.removeItem('bk_auth_pending');
     hideAuthLoading();
     hideLoginOverlay();
-    clearOAuthUrl();
+    history.replaceState(null, '', window.location.pathname + window.location.search);
     document.getElementById('userName').textContent = user.displayName || user.email;
     attachDatabase(user);
   }
@@ -882,7 +821,6 @@
   function onUserSignedOut() {
     currentUser = null;
     attachedUid = null;
-    setSignInBusy(false);
     resetGoogleSignIn();
     showLoginOverlay();
     if (dbRef) { dbRef.off(); dbRef = null; }
@@ -892,29 +830,44 @@
     initSignInButton();
   }
 
-  if (!isOAuthPopup) {
-    sessionStorage.removeItem('authRedirectPending');
-    const returning = isOAuthReturn();
-    if (returning) showAuthLoading('サインイン処理中…');
+  // onAuthStateChanged は initAuth() より前に登録しておく
+  // redirectPending フラグで「リダイレクト戻り中」の誤ログアウトを防ぐ
+  auth.onAuthStateChanged(user => {
+    authReady = true;
+    if (user) {
+      onUserSignedIn(user);
+    } else if (!redirectPending) {
+      onUserSignedOut();
+    }
+  });
 
-    auth.getRedirectResult().catch(() => {});
+  async function initAuth() {
+    redirectPending = localStorage.getItem('bk_auth_pending') === '1';
+    if (redirectPending) {
+      showAuthLoading('サインイン処理中…');
+    }
 
-    auth.onAuthStateChanged(user => {
-      authReady = true;
-      if (user) onUserSignedIn(user);
-      else if (!returning) onUserSignedOut();
-    });
-
-    if (returning) {
-      setTimeout(() => {
-        if (auth.currentUser) onUserSignedIn(auth.currentUser);
-        else {
-          hideAuthLoading();
-          onUserSignedOut();
-        }
-      }, 8000);
+    try {
+      const result = await auth.getRedirectResult();
+      if (result && result.user) {
+        // リダイレクト認証成功 → onAuthStateChanged が続けて発火する
+        redirectPending = false;
+        return;
+      }
+      // リダイレクト戻りではない（通常アクセス）
+      redirectPending = false;
+      localStorage.removeItem('bk_auth_pending');
+    } catch (err) {
+      console.error('getRedirectResult:', err);
+      redirectPending = false;
+      localStorage.removeItem('bk_auth_pending');
+      hideAuthLoading();
+      // onAuthStateChanged の null 発火でログアウト画面が出る
+      setAuthStatus('サインインに失敗しました。再度お試しください。');
     }
   }
+
+  initAuth();
 
   function signOut() {
     if (confirm('サインアウトしますか？')) auth.signOut();
