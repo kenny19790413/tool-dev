@@ -211,6 +211,38 @@ input:focus, select:focus { border-color: #553c9a; }
 .series-item-sub   { font-size: 11px; color: #718096; margin-top: 2px; }
 .series-empty { text-align: center; padding: 20px; color: #a0aec0; font-size: 13px; }
 
+/* ─── 検索バー ─── */
+.search-wrap {
+  padding: 12px 20px 0; max-width: 900px; margin: 0 auto;
+}
+.search-box {
+  position: relative; display: flex; align-items: center;
+}
+.search-box input {
+  width: 100%; padding: 10px 40px 10px 40px;
+  border: 1.5px solid #e9e0ff; border-radius: 24px;
+  font-size: 14px; color: #2d2d3a; background: white;
+  outline: none; font-family: inherit;
+  box-shadow: 0 2px 8px rgba(85,60,154,0.08);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-box input:focus {
+  border-color: #553c9a;
+  box-shadow: 0 2px 12px rgba(85,60,154,0.2);
+}
+.search-icon { position: absolute; left: 14px; font-size: 16px; pointer-events: none; opacity: 0.5; }
+.search-clear {
+  position: absolute; right: 12px; background: none; border: none;
+  color: #a0aec0; font-size: 18px; cursor: pointer; padding: 4px;
+  display: none; line-height: 1; transition: color 0.2s;
+}
+.search-clear.show { display: block; }
+.search-clear:hover { color: #553c9a; }
+.search-hint {
+  font-size: 12px; color: #553c9a; font-weight: 600;
+  margin-top: 6px; padding-left: 14px; min-height: 18px;
+}
+
 /* ─── 保存インジケーター ─── */
 .saving-indicator {
   position: fixed; bottom: 96px; right: 24px;
@@ -324,6 +356,17 @@ input:focus, select:focus { border-color: #553c9a; }
   </div>
 </div>
 
+<!-- 検索バー -->
+<div class="search-wrap">
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="作品名で検索（全期間）..."
+      oninput="onSearchInput()" autocomplete="off">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+  </div>
+  <div class="search-hint" id="searchHint"></div>
+</div>
+
 <div class="container">
   <!-- サマリー -->
   <div class="summary-grid">
@@ -351,6 +394,7 @@ input:focus, select:focus { border-color: #553c9a; }
         <thead>
           <tr>
             <th>発売日</th>
+            <th id="thMonth" style="display:none">発売月</th>
             <th>タイトル</th>
             <th>巻数</th>
             <th>出版社</th>
@@ -396,6 +440,7 @@ let seriesList     = {};   // { id: { title, publisher, price } }
 let volumesList    = {};   // { id: { seriesId, title, volume, releaseDate, price, publisher, purchased } }
 let currentYear    = new Date().getFullYear();
 let currentMonth   = new Date().getMonth() + 1;
+let searchQuery    = '';
 
 // ── 認証UI ──
 function setAuthStatus(msg) {
@@ -525,6 +570,20 @@ function signOut() {
   if (confirm('サインアウトしますか？')) auth.signOut();
 }
 
+// ── 検索 ──
+function onSearchInput() {
+  searchQuery = document.getElementById('searchInput').value.trim();
+  document.getElementById('searchClear').classList.toggle('show', searchQuery !== '');
+  render();
+}
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  searchQuery = '';
+  document.getElementById('searchClear').classList.remove('show');
+  document.getElementById('searchHint').textContent = '';
+  render();
+}
+
 // ── 月ナビ ──
 function changeMonth(delta) {
   currentMonth += delta;
@@ -535,15 +594,35 @@ function changeMonth(delta) {
 
 // ── レンダリング ──
 function render() {
-  document.getElementById('currentMonthLabel').textContent = `${currentYear}年${currentMonth}月`;
-  document.getElementById('listTitle').textContent = `📖 ${currentYear}年${currentMonth}月 発売リスト`;
+  const isSearch = searchQuery !== '';
 
-  const volumes = getMonthVolumes();
+  // 月ヘッダー・検索ヒント
+  document.getElementById('currentMonthLabel').textContent = `${currentYear}年${currentMonth}月`;
+  const thMonth = document.getElementById('thMonth');
+
+  if (isSearch) {
+    document.getElementById('listTitle').textContent = `🔍 「${searchQuery}」の検索結果`;
+    thMonth.style.display = '';
+  } else {
+    document.getElementById('listTitle').textContent = `📖 ${currentYear}年${currentMonth}月 発売リスト`;
+    thMonth.style.display = 'none';
+  }
+
+  const volumes = isSearch ? getSearchVolumes() : getMonthVolumes();
+
+  // 検索ヒント
+  if (isSearch) {
+    document.getElementById('searchHint').textContent =
+      volumes.length > 0 ? `${volumes.length}件ヒット` : '該当なし';
+  } else {
+    document.getElementById('searchHint').textContent = '';
+  }
+
   const boughtAmt   = volumes.filter(v => v.purchased).reduce((s, v) => s + (v.price || 0), 0);
   const unboughtAmt = volumes.filter(v => !v.purchased).reduce((s, v) => s + (v.price || 0), 0);
 
-  document.getElementById('totalCount').textContent   = `${volumes.length}冊`;
-  document.getElementById('boughtTotal').textContent  = `¥${boughtAmt.toLocaleString('ja-JP')}`;
+  document.getElementById('totalCount').textContent    = `${volumes.length}冊`;
+  document.getElementById('boughtTotal').textContent   = `¥${boughtAmt.toLocaleString('ja-JP')}`;
   document.getElementById('unboughtTotal').textContent = `¥${unboughtAmt.toLocaleString('ja-JP')}`;
 
   const tbody = document.getElementById('volumeTableBody');
@@ -552,6 +631,9 @@ function render() {
   if (volumes.length === 0) {
     tbody.innerHTML = '';
     empty.style.display = '';
+    empty.querySelector('p').innerHTML = isSearch
+      ? `「${escHtml(searchQuery)}」に一致する作品はありません`
+      : 'この月の登録はありません<br>右下の＋ボタンで追加してください';
     document.querySelector('table').style.display = 'none';
     return;
   }
@@ -559,16 +641,24 @@ function render() {
   document.querySelector('table').style.display = '';
 
   tbody.innerHTML = volumes.map(v => {
-    const dateStr = v.releaseDate
-      ? new Date(v.releaseDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })
-      : '─';
-    const volStr  = v.volume ? `第${v.volume}巻` : '─';
+    const d = v.releaseDate ? new Date(v.releaseDate) : null;
+    const dateStr  = d ? d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '─';
+    const monthStr = d ? `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}` : '─';
+    const volStr   = v.volume ? `第${v.volume}巻` : '─';
     const priceStr = v.price ? `¥${Number(v.price).toLocaleString('ja-JP')}` : '─';
-    const chkCls  = v.purchased ? 'check-btn bought' : 'check-btn';
-    const chkTxt  = v.purchased ? '✓ 購入済み' : '未購入';
+    const chkCls   = v.purchased ? 'check-btn bought' : 'check-btn';
+    const chkTxt   = v.purchased ? '✓ 購入済み' : '未購入';
+    const monthTd  = isSearch
+      ? `<td class="td-vol" style="display:table-cell">${monthStr}</td>`
+      : `<td class="td-vol" style="display:none"></td>`;
+
+    // 検索時はキーワードをハイライト
+    const titleHtml = isSearch ? highlight(v.title, searchQuery) : escHtml(v.title);
+
     return `<tr class="${v.purchased ? 'purchased' : ''}" id="row_${v.id}">
       <td class="td-date">${dateStr}</td>
-      <td class="td-title">${escHtml(v.title)}</td>
+      ${monthTd}
+      <td class="td-title">${titleHtml}</td>
       <td class="td-vol">${volStr}</td>
       <td class="td-pub">${escHtml(v.publisher || '─')}</td>
       <td class="td-price" style="text-align:right">${priceStr}</td>
@@ -576,8 +666,8 @@ function render() {
         <button class="${chkCls}" onclick="togglePurchased('${v.id}')">${chkTxt}</button>
       </td>
       <td class="td-actions">
-        <button class="btn-icon edit"   onclick="openEditModal('${v.id}')" title="編集">✎</button>
-        <button class="btn-icon"        onclick="deleteVolume('${v.id}')"  title="削除">✕</button>
+        <button class="btn-icon edit" onclick="openEditModal('${v.id}')" title="編集">✎</button>
+        <button class="btn-icon"      onclick="deleteVolume('${v.id}')"  title="削除">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -592,6 +682,24 @@ function getMonthVolumes() {
       return d.getFullYear() === currentYear && d.getMonth() + 1 === currentMonth;
     })
     .sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+}
+
+function getSearchVolumes() {
+  const q = searchQuery.toLowerCase();
+  return Object.entries(volumesList)
+    .map(([id, v]) => ({ id, ...v }))
+    .filter(v => v.title && v.title.toLowerCase().includes(q))
+    .sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+}
+
+function highlight(text, query) {
+  if (!query) return escHtml(text);
+  const escaped = escHtml(text);
+  const escapedQ = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escaped.replace(
+    new RegExp(escapedQ, 'gi'),
+    m => `<mark style="background:#e9d8fd;color:#553c9a;border-radius:3px;padding:0 2px">${m}</mark>`
+  );
 }
 
 function escHtml(s) {
