@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#667eea">
+<title>家計簿</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+  background: #f0f4f8;
+  color: #2d3748;
+  min-height: 100vh;
+}
+
+/* ─── ログインオーバーレイ ─── */
+.login-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(102,126,234,0.95);
+  display: flex; align-items: center; justify-content: center;
+}
+.login-overlay.hidden { display: none !important; }
+.login-box {
+  background: white; border-radius: 20px; padding: 40px 32px;
+  text-align: center; max-width: 360px; width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.login-box .logo { font-size: 48px; margin-bottom: 12px; }
+.login-box h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #2d3748; }
+.login-box p  { font-size: 13px; color: #718096; margin-bottom: 28px; }
+.login-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 13px 20px; border-radius: 10px;
+  border: 2px solid #e2e8f0; background: white;
+  font-size: 15px; font-weight: 600; color: #2d3748; cursor: pointer;
+  transition: all 0.2s; font-family: inherit;
+}
+.login-btn:hover { background: #f7fafc; border-color: #667eea; }
+.auth-status { font-size: 12px; color: #e53e3e; margin-top: 12px; min-height: 18px; }
+.auth-loading {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(102,126,234,0.97);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 16px; font-weight: 600;
+}
+.auth-loading.hidden { display: none !important; }
+
+/* ─── ヘッダー ─── */
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+.header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.header .subtitle { font-size: 13px; opacity: 0.8; }
+.header-user {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 10px; padding: 0 20px 12px;
+  font-size: 13px; opacity: 0.9;
+}
+.header-user button {
+  background: rgba(255,255,255,0.2); border: none; color: white;
+  padding: 4px 12px; border-radius: 20px; font-size: 12px;
+  cursor: pointer; transition: background 0.2s; font-family: inherit;
+}
+.header-user button:hover { background: rgba(255,255,255,0.35); }
+.month-nav {
+  display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 14px;
+}
+.month-nav button {
+  background: rgba(255,255,255,0.2); border: none; color: white;
+  width: 36px; height: 36px; border-radius: 50%; font-size: 18px;
+  cursor: pointer; transition: background 0.2s;
+}
+.month-nav button:hover { background: rgba(255,255,255,0.35); }
+.month-nav .current-month { font-size: 20px; font-weight: 700; min-width: 140px; text-align: center; }
+.container { max-width: 900px; margin: 0 auto; padding: 20px 16px; }
+.summary-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;
+}
+.summary-card {
+  background: white; border-radius: 12px; padding: 16px; text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.summary-card .label { font-size: 12px; color: #718096; margin-bottom: 6px; }
+.summary-card .amount { font-size: 22px; font-weight: 700; }
+.summary-card.income .amount { color: #38a169; }
+.summary-card.expense .amount { color: #e53e3e; }
+.summary-card.balance .amount { color: #667eea; }
+.main-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+}
+@media (max-width: 680px) {
+  .main-grid { grid-template-columns: 1fr; }
+  .summary-grid { grid-template-columns: repeat(3, 1fr); }
+  .summary-card .amount { font-size: 16px; }
+}
+.card {
+  background: white; border-radius: 12px; padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.card h2 { font-size: 15px; font-weight: 700; margin-bottom: 16px; color: #4a5568; }
+.form-group { margin-bottom: 12px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+label { display: block; font-size: 12px; color: #718096; margin-bottom: 4px; }
+input, select, textarea {
+  width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; font-size: 14px; color: #2d3748;
+  transition: border-color 0.2s; outline: none; font-family: inherit;
+}
+input:focus, select:focus, textarea:focus { border-color: #667eea; }
+textarea { resize: vertical; min-height: 56px; }
+.type-toggle {
+  display: grid; grid-template-columns: 1fr 1fr; border-radius: 8px; overflow: hidden;
+  border: 1.5px solid #e2e8f0; margin-bottom: 12px;
+}
+.type-toggle label { margin: 0; }
+.type-toggle input[type="radio"] { display: none; }
+.type-toggle .toggle-btn {
+  display: block; padding: 10px; text-align: center; cursor: pointer;
+  font-size: 14px; font-weight: 600; transition: all 0.2s; color: #718096;
+}
+.type-toggle input[value="income"]:checked + .toggle-btn {
+  background: #38a169; color: white;
+}
+.type-toggle input[value="expense"]:checked + .toggle-btn {
+  background: #e53e3e; color: white;
+}
+.btn-add {
+  width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.2s; margin-top: 4px;
+}
+.btn-add:hover { opacity: 0.9; }
+.transaction-list { max-height: 420px; overflow-y: auto; }
+.transaction-item {
+  display: flex; align-items: center; padding: 11px 4px;
+  border-bottom: 1px solid #f0f4f8; gap: 12px;
+}
+.transaction-item:last-child { border-bottom: none; }
+.tx-icon {
+  width: 36px; height: 36px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+}
+.tx-info { flex: 1; min-width: 0; }
+.tx-category { font-size: 13px; font-weight: 600; }
+.tx-meta { font-size: 11px; color: #a0aec0; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-amount { font-size: 15px; font-weight: 700; flex-shrink: 0; }
+.tx-amount.income { color: #38a169; }
+.tx-amount.expense { color: #e53e3e; }
+.btn-delete {
+  background: none; border: none; color: #cbd5e0; cursor: pointer;
+  font-size: 16px; padding: 4px; flex-shrink: 0; transition: color 0.2s;
+}
+.btn-delete:hover { color: #e53e3e; }
+.empty-state { text-align: center; padding: 40px 20px; color: #a0aec0; }
+.empty-state .icon { font-size: 40px; margin-bottom: 8px; }
+.empty-state p { font-size: 14px; }
+.chart-container { position: relative; height: 220px; }
+.csv-btn {
+  display: block; width: 100%; padding: 10px; background: #f7fafc;
+  border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 13px;
+  color: #4a5568; cursor: pointer; text-align: center; margin-top: 16px;
+  transition: background 0.2s; font-family: inherit;
+}
+.csv-btn:hover { background: #edf2f7; }
+.category-legend { margin-top: 14px; }
+.legend-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 0; font-size: 13px; border-bottom: 1px solid #f0f4f8;
+}
+.legend-dot {
+  width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; flex-shrink: 0;
+}
+.legend-label { display: flex; align-items: center; }
+.legend-amount { font-weight: 600; color: #e53e3e; }
+.saving-indicator {
+  position: fixed; bottom: 20px; right: 20px;
+  background: #38a169; color: white; padding: 8px 16px;
+  border-radius: 20px; font-size: 13px; font-weight: 600;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.saving-indicator.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ログインオーバーレイ -->
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-box">
+    <div class="logo">💰</div>
+    <h2>家計簿</h2>
+    <p>Googleアカウントでサインインして<br>どこからでも収支を管理</p>
+    <div id="googleSignInDiv"></div>
+    <div class="auth-status" id="authStatus"></div>
+  </div>
+</div>
+
+<!-- 認証処理中 -->
+<div id="authLoading" class="auth-loading hidden">サインイン処理中…</div>
+
+<!-- 保存中インジケーター -->
+<div class="saving-indicator" id="savingIndicator">✓ 保存しました</div>
+
+<div class="header">
+  <div class="header-user">
+    <span id="userName"></span>
+    <button onclick="signOut()">サインアウト</button>
+  </div>
+  <h1>💰 家計簿</h1>
+  <div class="subtitle">収支をシンプルに管理</div>
+  <div class="month-nav">
+    <button onclick="changeMonth(-1)">&#8249;</button>
+    <div class="current-month" id="currentMonthLabel"></div>
+    <button onclick="changeMonth(1)">&#8250;</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="summary-grid">
+    <div class="summary-card income">
+      <div class="label">収入合計</div>
+      <div class="amount" id="totalIncome">¥0</div>
+    </div>
+    <div class="summary-card expense">
+      <div class="label">支出合計</div>
+      <div class="amount" id="totalExpense">¥0</div>
+    </div>
+    <div class="summary-card balance">
+      <div class="label">残高</div>
+      <div class="amount" id="balance">¥0</div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- 入力フォーム -->
+    <div class="card">
+      <h2>✏️ 記録を追加</h2>
+      <div class="type-toggle">
+        <label>
+          <input type="radio" name="txType" value="income" id="typeIncome" checked>
+          <span class="toggle-btn">💚 収入</span>
+        </label>
+        <label>
+          <input type="radio" name="txType" value="expense" id="typeExpense">
+          <span class="toggle-btn">❤️ 支出</span>
+        </label>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>金額（円）</label>
+          <input type="number" id="amount" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label>日付</label>
+          <input type="date" id="txDate">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>カテゴリ</label>
+        <select id="category"></select>
+      </div>
+      <div class="form-group">
+        <label>メモ（任意）</label>
+        <textarea id="memo" placeholder="内容のメモ..."></textarea>
+      </div>
+      <button class="btn-add" onclick="addTransaction()">追加する</button>
+    </div>
+
+    <!-- 取引一覧 -->
+    <div class="card">
+      <h2>📋 取引一覧</h2>
+      <div class="transaction-list" id="transactionList"></div>
+    </div>
+  </div>
+
+  <!-- グラフ -->
+  <div class="card" style="margin-top: 20px;">
+    <h2>📊 支出カテゴリ別</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+      <div class="chart-container">
+        <canvas id="expenseChart"></canvas>
+      </div>
+      <div class="category-legend" id="categoryLegend"></div>
+    </div>
+    <button class="csv-btn" onclick="exportCSV()">📥 CSVエクスポート</button>
+  </div>
+</div>
+
+<script>
+const CATEGORIES = {
+  income:  ['給与', '副業・フリーランス', 'ボーナス', '投資・配当', 'その他収入'],
+  expense: ['食費', '住居費', '交通費', '光熱費', '通信費', '医療・健康', '娯楽・趣味', '被服・美容', '日用品', '教育・書籍', '交際費', 'その他']
+};
+const EXPENSE_COLORS = [
+  '#667eea','#f6ad55','#68d391','#fc8181','#76e4f7','#b794f4',
+  '#f687b3','#fbd38d','#9ae6b4','#90cdf4','#fed7d7','#c3dafe'
+];
+const ICONS = {
+  income:  ['💰','💼','🎁','📈','✨'],
+  expense: ['🍽️','🏠','🚃','💡','📱','🏥','🎮','👗','🛒','📚','🥂','📦']
+};
+
+// ── Firebase 設定 ──
+const firebaseConfig = {
+  apiKey:            "AIzaSyAqImITQFZLDQFzwqfdBUrrsspDHhLLeyk",
+  authDomain:        "kenny-s-52241.firebaseapp.com",
+  databaseURL:       "https://kenny-s-52241-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "kenny-s-52241",
+  storageBucket:     "kenny-s-52241.firebasestorage.app",
+  messagingSenderId: "825817371134",
+  appId:             "1:825817371134:web:9560851d315b72ce08f0af",
+  measurementId:     "G-5C0JM5DTEX"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth     = firebase.auth();
+const database = firebase.database();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+let transactions = [];
+let currentYear  = new Date().getFullYear();
+let currentMonth = new Date().getMonth() + 1;
+let expenseChart = null;
+let currentUser  = null;
+let dbRef        = null;
+let attachedUid  = null;
+let redirectPending = false;
+
+// ── 認証UI ──
+function setAuthStatus(msg) {
+  const el = document.getElementById('authStatus');
+  if (el) el.textContent = msg || '';
+}
+
+function hideLoginOverlay() {
+  const el = document.getElementById('loginOverlay');
+  if (!el) return;
+  el.classList.add('hidden');
+  el.style.display = 'none';
+}
+
+function showLoginOverlay() {
+  if (auth.currentUser) return;
+  hideAuthLoading();
+  const el = document.getElementById('loginOverlay');
+  if (!el) return;
+  el.classList.remove('hidden');
+  el.style.display = 'flex';
+}
+
+function showAuthLoading(msg) {
+  hideLoginOverlay();
+  const el = document.getElementById('authLoading');
+  if (!el) return;
+  el.textContent = msg || 'サインイン処理中…';
+  el.classList.remove('hidden');
+}
+
+function hideAuthLoading() {
+  const el = document.getElementById('authLoading');
+  if (!el) return;
+  el.classList.add('hidden');
+}
+
+function isMobileBrowser() {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+function createGoogleSignInButton(onClick) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'login-btn';
+  btn.innerHTML = [
+    '<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">',
+    '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>',
+    '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>',
+    '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>',
+    '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>',
+    '</svg> Googleでサインイン'
+  ].join('');
+  btn.onclick = onClick;
+  return btn;
+}
+
+async function handleSignIn() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.addScope('email');
+
+  if (isMobileBrowser()) {
+    localStorage.setItem('kk_auth_pending', '1');
+    showAuthLoading('Googleに移動しています…');
+    try {
+      await auth.signInWithRedirect(provider);
+    } catch (err) {
+      localStorage.removeItem('kk_auth_pending');
+      hideAuthLoading();
+      showLoginOverlay();
+      setAuthStatus('エラー: ' + err.message);
+      initSignInButton();
+    }
+  } else {
+    showAuthLoading('サインイン処理中…');
+    try {
+      await auth.signInWithPopup(provider);
+      hideAuthLoading();
+    } catch (err) {
+      const popupErr = ['auth/popup-blocked', 'auth/popup-closed-by-user', 'auth/cancelled-popup-request'];
+      if (popupErr.includes(err.code)) {
+        localStorage.setItem('kk_auth_pending', '1');
+        showAuthLoading('Googleに移動しています…');
+        await auth.signInWithRedirect(provider);
+      } else {
+        hideAuthLoading();
+        showLoginOverlay();
+        setAuthStatus('エラー: ' + err.message);
+        initSignInButton();
+      }
+    }
+  }
+}
+
+function initSignInButton() {
+  if (auth.currentUser) return;
+  const container = document.getElementById('googleSignInDiv');
+  if (!container) return;
+  container.innerHTML = '';
+  setAuthStatus('');
+  container.appendChild(createGoogleSignInButton(handleSignIn));
+}
+
+// ── Firebase DB ──
+function attachDatabase(user) {
+  if (attachedUid === user.uid && dbRef) return;
+  if (dbRef) dbRef.off();
+  attachedUid = user.uid;
+  dbRef = database.ref(`users/${user.uid}/kakeibo`);
+
+  dbRef.on('value', snapshot => {
+    const data = snapshot.val();
+    transactions = data ? (Array.isArray(data) ? data : Object.values(data)) : [];
+    render();
+  }, err => {
+    alert('データの読み込みに失敗しました: ' + err.message);
+  });
+}
+
+function save() {
+  if (!currentUser || !dbRef) return;
+  const indicator = document.getElementById('savingIndicator');
+  dbRef.set(transactions.length > 0 ? transactions : []).then(() => {
+    if (!indicator) return;
+    indicator.classList.add('show');
+    setTimeout(() => indicator.classList.remove('show'), 1500);
+  }).catch(err => {
+    alert('保存に失敗しました: ' + err.message);
+  });
+}
+
+// ── 認証状態管理 ──
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    redirectPending = false;
+    localStorage.removeItem('kk_auth_pending');
+    hideAuthLoading();
+    hideLoginOverlay();
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    document.getElementById('userName').textContent = user.displayName || user.email;
+    attachDatabase(user);
+  } else if (!redirectPending) {
+    currentUser = null;
+    attachedUid = null;
+    if (dbRef) { dbRef.off(); dbRef = null; }
+    transactions = [];
+    render();
+    showLoginOverlay();
+    initSignInButton();
+  }
+});
+
+async function initAuth() {
+  redirectPending = localStorage.getItem('kk_auth_pending') === '1';
+  if (redirectPending) showAuthLoading('サインイン処理中…');
+  try {
+    const result = await auth.getRedirectResult();
+    if (result && result.user) {
+      redirectPending = false;
+      return;
+    }
+    redirectPending = false;
+    localStorage.removeItem('kk_auth_pending');
+  } catch (err) {
+    console.error('getRedirectResult:', err);
+    redirectPending = false;
+    localStorage.removeItem('kk_auth_pending');
+    hideAuthLoading();
+    setAuthStatus('サインインに失敗しました。再度お試しください。');
+  }
+}
+
+function signOut() {
+  if (confirm('サインアウトしますか？')) auth.signOut();
+}
+
+// ── アプリ本体 ──
+function init() {
+  const today = new Date();
+  document.getElementById('txDate').value = today.toISOString().split('T')[0];
+  updateCategoryOptions();
+  document.querySelectorAll('input[name="txType"]').forEach(r => {
+    r.addEventListener('change', updateCategoryOptions);
+  });
+  initAuth();
+}
+
+function updateCategoryOptions() {
+  const type = document.querySelector('input[name="txType"]:checked').value;
+  const sel = document.getElementById('category');
+  sel.innerHTML = CATEGORIES[type].map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+  if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
+  render();
+}
+
+function filteredTransactions() {
+  return transactions.filter(tx => {
+    const d = new Date(tx.date);
+    return d.getFullYear() === currentYear && d.getMonth() + 1 === currentMonth;
+  }).sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function fmt(n) {
+  return '¥' + Math.abs(n).toLocaleString('ja-JP');
+}
+
+function addTransaction() {
+  if (!currentUser) { alert('先にサインインしてください'); return; }
+  const type     = document.querySelector('input[name="txType"]:checked').value;
+  const amount   = parseFloat(document.getElementById('amount').value);
+  const date     = document.getElementById('txDate').value;
+  const category = document.getElementById('category').value;
+  const memo     = document.getElementById('memo').value.trim();
+
+  if (!amount || amount <= 0) { alert('金額を入力してください'); return; }
+  if (!date) { alert('日付を入力してください'); return; }
+
+  transactions.push({ id: Date.now(), type, amount, date, category, memo });
+  save();
+  document.getElementById('amount').value = '';
+  document.getElementById('memo').value = '';
+  render();
+}
+
+function deleteTransaction(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  transactions = transactions.filter(tx => tx.id !== id);
+  save();
+  render();
+}
+
+function render() {
+  document.getElementById('currentMonthLabel').textContent =
+    `${currentYear}年${currentMonth}月`;
+
+  const list    = filteredTransactions();
+  const income  = list.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const expense = list.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const balance = income - expense;
+
+  document.getElementById('totalIncome').textContent  = fmt(income);
+  document.getElementById('totalExpense').textContent = fmt(expense);
+  const balEl = document.getElementById('balance');
+  balEl.textContent  = (balance < 0 ? '-' : '') + fmt(balance);
+  balEl.style.color  = balance < 0 ? '#e53e3e' : '#667eea';
+
+  renderList(list);
+  renderChart(list);
+}
+
+function renderList(list) {
+  const el = document.getElementById('transactionList');
+  if (list.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>この月の記録はありません</p></div>`;
+    return;
+  }
+  el.innerHTML = list.map(tx => {
+    const catIdx  = CATEGORIES[tx.type].indexOf(tx.category);
+    const icon    = ICONS[tx.type][catIdx] || (tx.type === 'income' ? '💰' : '📦');
+    const bgColor = tx.type === 'income' ? '#f0fff4' : '#fff5f5';
+    const sign    = tx.type === 'income' ? '+' : '-';
+    const dateStr = new Date(tx.date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+    return `
+    <div class="transaction-item">
+      <div class="tx-icon" style="background:${bgColor}">${icon}</div>
+      <div class="tx-info">
+        <div class="tx-category">${tx.category}</div>
+        <div class="tx-meta">${dateStr}${tx.memo ? ' · ' + tx.memo : ''}</div>
+      </div>
+      <div class="tx-amount ${tx.type}">${sign}${fmt(tx.amount)}</div>
+      <button class="btn-delete" onclick="deleteTransaction(${tx.id})" title="削除">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function renderChart(list) {
+  const expenseList = list.filter(t => t.type === 'expense');
+  const catMap = {};
+  expenseList.forEach(tx => {
+    catMap[tx.category] = (catMap[tx.category] || 0) + tx.amount;
+  });
+  const labels = Object.keys(catMap);
+  const data   = Object.values(catMap);
+  const colors = labels.map((_, i) => EXPENSE_COLORS[i % EXPENSE_COLORS.length]);
+
+  const ctx = document.getElementById('expenseChart').getContext('2d');
+  if (expenseChart) expenseChart.destroy();
+
+  if (labels.length === 0) {
+    expenseChart = null;
+    document.getElementById('categoryLegend').innerHTML =
+      '<p style="color:#a0aec0;font-size:13px;padding:20px 0">支出データがありません</p>';
+    return;
+  }
+
+  expenseChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ` ${ctx.label}: ¥${ctx.parsed.toLocaleString('ja-JP')}` }
+      }}
+    }
+  });
+
+  const sorted = labels.map((l, i) => ({ label: l, amount: data[i], color: colors[i] }))
+    .sort((a, b) => b.amount - a.amount);
+  document.getElementById('categoryLegend').innerHTML = sorted.map(item => `
+    <div class="legend-item">
+      <div class="legend-label">
+        <div class="legend-dot" style="background:${item.color}"></div>
+        ${item.label}
+      </div>
+      <div class="legend-amount">¥${item.amount.toLocaleString('ja-JP')}</div>
+    </div>`).join('');
+}
+
+function exportCSV() {
+  const list = filteredTransactions();
+  if (list.length === 0) { alert('エクスポートするデータがありません'); return; }
+  const header = '日付,種類,カテゴリ,金額,メモ';
+  const rows = list.map(tx =>
+    `${tx.date},${tx.type === 'income' ? '収入' : '支出'},${tx.category},${tx.amount},${tx.memo}`
+  );
+  const csv  = '﻿' + [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `家計簿_${currentYear}年${currentMonth}月.csv`;
+  a.click();
+}
+
+init();
+</script>
+</body>
+</html>
