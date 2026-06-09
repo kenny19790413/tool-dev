@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#553c9a">
+<title>漫画発売リスト</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+  background: #f5f0ff; color: #2d2d3a; min-height: 100vh;
+}
+
+/* ─── ログイン ─── */
+.login-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(85,60,154,0.95);
+  display: flex; align-items: center; justify-content: center;
+}
+.login-overlay.hidden { display: none !important; }
+.login-box {
+  background: white; border-radius: 20px; padding: 40px 32px;
+  text-align: center; max-width: 360px; width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.login-box .logo { font-size: 48px; margin-bottom: 12px; }
+.login-box h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.login-box p  { font-size: 13px; color: #718096; margin-bottom: 28px; }
+.login-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 13px 20px; border-radius: 10px;
+  border: 2px solid #e2e8f0; background: white;
+  font-size: 15px; font-weight: 600; color: #2d3748; cursor: pointer;
+  transition: all 0.2s; font-family: inherit;
+}
+.login-btn:hover { background: #f7fafc; border-color: #553c9a; }
+.auth-status { font-size: 12px; color: #e53e3e; margin-top: 12px; min-height: 18px; }
+.auth-loading {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(85,60,154,0.97);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 16px; font-weight: 600;
+}
+.auth-loading.hidden { display: none !important; }
+
+/* ─── ヘッダー ─── */
+.header {
+  background: linear-gradient(135deg, #553c9a 0%, #b94bd8 100%);
+  color: white; padding: 20px; text-align: center;
+}
+.header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.header .subtitle { font-size: 13px; opacity: 0.8; }
+.header-user {
+  display: flex; align-items: center; justify-content: flex-end;
+  gap: 8px; padding: 0 20px 12px; font-size: 13px; opacity: 0.9;
+}
+.header-user button {
+  background: rgba(255,255,255,0.2); border: none; color: white;
+  padding: 4px 12px; border-radius: 20px; font-size: 12px;
+  cursor: pointer; transition: background 0.2s; font-family: inherit;
+}
+.header-user button:hover { background: rgba(255,255,255,0.35); }
+.month-nav {
+  display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 14px;
+}
+.month-nav button {
+  background: rgba(255,255,255,0.2); border: none; color: white;
+  width: 36px; height: 36px; border-radius: 50%; font-size: 18px;
+  cursor: pointer; transition: background 0.2s;
+}
+.month-nav button:hover { background: rgba(255,255,255,0.35); }
+.month-nav .current-month { font-size: 20px; font-weight: 700; min-width: 140px; text-align: center; }
+
+/* ─── コンテナ ─── */
+.container { max-width: 900px; margin: 0 auto; padding: 20px 16px 100px; }
+
+/* ─── サマリーカード ─── */
+.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+.summary-card {
+  background: white; border-radius: 12px; padding: 16px; text-align: center;
+  box-shadow: 0 2px 8px rgba(85,60,154,0.1);
+}
+.summary-card .label { font-size: 12px; color: #718096; margin-bottom: 6px; }
+.summary-card .amount { font-size: 22px; font-weight: 700; }
+.summary-card.total    .amount { color: #553c9a; }
+.summary-card.bought   .amount { color: #38a169; }
+.summary-card.unbought .amount { color: #e53e3e; }
+@media (max-width: 480px) {
+  .summary-card .amount { font-size: 16px; }
+  .summary-card .label  { font-size: 11px; }
+}
+
+/* ─── メインカード ─── */
+.card {
+  background: white; border-radius: 12px; padding: 20px;
+  box-shadow: 0 2px 8px rgba(85,60,154,0.1); margin-bottom: 20px;
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+}
+.card-header h2 { font-size: 15px; font-weight: 700; color: #4a4a6a; }
+
+/* ─── テーブル ─── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 560px; }
+thead th {
+  padding: 10px 12px; font-size: 12px; font-weight: 700; color: #718096;
+  background: #f8f5ff; border-bottom: 2px solid #e9e0ff; text-align: left;
+  white-space: nowrap;
+}
+tbody tr { border-bottom: 1px solid #f0ebff; transition: background 0.15s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #fdf9ff; }
+tbody tr.purchased { opacity: 0.45; }
+tbody td { padding: 12px 12px; font-size: 13px; vertical-align: middle; }
+.td-date    { white-space: nowrap; color: #553c9a; font-weight: 600; }
+.td-title   { font-weight: 700; }
+.td-vol     { color: #718096; white-space: nowrap; }
+.td-pub     { color: #718096; font-size: 12px; white-space: nowrap; }
+.td-price   { font-weight: 700; color: #2d2d3a; white-space: nowrap; }
+.td-actions { white-space: nowrap; }
+.check-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 20px; border: 1.5px solid #e2e8f0;
+  background: white; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; font-family: inherit; color: #718096;
+}
+.check-btn.bought { background: #38a169; border-color: #38a169; color: white; }
+.check-btn:hover { border-color: #553c9a; color: #553c9a; }
+.check-btn.bought:hover { background: #2f855a; border-color: #2f855a; color: white; }
+.btn-icon {
+  background: none; border: none; color: #cbd5e0; cursor: pointer;
+  font-size: 15px; padding: 4px 6px; transition: color 0.2s; line-height: 1;
+}
+.btn-icon:hover { color: #e53e3e; }
+.btn-icon.edit:hover { color: #553c9a; }
+.empty-state { text-align: center; padding: 48px 20px; color: #a0aec0; }
+.empty-state .icon { font-size: 48px; margin-bottom: 10px; }
+.empty-state p { font-size: 14px; }
+
+/* ─── FAB ─── */
+.fab {
+  position: fixed; right: 24px; bottom: 28px;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, #553c9a, #b94bd8);
+  color: white; font-size: 28px; border: none; cursor: pointer;
+  box-shadow: 0 4px 20px rgba(85,60,154,0.5);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s; z-index: 100;
+}
+.fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(85,60,154,0.6); }
+
+/* ─── 作品管理ボタン ─── */
+.btn-series {
+  padding: 6px 14px; background: #553c9a; color: white; border: none;
+  border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: opacity 0.2s; font-family: inherit;
+}
+.btn-series:hover { opacity: 0.85; }
+
+/* ─── モーダル共通 ─── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 5000;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.hidden { display: none !important; }
+.modal {
+  background: white; border-radius: 16px; padding: 28px 24px;
+  width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; color: #2d2d3a; }
+.form-group { margin-bottom: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+label { display: block; font-size: 12px; color: #718096; margin-bottom: 4px; }
+input, select, textarea {
+  width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0;
+  border-radius: 8px; font-size: 14px; color: #2d2d3a;
+  transition: border-color 0.2s; outline: none; font-family: inherit;
+}
+input:focus, select:focus { border-color: #553c9a; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.btn-save {
+  flex: 1; padding: 11px; background: linear-gradient(135deg, #553c9a, #b94bd8);
+  color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.2s; font-family: inherit;
+}
+.btn-save:hover { opacity: 0.9; }
+.btn-cancel {
+  flex: 1; padding: 11px; background: #f7fafc; color: #4a5568;
+  border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.btn-cancel:hover { background: #edf2f7; }
+.divider { border: none; border-top: 1px solid #f0ebff; margin: 16px 0; }
+
+/* ─── 作品管理モーダル ─── */
+.series-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.series-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #f8f5ff; border-radius: 8px; padding: 10px 14px; gap: 12px;
+}
+.series-item-info { flex: 1; min-width: 0; }
+.series-item-title { font-size: 13px; font-weight: 700; }
+.series-item-sub   { font-size: 11px; color: #718096; margin-top: 2px; }
+.series-empty { text-align: center; padding: 20px; color: #a0aec0; font-size: 13px; }
+
+/* ─── 保存インジケーター ─── */
+.saving-indicator {
+  position: fixed; bottom: 96px; right: 24px;
+  background: #38a169; color: white; padding: 8px 16px;
+  border-radius: 20px; font-size: 13px; font-weight: 600;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200;
+}
+.saving-indicator.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ログイン -->
+<div id="loginOverlay" class="login-overlay">
+  <div class="login-box">
+    <div class="logo">📚</div>
+    <h2>漫画発売リスト</h2>
+    <p>欲しい漫画の発売スケジュールを<br>月ごとに管理します</p>
+    <div id="googleSignInDiv"></div>
+    <div class="auth-status" id="authStatus"></div>
+  </div>
+</div>
+<div id="authLoading" class="auth-loading hidden">サインイン処理中…</div>
+<div class="saving-indicator" id="savingIndicator">✓ 保存しました</div>
+
+<!-- 新刊追加モーダル -->
+<div id="addModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h3 id="addModalTitle">📖 新刊を追加</h3>
+    <input type="hidden" id="editVolumeId">
+
+    <div class="form-group">
+      <label>作品</label>
+      <select id="seriesSelect" onchange="onSeriesChange()">
+        <option value="">── 作品を選択 ──</option>
+        <option value="__new__">＋ 新しい作品を登録</option>
+      </select>
+    </div>
+
+    <!-- 新規作品入力（作品選択で「新しい作品」を選んだとき表示） -->
+    <div id="newSeriesFields" style="display:none">
+      <div class="form-group">
+        <label>作品タイトル <span style="color:#e53e3e">*</span></label>
+        <input type="text" id="newSeriesTitle" placeholder="例: 鬼滅の刃">
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin:0">
+          <label>出版社</label>
+          <input type="text" id="newSeriesPublisher" placeholder="例: 集英社">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>通常価格（円）</label>
+          <input type="number" id="newSeriesPrice" placeholder="例: 550">
+        </div>
+      </div>
+      <hr class="divider">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group" style="margin:0">
+        <label>巻数</label>
+        <input type="text" id="volumeNum" placeholder="例: 12 / 完結編">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>発売日 <span style="color:#e53e3e">*</span></label>
+        <input type="date" id="releaseDate">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:14px">
+      <div class="form-group" style="margin:0">
+        <label>出版社</label>
+        <input type="text" id="publisher" placeholder="自動入力されます">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>価格（円・税込）</label>
+        <input type="number" id="price" placeholder="550">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAddModal()">キャンセル</button>
+      <button class="btn-save"   onclick="saveVolume()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 作品管理モーダル -->
+<div id="seriesModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:480px">
+    <h3>📚 作品の管理</h3>
+    <div class="series-list" id="seriesListEl"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeSeriesModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ヘッダー -->
+<div class="header">
+  <div class="header-user">
+    <span id="userName"></span>
+    <button onclick="openSeriesModal()">📚 作品管理</button>
+    <button onclick="signOut()">サインアウト</button>
+  </div>
+  <h1>📚 漫画発売リスト</h1>
+  <div class="subtitle">欲しい漫画の発売スケジュール管理</div>
+  <div class="month-nav">
+    <button onclick="changeMonth(-1)">&#8249;</button>
+    <div class="current-month" id="currentMonthLabel"></div>
+    <button onclick="changeMonth(1)">&#8250;</button>
+  </div>
+</div>
+
+<div class="container">
+  <!-- サマリー -->
+  <div class="summary-grid">
+    <div class="summary-card total">
+      <div class="label">今月の発売冊数</div>
+      <div class="amount" id="totalCount">0冊</div>
+    </div>
+    <div class="summary-card bought">
+      <div class="label">購入済み合計</div>
+      <div class="amount" id="boughtTotal">¥0</div>
+    </div>
+    <div class="summary-card unbought">
+      <div class="label">未購入合計</div>
+      <div class="amount" id="unboughtTotal">¥0</div>
+    </div>
+  </div>
+
+  <!-- 発売リスト -->
+  <div class="card">
+    <div class="card-header">
+      <h2 id="listTitle">📖 2026年6月 発売リスト</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>発売日</th>
+            <th>タイトル</th>
+            <th>巻数</th>
+            <th>出版社</th>
+            <th style="text-align:right">価格</th>
+            <th>購入</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="volumeTableBody"></tbody>
+      </table>
+    </div>
+    <div id="emptyState" class="empty-state" style="display:none">
+      <div class="icon">📭</div>
+      <p>この月の登録はありません<br>右下の＋ボタンで追加してください</p>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openAddModal()" title="新刊を追加">＋</button>
+
+<script>
+// ── Firebase ──
+const firebaseConfig = {
+  apiKey:            "AIzaSyAOOw461kpoaIU8iUqzqhKuTa594Y8CO0M",
+  authDomain:        "bucket-list-a486e.firebaseapp.com",
+  databaseURL:       "https://bucket-list-a486e-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "bucket-list-a486e",
+  storageBucket:     "bucket-list-a486e.firebasestorage.app",
+  messagingSenderId: "735695765139",
+  appId:             "1:735695765139:web:ecf09b708e922d7b6c9766"
+};
+firebase.initializeApp(firebaseConfig);
+const auth     = firebase.auth();
+const database = firebase.database();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+let currentUser    = null;
+let dbSeriesRef    = null;
+let dbVolumesRef   = null;
+let attachedUid    = null;
+let seriesList     = {};   // { id: { title, publisher, price } }
+let volumesList    = {};   // { id: { seriesId, title, volume, releaseDate, price, publisher, purchased } }
+let currentYear    = new Date().getFullYear();
+let currentMonth   = new Date().getMonth() + 1;
+
+// ── 認証UI ──
+function setAuthStatus(msg) {
+  const el = document.getElementById('authStatus');
+  if (el) el.textContent = msg || '';
+}
+function hideLoginOverlay() {
+  const el = document.getElementById('loginOverlay');
+  if (!el) return;
+  el.classList.add('hidden'); el.style.display = 'none';
+}
+function showLoginOverlay() {
+  if (auth.currentUser) return;
+  hideAuthLoading();
+  const el = document.getElementById('loginOverlay');
+  if (!el) return;
+  el.classList.remove('hidden'); el.style.display = 'flex';
+}
+function showAuthLoading(msg) {
+  hideLoginOverlay();
+  const el = document.getElementById('authLoading');
+  if (!el) return;
+  el.textContent = msg || 'サインイン処理中…';
+  el.classList.remove('hidden');
+}
+function hideAuthLoading() {
+  const el = document.getElementById('authLoading');
+  if (el) el.classList.add('hidden');
+}
+function createGoogleSignInButton(onClick) {
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'login-btn';
+  btn.innerHTML = ['<svg width="20" height="20" viewBox="0 0 48 48">',
+    '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>',
+    '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>',
+    '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>',
+    '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>',
+    '</svg> Googleでサインイン'].join('');
+  btn.onclick = onClick;
+  return btn;
+}
+async function handleSignIn() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.addScope('email');
+  showAuthLoading('サインイン処理中…');
+  try {
+    await auth.signInWithPopup(provider);
+    hideAuthLoading();
+  } catch (err) {
+    const popupErr = ['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'];
+    if (popupErr.includes(err.code)) {
+      localStorage.setItem('mg_auth_pending', '1');
+      showAuthLoading('Googleに移動しています…');
+      await auth.signInWithRedirect(provider);
+    } else {
+      hideAuthLoading(); showLoginOverlay();
+      setAuthStatus('エラー: ' + err.message); initSignInButton();
+    }
+  }
+}
+function initSignInButton() {
+  if (auth.currentUser) return;
+  const container = document.getElementById('googleSignInDiv');
+  if (!container) return;
+  container.innerHTML = ''; setAuthStatus('');
+  container.appendChild(createGoogleSignInButton(handleSignIn));
+}
+
+// ── DB接続 ──
+function attachDatabase(user) {
+  if (attachedUid === user.uid && dbSeriesRef) return;
+  if (dbSeriesRef)  dbSeriesRef.off();
+  if (dbVolumesRef) dbVolumesRef.off();
+  attachedUid = user.uid;
+
+  dbSeriesRef = database.ref(`users/${user.uid}/manga_series`);
+  dbSeriesRef.on('value', snapshot => {
+    seriesList = snapshot.val() || {};
+    updateSeriesSelect();
+    render();
+  });
+
+  dbVolumesRef = database.ref(`users/${user.uid}/manga_volumes`);
+  dbVolumesRef.on('value', snapshot => {
+    volumesList = snapshot.val() || {};
+    render();
+  });
+}
+
+function showSaved() {
+  const el = document.getElementById('savingIndicator');
+  if (!el) return;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+// ── 認証状態 ──
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    localStorage.removeItem('mg_auth_pending');
+    hideAuthLoading(); hideLoginOverlay();
+    document.getElementById('userName').textContent = user.displayName || user.email;
+    attachDatabase(user);
+  } else {
+    currentUser = null; attachedUid = null;
+    if (dbSeriesRef)  { dbSeriesRef.off();  dbSeriesRef  = null; }
+    if (dbVolumesRef) { dbVolumesRef.off(); dbVolumesRef = null; }
+    seriesList = {}; volumesList = {};
+    render(); showLoginOverlay(); initSignInButton();
+  }
+});
+
+async function initAuth() {
+  if (localStorage.getItem('mg_auth_pending') === '1') showAuthLoading('サインイン処理中…');
+  try {
+    const result = await auth.getRedirectResult();
+    if (result && result.user) return;
+    localStorage.removeItem('mg_auth_pending');
+  } catch (err) {
+    localStorage.removeItem('mg_auth_pending');
+    hideAuthLoading();
+    setAuthStatus('サインインに失敗しました。再度お試しください。');
+  }
+}
+function signOut() {
+  if (confirm('サインアウトしますか？')) auth.signOut();
+}
+
+// ── 月ナビ ──
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+  if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
+  render();
+}
+
+// ── レンダリング ──
+function render() {
+  document.getElementById('currentMonthLabel').textContent = `${currentYear}年${currentMonth}月`;
+  document.getElementById('listTitle').textContent = `📖 ${currentYear}年${currentMonth}月 発売リスト`;
+
+  const volumes = getMonthVolumes();
+  const boughtAmt   = volumes.filter(v => v.purchased).reduce((s, v) => s + (v.price || 0), 0);
+  const unboughtAmt = volumes.filter(v => !v.purchased).reduce((s, v) => s + (v.price || 0), 0);
+
+  document.getElementById('totalCount').textContent   = `${volumes.length}冊`;
+  document.getElementById('boughtTotal').textContent  = `¥${boughtAmt.toLocaleString('ja-JP')}`;
+  document.getElementById('unboughtTotal').textContent = `¥${unboughtAmt.toLocaleString('ja-JP')}`;
+
+  const tbody = document.getElementById('volumeTableBody');
+  const empty = document.getElementById('emptyState');
+
+  if (volumes.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    document.querySelector('table').style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  document.querySelector('table').style.display = '';
+
+  tbody.innerHTML = volumes.map(v => {
+    const dateStr = v.releaseDate
+      ? new Date(v.releaseDate).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })
+      : '─';
+    const volStr  = v.volume ? `第${v.volume}巻` : '─';
+    const priceStr = v.price ? `¥${Number(v.price).toLocaleString('ja-JP')}` : '─';
+    const chkCls  = v.purchased ? 'check-btn bought' : 'check-btn';
+    const chkTxt  = v.purchased ? '✓ 購入済み' : '未購入';
+    return `<tr class="${v.purchased ? 'purchased' : ''}" id="row_${v.id}">
+      <td class="td-date">${dateStr}</td>
+      <td class="td-title">${escHtml(v.title)}</td>
+      <td class="td-vol">${volStr}</td>
+      <td class="td-pub">${escHtml(v.publisher || '─')}</td>
+      <td class="td-price" style="text-align:right">${priceStr}</td>
+      <td class="td-actions">
+        <button class="${chkCls}" onclick="togglePurchased('${v.id}')">${chkTxt}</button>
+      </td>
+      <td class="td-actions">
+        <button class="btn-icon edit"   onclick="openEditModal('${v.id}')" title="編集">✎</button>
+        <button class="btn-icon"        onclick="deleteVolume('${v.id}')"  title="削除">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function getMonthVolumes() {
+  return Object.entries(volumesList)
+    .map(([id, v]) => ({ id, ...v }))
+    .filter(v => {
+      if (!v.releaseDate) return false;
+      const d = new Date(v.releaseDate);
+      return d.getFullYear() === currentYear && d.getMonth() + 1 === currentMonth;
+    })
+    .sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── 購入済みトグル ──
+function togglePurchased(id) {
+  if (!currentUser || !dbVolumesRef) return;
+  const v = volumesList[id];
+  if (!v) return;
+  dbVolumesRef.child(id).update({ purchased: !v.purchased }).then(showSaved);
+}
+
+// ── 削除 ──
+function deleteVolume(id) {
+  const v = volumesList[id];
+  if (!v) return;
+  const volStr = v.volume ? `第${v.volume}巻` : '';
+  if (!confirm(`「${v.title} ${volStr}」を削除しますか？`)) return;
+  dbVolumesRef.child(id).remove().then(showSaved);
+}
+
+// ── 作品セレクト更新 ──
+function updateSeriesSelect() {
+  const sel = document.getElementById('seriesSelect');
+  const current = sel.value;
+  const sorted = Object.entries(seriesList).sort((a, b) => a[1].title.localeCompare(b[1].title, 'ja'));
+  sel.innerHTML = '<option value="">── 作品を選択 ──</option>' +
+    sorted.map(([id, s]) => `<option value="${id}">${escHtml(s.title)}</option>`).join('') +
+    '<option value="__new__">＋ 新しい作品を登録</option>';
+  if (current) sel.value = current;
+}
+
+function onSeriesChange() {
+  const val = document.getElementById('seriesSelect').value;
+  const newFields = document.getElementById('newSeriesFields');
+  if (val === '__new__') {
+    newFields.style.display = '';
+    document.getElementById('publisher').value = '';
+    document.getElementById('price').value     = '';
+  } else if (val && seriesList[val]) {
+    newFields.style.display = 'none';
+    document.getElementById('publisher').value = seriesList[val].publisher || '';
+    document.getElementById('price').value     = seriesList[val].price     || '';
+  } else {
+    newFields.style.display = 'none';
+    document.getElementById('publisher').value = '';
+    document.getElementById('price').value     = '';
+  }
+}
+
+// ── 新刊追加モーダル ──
+function openAddModal() {
+  document.getElementById('addModalTitle').textContent = '📖 新刊を追加';
+  document.getElementById('editVolumeId').value = '';
+  document.getElementById('seriesSelect').value = '';
+  document.getElementById('newSeriesFields').style.display = 'none';
+  document.getElementById('newSeriesTitle').value     = '';
+  document.getElementById('newSeriesPublisher').value = '';
+  document.getElementById('newSeriesPrice').value     = '';
+  document.getElementById('volumeNum').value   = '';
+  document.getElementById('publisher').value   = '';
+  document.getElementById('price').value       = '';
+  const today = new Date();
+  document.getElementById('releaseDate').value =
+    `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
+  document.getElementById('addModal').classList.remove('hidden');
+}
+
+function openEditModal(id) {
+  const v = volumesList[id];
+  if (!v) return;
+  document.getElementById('addModalTitle').textContent = '✎ 新刊を編集';
+  document.getElementById('editVolumeId').value = id;
+  document.getElementById('seriesSelect').value = v.seriesId || '';
+  document.getElementById('newSeriesFields').style.display = 'none';
+  document.getElementById('volumeNum').value   = v.volume      || '';
+  document.getElementById('releaseDate').value = v.releaseDate || '';
+  document.getElementById('publisher').value   = v.publisher   || '';
+  document.getElementById('price').value       = v.price       || '';
+  document.getElementById('addModal').classList.remove('hidden');
+}
+
+function closeAddModal() { document.getElementById('addModal').classList.add('hidden'); }
+
+async function saveVolume() {
+  if (!currentUser || !dbVolumesRef) return;
+
+  const editId      = document.getElementById('editVolumeId').value;
+  const seriesId    = document.getElementById('seriesSelect').value;
+  const releaseDate = document.getElementById('releaseDate').value;
+  const volumeNum   = document.getElementById('volumeNum').value.trim();
+  const publisher   = document.getElementById('publisher').value.trim();
+  const price       = parseFloat(document.getElementById('price').value) || 0;
+
+  if (!releaseDate) { alert('発売日を入力してください'); return; }
+
+  let resolvedSeriesId = seriesId;
+  let resolvedTitle    = '';
+
+  if (seriesId === '__new__') {
+    const newTitle = document.getElementById('newSeriesTitle').value.trim();
+    if (!newTitle) { alert('作品タイトルを入力してください'); return; }
+    const newPub   = document.getElementById('newSeriesPublisher').value.trim();
+    const newPrice = parseFloat(document.getElementById('newSeriesPrice').value) || 0;
+    const newRef   = dbSeriesRef.push();
+    resolvedSeriesId = newRef.key;
+    resolvedTitle    = newTitle;
+    await newRef.set({ title: newTitle, publisher: newPub, price: newPrice });
+  } else if (seriesId && seriesList[seriesId]) {
+    resolvedTitle = seriesList[seriesId].title;
+  } else {
+    alert('作品を選択してください'); return;
+  }
+
+  const data = {
+    seriesId:    resolvedSeriesId,
+    title:       resolvedTitle,
+    volume:      volumeNum,
+    releaseDate,
+    publisher,
+    price,
+    purchased:   editId ? (volumesList[editId]?.purchased || false) : false
+  };
+
+  if (editId) {
+    await dbVolumesRef.child(editId).set(data);
+  } else {
+    await dbVolumesRef.push(data);
+  }
+
+  showSaved();
+  closeAddModal();
+
+  // 追加した月に移動
+  const d = new Date(releaseDate);
+  currentYear  = d.getFullYear();
+  currentMonth = d.getMonth() + 1;
+}
+
+// ── 作品管理モーダル ──
+function openSeriesModal() {
+  renderSeriesList();
+  document.getElementById('seriesModal').classList.remove('hidden');
+}
+function closeSeriesModal() { document.getElementById('seriesModal').classList.add('hidden'); }
+
+function renderSeriesList() {
+  const el = document.getElementById('seriesListEl');
+  const sorted = Object.entries(seriesList).sort((a, b) => a[1].title.localeCompare(b[1].title, 'ja'));
+  if (sorted.length === 0) {
+    el.innerHTML = '<div class="series-empty">登録作品がありません</div>';
+    return;
+  }
+  el.innerHTML = sorted.map(([id, s]) => {
+    const sub = [s.publisher, s.price ? `¥${Number(s.price).toLocaleString()}` : ''].filter(Boolean).join(' · ');
+    return `<div class="series-item">
+      <div class="series-item-info">
+        <div class="series-item-title">${escHtml(s.title)}</div>
+        ${sub ? `<div class="series-item-sub">${escHtml(sub)}</div>` : ''}
+      </div>
+      <button class="btn-icon" onclick="deleteSeries('${id}')" title="削除">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteSeries(id) {
+  const s = seriesList[id];
+  if (!s) return;
+  const usedCount = Object.values(volumesList).filter(v => v.seriesId === id).length;
+  const msg = usedCount > 0
+    ? `「${s.title}」を削除しますか？\n登録済みの新刊データ ${usedCount}件 は残ります`
+    : `「${s.title}」を削除しますか？`;
+  if (!confirm(msg)) return;
+  dbSeriesRef.child(id).remove().then(() => { renderSeriesList(); showSaved(); });
+}
+
+// ── 初期化 ──
+function init() {
+  initAuth();
+}
+init();
+</script>
+</body>
+</html>
