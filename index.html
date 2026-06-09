@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#553c9a">
+<title>ツールランチャー</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 24px;
+}
+h1 {
+  color: white; font-size: 22px; font-weight: 700; margin-bottom: 32px;
+  opacity: 0.85; letter-spacing: 0.05em;
+}
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px; width: 100%; max-width: 680px;
+}
+.card {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px; padding: 28px 20px;
+  text-align: center; text-decoration: none; color: white;
+  transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(8px);
+}
+.card:hover {
+  transform: translateY(-4px);
+  background: rgba(255,255,255,0.15);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+.card .icon { font-size: 44px; margin-bottom: 14px; display: block; }
+.card .name { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.card .desc { font-size: 12px; opacity: 0.6; line-height: 1.5; }
+footer { color: rgba(255,255,255,0.3); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<h1>🛠️ My Tools</h1>
+<div class="grid">
+  <a class="card" href="/bucket-list.html">
+    <span class="icon">🎯</span>
+    <div class="name">バケットリスト</div>
+    <div class="desc">人生でやりたいことを<br>管理するリスト</div>
+  </a>
+  <a class="card" href="/kakeibo.html">
+    <span class="icon">💰</span>
+    <div class="name">家計簿</div>
+    <div class="desc">収支・予算・グラフで<br>お金を管理</div>
+  </a>
+  <a class="card" href="/manga.html">
+    <span class="icon">📚</span>
+    <div class="name">漫画発売リスト</div>
+    <div class="desc">欲しい漫画の発売日を<br>月ごとに管理</div>
+  </a>
+</div>
+<footer>© 2026 My Tools</footer>
+</body>
+</html>

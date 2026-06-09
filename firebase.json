@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.git/**",
+      "**/node_modules/**",
+      "dejiina_agent/**",
+      "scripts/**",
+      "database.rules.json"
+    ],
+    "rewrites": [
+      { "source": "/kakeibo",     "destination": "/kakeibo.html" },
+      { "source": "/manga",       "destination": "/manga.html" },
+      { "source": "/bucket-list", "destination": "/bucket-list.html" }
+    ],
+    "cleanUrls": true
+  }
+}
