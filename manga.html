@@ -900,48 +900,70 @@ async function checkAllPendingDates() {
 
   const normKey = t => t.replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
   const found = [];
-  const BATCH = 5;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const isFutureOrRecent = d => d >= new Date(today.getFullYear(), today.getMonth()-1, 1); // 先月以降のみ
 
-  for(let i=0; i<pending.length; i+=BATCH){
-    const batch = pending.slice(i, i+BATCH);
-    if(btn) btn.textContent = `🔄 ${i}/${pending.length}件…`;
-    await Promise.all(batch.map(async v => {
-      const seriesTitle = v.title||(seriesList[v.seriesId]&&seriesList[v.seriesId].title)||'';
-      if(!seriesTitle) return;
-      const volStr = String(v.volume||'');
-      const matchT = t => { const ns=normKey(seriesTitle),nt=normKey(t||''); return nt.includes(ns)||ns.includes(nt); };
-      const matchV = vol => !volStr||String(vol)===volStr;
+  for(let i=0; i<pending.length; i++){
+    const v = pending[i];
+    if(btn) btn.textContent = `🔄 ${i+1}/${pending.length}件…`;
+    const seriesTitle = v.title||(seriesList[v.seriesId]&&seriesList[v.seriesId].title)||'';
+    if(!seriesTitle){ continue; }
+    const volStr = String(v.volume||'');
+    const matchT = t => { const ns=normKey(seriesTitle),nt=normKey(t||''); return nt.includes(ns)||ns.includes(nt); };
+    const matchV = vol => !volStr||String(vol)===volStr;
+    let hit = false;
 
-      // OpenBD
-      try{
-        const items = await fetch('https://api.openbd.jp/v1/search?title='+encodeURIComponent(seriesTitle)+'&limit=15').then(r=>r.json());
-        if(Array.isArray(items)){
-          for(const item of items){
-            if(!matchT(item.title)) continue;
-            const vol=normalizeVolume(item.volume||'')||extractVolumeFromTitle(item.title||'');
-            if(!matchV(vol)) continue;
-            const pd=item.pubdate||''; if(pd.length<8) continue;
-            const norm=`${pd.slice(0,4)}-${pd.slice(4,6)}-${pd.slice(6,8)}`;
-            const d=new Date(norm); if(isNaN(d)) continue;
-            found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'OpenBD'});
-            return;
-          }
-        }
-      }catch(e){}
+    // Google Books（逐次・レート制限対策）
+    try{
+      await new Promise(r=>setTimeout(r,1000));
+      const q = seriesTitle+(volStr?' '+volStr+'巻':'');
+      const gb = await fetch('https://www.googleapis.com/books/v1/volumes?q='+encodeURIComponent(q)+'&langRestrict=ja&maxResults=15').then(r=>r.json());
+      for(const item of (gb.items||[])){
+        const info=item.volumeInfo||{};
+        if(!matchT(info.title||'')) continue;
+        const vol=extractVolumeFromTitle(info.title||'');
+        if(!matchV(vol)) continue;
+        const pub=info.publishedDate||''; if(!pub||pub.length<6) continue;
+        const norm=pub.length===7?pub+'-01':pub.length===4?pub+'-01-01':pub.substring(0,10);
+        const d=new Date(norm); if(isNaN(d)||!isFutureOrRecent(d)) continue;
+        found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'Google'});
+        hit=true; break;
+      }
+    }catch(e){}
+    if(hit) continue;
 
-      // 版元ドットコム フォールバック
-      try{
-        const hm = await fetch('https://api.hanmoto.com/books/v1/?title='+encodeURIComponent(seriesTitle)+'&limit=10').then(r=>r.json());
-        for(const item of (hm.books||[]).map(normHanmoto)){
+    // iTunes フォールバック
+    try{
+      const q2 = seriesTitle+(volStr?' '+volStr:'');
+      const it = await fetch('https://itunes.apple.com/search?term='+encodeURIComponent(q2)+'&country=JP&media=ebook&limit=10').then(r=>r.json());
+      for(const item of (it.results||[])){
+        if(!matchT(item.trackName||'')) continue;
+        const vol=extractVolumeFromTitle(item.trackName||'');
+        if(!matchV(vol)) continue;
+        const pub=(item.releaseDate||'').substring(0,10); if(!pub) continue;
+        const d=new Date(pub); if(isNaN(d)||!isFutureOrRecent(d)) continue;
+        found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:pub,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'iTunes'});
+        hit=true; break;
+      }
+    }catch(e){}
+    if(hit) continue;
+
+    // OpenBD フォールバック
+    try{
+      const items = await fetch('https://api.openbd.jp/v1/search?title='+encodeURIComponent(seriesTitle)+'&limit=15').then(r=>r.json());
+      if(Array.isArray(items)){
+        for(const item of items){
           if(!matchT(item.title)) continue;
-          if(!matchV(item.volume)) continue;
-          if(!item.releaseDate) continue;
-          const d=new Date(item.releaseDate); if(isNaN(d)) continue;
-          found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:item.releaseDate,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'版元'});
-          return;
+          const vol=normalizeVolume(item.volume||'')||extractVolumeFromTitle(item.title||'');
+          if(!matchV(vol)) continue;
+          const pd=item.pubdate||''; if(pd.length<8) continue;
+          const norm=`${pd.slice(0,4)}-${pd.slice(4,6)}-${pd.slice(6,8)}`;
+          const d=new Date(norm); if(isNaN(d)||!isFutureOrRecent(d)) continue;
+          found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'OpenBD'});
+          break;
         }
-      }catch(e){}
-    }));
+      }
+    }catch(e){}
   }
 
   // 最終チェック日を更新
@@ -970,14 +992,23 @@ function showPendingCheckModal() {
 async function applyPendingCheckResults() {
   if(!currentUser||!dbVolumesRef) return;
   const updates = {};
+  const savedDates = [];
   _pendingCheckResults.forEach((r,i) => {
     const cb = document.getElementById('pcc_'+i);
-    if(cb&&cb.checked) updates[r.id+'/releaseDate'] = r.newDate;
+    if(cb&&cb.checked){ updates[r.id+'/releaseDate'] = r.newDate; savedDates.push(new Date(r.newDate)); }
   });
   if(Object.keys(updates).length === 0){ closePendingCheckModal(); return; }
   await dbVolumesRef.update(updates);
   showSaved();
   closePendingCheckModal();
+  // 最も早い発売月へ自動ナビゲート
+  if(savedDates.length > 0){
+    savedDates.sort((a,b)=>a-b);
+    const d = savedDates[0];
+    currentYear = d.getFullYear();
+    currentMonth = d.getMonth()+1;
+    renderApp();
+  }
 }
 
 function closePendingCheckModal() {
@@ -1506,8 +1537,7 @@ function openAddModal() {
   document.getElementById('apiRefetchStatus').style.display='none';
   document.getElementById('newSeriesGenre').value=''; document.getElementById('newSeriesCompleted').value='';
   document.getElementById('budgetWarning').classList.remove('show');
-  const today=new Date();
-  document.getElementById('releaseDate').value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
+  document.getElementById('releaseDate').value='';
   document.getElementById('addModal').classList.remove('hidden');
 }
 function openEditModal(id) {
@@ -1566,9 +1596,17 @@ function closeAddModal() {
 
 // ── 巻数抽出ユーティリティ ──
 function extractVolumeFromTitle(title) {
-  const m=title.match(/[第]?\s*([\d０-９]+)\s*[巻冊]?[\s　]*$/);
-  if(!m)return '';
-  return m[1].replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  const toHalf=s=>s.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  // 「（３７）」「(37)」形式
+  const m2=title.match(/[（(]\s*([\d０-９]+)\s*[）)]/);
+  if(m2) return toHalf(m2[1]);
+  // 「第37巻」「37巻」形式
+  const m=title.match(/[第]?\s*([\d０-９]+)\s*[巻冊]/);
+  if(m) return toHalf(m[1]);
+  // 末尾の数字「ワンパンマン 37」形式
+  const m3=title.match(/[\s　]+(\d+)\s*$/);
+  if(m3) return m3[1];
+  return '';
 }
 function normalizeVolume(vol) {
   if(!vol)return '';
