@@ -6,14 +6,17 @@
       "**/.git/**",
       "**/node_modules/**",
       "dejiina_agent/**",
-      "scripts/**",
-      "database.rules.json"
+      "scripts/**"
     ],
     "rewrites": [
-      { "source": "/kakeibo",     "destination": "/kakeibo.html" },
-      { "source": "/manga",       "destination": "/manga.html" },
-      { "source": "/bucket-list", "destination": "/bucket-list.html" }
+      { "source": "/kakeibo",        "destination": "/kakeibo.html" },
+      { "source": "/manga",          "destination": "/manga.html" },
+      { "source": "/manga-list",     "destination": "/manga-public.html" },
+      { "source": "/bucket-list",    "destination": "/bucket-list.html" }
     ],
     "cleanUrls": true
+  },
+  "database": {
+    "rules": "database.rules.json"
   }
 }

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -10,247 +10,259 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic Pro', 'Meiryo', sans-serif;
-  background: #f5f0ff; color: #2d2d3a; min-height: 100vh;
-}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic Pro','Meiryo',sans-serif;background:#f5f0ff;color:#2d2d3a;min-height:100vh}
 
 /* ─── ログイン ─── */
-.login-overlay {
-  position: fixed; inset: 0; z-index: 9999;
-  background: rgba(85,60,154,0.95);
-  display: flex; align-items: center; justify-content: center;
-}
-.login-overlay.hidden { display: none !important; }
-.login-box {
-  background: white; border-radius: 20px; padding: 40px 32px;
-  text-align: center; max-width: 360px; width: 90%;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-.login-box .logo { font-size: 48px; margin-bottom: 12px; }
-.login-box h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
-.login-box p  { font-size: 13px; color: #718096; margin-bottom: 28px; }
-.login-btn {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  width: 100%; padding: 13px 20px; border-radius: 10px;
-  border: 2px solid #e2e8f0; background: white;
-  font-size: 15px; font-weight: 600; color: #2d3748; cursor: pointer;
-  transition: all 0.2s; font-family: inherit;
-}
-.login-btn:hover { background: #f7fafc; border-color: #553c9a; }
-.auth-status { font-size: 12px; color: #e53e3e; margin-top: 12px; min-height: 18px; }
-.auth-loading {
-  position: fixed; inset: 0; z-index: 10000;
-  background: rgba(85,60,154,0.97);
-  display: flex; align-items: center; justify-content: center;
-  color: white; font-size: 16px; font-weight: 600;
-}
-.auth-loading.hidden { display: none !important; }
+.login-overlay{position:fixed;inset:0;z-index:9999;background:rgba(85,60,154,.95);display:flex;align-items:center;justify-content:center}
+.login-overlay.hidden{display:none!important}
+.login-box{background:#fff;border-radius:20px;padding:40px 32px;text-align:center;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-box .logo{font-size:48px;margin-bottom:12px}
+.login-box h2{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-box p{font-size:13px;color:#718096;margin-bottom:28px}
+.login-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;font-size:15px;font-weight:600;color:#2d3748;cursor:pointer;transition:all .2s;font-family:inherit}
+.login-btn:hover{background:#f7fafc;border-color:#553c9a}
+.auth-status{font-size:12px;color:#e53e3e;margin-top:12px;min-height:18px}
+.auth-loading{position:fixed;inset:0;z-index:10000;background:rgba(85,60,154,.97);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:600}
+.auth-loading.hidden{display:none!important}
 
 /* ─── ヘッダー ─── */
-.header {
-  background: linear-gradient(135deg, #553c9a 0%, #b94bd8 100%);
-  color: white; padding: 20px; text-align: center;
-}
-.header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-.header .subtitle { font-size: 13px; opacity: 0.8; }
-.header-user {
-  display: flex; align-items: center; justify-content: flex-end;
-  gap: 8px; padding: 0 20px 12px; font-size: 13px; opacity: 0.9;
-}
-.header-user button {
-  background: rgba(255,255,255,0.2); border: none; color: white;
-  padding: 4px 12px; border-radius: 20px; font-size: 12px;
-  cursor: pointer; transition: background 0.2s; font-family: inherit;
-}
-.header-user button:hover { background: rgba(255,255,255,0.35); }
-.month-nav {
-  display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 14px;
-}
-.month-nav button {
-  background: rgba(255,255,255,0.2); border: none; color: white;
-  width: 36px; height: 36px; border-radius: 50%; font-size: 18px;
-  cursor: pointer; transition: background 0.2s;
-}
-.month-nav button:hover { background: rgba(255,255,255,0.35); }
-.month-nav .current-month { font-size: 20px; font-weight: 700; min-width: 140px; text-align: center; }
+.header{background:linear-gradient(135deg,#553c9a 0%,#b94bd8 100%);color:#fff;padding:20px;text-align:center}
+.header h1{font-size:24px;font-weight:700;margin-bottom:4px}
+.header .subtitle{font-size:13px;opacity:.8}
+.header-user{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:0 20px 12px;flex-wrap:wrap}
+.header-user button{background:rgba(255,255,255,.2);border:none;color:#fff;padding:4px 10px;border-radius:20px;font-size:12px;cursor:pointer;transition:background .2s;font-family:inherit}
+.header-user button:hover{background:rgba(255,255,255,.35)}
+.header-user button.notif-on{background:rgba(255,255,0,.25)}
+.month-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:14px}
+.month-nav button{background:rgba(255,255,255,.2);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;transition:background .2s}
+.month-nav button:hover{background:rgba(255,255,255,.35)}
+.month-nav .current-month{font-size:20px;font-weight:700;min-width:140px;text-align:center}
+
+/* ─── ナビタブ ─── */
+.nav-tabs{display:flex;background:#fff;border-bottom:2px solid #e9e0ff;overflow-x:auto;scrollbar-width:none;position:sticky;top:0;z-index:300}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{flex:1;min-width:70px;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:600;color:#718096;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px}
+.nav-tab.active{color:#553c9a;border-bottom-color:#553c9a}
+.nav-tab:hover:not(.active){background:#f8f5ff;color:#553c9a}
 
 /* ─── コンテナ ─── */
-.container { max-width: 900px; margin: 0 auto; padding: 20px 16px 100px; }
+.container{max-width:900px;margin:0 auto;padding:16px 16px 100px}
 
 /* ─── サマリーカード ─── */
-.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-.summary-card {
-  background: white; border-radius: 12px; padding: 16px; text-align: center;
-  box-shadow: 0 2px 8px rgba(85,60,154,0.1);
-}
-.summary-card .label { font-size: 12px; color: #718096; margin-bottom: 6px; }
-.summary-card .amount { font-size: 22px; font-weight: 700; }
-.summary-card.total    .amount { color: #553c9a; }
-.summary-card.bought   .amount { color: #38a169; }
-.summary-card.unbought .amount { color: #e53e3e; }
-@media (max-width: 480px) {
-  .summary-card .amount { font-size: 16px; }
-  .summary-card .label  { font-size: 11px; }
-}
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.summary-card{background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:0 2px 8px rgba(85,60,154,.1)}
+.summary-card .label{font-size:12px;color:#718096;margin-bottom:6px}
+.summary-card .amount{font-size:22px;font-weight:700}
+.summary-card.total .amount{color:#553c9a}
+.summary-card.bought .amount{color:#38a169}
+.summary-card.unbought .amount{color:#e53e3e}
+@media(max-width:480px){.summary-card .amount{font-size:16px}.summary-card .label{font-size:11px}}
 
 /* ─── メインカード ─── */
-.card {
-  background: white; border-radius: 12px; padding: 20px;
-  box-shadow: 0 2px 8px rgba(85,60,154,0.1); margin-bottom: 20px;
-}
-.card-header {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
-}
-.card-header h2 { font-size: 15px; font-weight: 700; color: #4a4a6a; }
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(85,60,154,.1);margin-bottom:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px;flex-wrap:wrap}
+.card-header h2{font-size:15px;font-weight:700;color:#4a4a6a;flex:1;min-width:160px}
+.sort-controls{display:flex;align-items:center;gap:5px;flex-wrap:nowrap}
+.sort-btn{padding:4px 9px;border-radius:20px;border:1.5px solid #e9e0ff;background:#fff;font-size:11px;color:#718096;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap}
+.sort-btn.active{background:#553c9a;border-color:#553c9a;color:#fff}
+.sort-btn:hover:not(.active){border-color:#553c9a;color:#553c9a}
 
 /* ─── テーブル ─── */
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 560px; }
-thead th {
-  padding: 10px 12px; font-size: 12px; font-weight: 700; color: #718096;
-  background: #f8f5ff; border-bottom: 2px solid #e9e0ff; text-align: left;
-  white-space: nowrap;
-}
-tbody tr { border-bottom: 1px solid #f0ebff; transition: background 0.15s; }
-tbody tr:last-child { border-bottom: none; }
-tbody tr:hover { background: #fdf9ff; }
-tbody tr.purchased { opacity: 0.45; }
-tbody td { padding: 12px 12px; font-size: 13px; vertical-align: middle; }
-.td-date    { white-space: nowrap; color: #553c9a; font-weight: 600; }
-.td-title   { font-weight: 700; }
-.td-vol     { color: #718096; white-space: nowrap; }
-.td-pub     { color: #718096; font-size: 12px; white-space: nowrap; }
-.td-price   { font-weight: 700; color: #2d2d3a; white-space: nowrap; }
-.td-actions { white-space: nowrap; }
-.check-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 5px 10px; border-radius: 20px; border: 1.5px solid #e2e8f0;
-  background: white; font-size: 12px; font-weight: 600; cursor: pointer;
-  transition: all 0.2s; font-family: inherit; color: #718096;
-}
-.check-btn.bought { background: #38a169; border-color: #38a169; color: white; }
-.check-btn:hover { border-color: #553c9a; color: #553c9a; }
-.check-btn.bought:hover { background: #2f855a; border-color: #2f855a; color: white; }
-.btn-icon {
-  background: none; border: none; color: #cbd5e0; cursor: pointer;
-  font-size: 15px; padding: 4px 6px; transition: color 0.2s; line-height: 1;
-}
-.btn-icon:hover { color: #e53e3e; }
-.btn-icon.edit:hover { color: #553c9a; }
-.empty-state { text-align: center; padding: 48px 20px; color: #a0aec0; }
-.empty-state .icon { font-size: 48px; margin-bottom: 10px; }
-.empty-state p { font-size: 14px; }
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:580px}
+thead th{padding:10px 12px;font-size:12px;font-weight:700;color:#718096;background:#f8f5ff;border-bottom:2px solid #e9e0ff;text-align:left;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f0ebff;transition:background .15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#fdf9ff}
+tbody tr.status-read{opacity:.5}
+tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
+.td-date{white-space:nowrap;color:#553c9a;font-weight:600}
+.td-title{font-weight:700}
+.td-title-inner{display:flex;flex-direction:column;gap:3px}
+.td-memo{font-size:11px;color:#718096;word-break:break-all}
+.td-vol{color:#718096;white-space:nowrap}
+.td-pub{color:#718096;font-size:12px;white-space:nowrap}
+.td-price{font-weight:700;color:#2d2d3a;white-space:nowrap}
+.td-actions{white-space:nowrap}
 
-/* ─── FAB ─── */
-.fab {
-  position: fixed; right: 24px; bottom: 28px;
-  width: 56px; height: 56px; border-radius: 50%;
-  background: linear-gradient(135deg, #553c9a, #b94bd8);
-  color: white; font-size: 28px; border: none; cursor: pointer;
-  box-shadow: 0 4px 20px rgba(85,60,154,0.5);
-  display: flex; align-items: center; justify-content: center;
-  transition: transform 0.2s, box-shadow 0.2s; z-index: 100;
-}
-.fab:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(85,60,154,0.6); }
+/* ─── ステータスボタン ─── */
+.status-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:20px;border:1.5px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap}
+.status-btn.none{color:#718096}
+.status-btn.unread{background:#fff7ed;border-color:#f6ad55;color:#c05621}
+.status-btn.read{background:#38a169;border-color:#38a169;color:#fff}
+.status-btn:hover{border-color:#553c9a}
 
-/* ─── 作品管理ボタン ─── */
-.btn-series {
-  padding: 6px 14px; background: #553c9a; color: white; border: none;
-  border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
-  transition: opacity 0.2s; font-family: inherit;
-}
-.btn-series:hover { opacity: 0.85; }
+/* ─── アクションボタン ─── */
+.btn-icon{background:none;border:none;color:#cbd5e0;cursor:pointer;font-size:15px;padding:3px 5px;transition:color .2s;line-height:1}
+.btn-icon:hover{color:#e53e3e}
+.btn-icon.edit:hover{color:#553c9a}
+.btn-icon.next-vol:hover{color:#38a169}
+.btn-icon.gcal:hover{color:#1a73e8}
+.empty-state{text-align:center;padding:48px 20px;color:#a0aec0}
+.empty-state .icon{font-size:48px;margin-bottom:10px}
+.empty-state p{font-size:14px}
 
-/* ─── モーダル共通 ─── */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 5000;
-  background: rgba(0,0,0,0.5);
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-}
-.modal-overlay.hidden { display: none !important; }
-.modal {
-  background: white; border-radius: 16px; padding: 28px 24px;
-  width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-.modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; color: #2d2d3a; }
-.form-group { margin-bottom: 14px; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-label { display: block; font-size: 12px; color: #718096; margin-bottom: 4px; }
-input, select, textarea {
-  width: 100%; padding: 9px 12px; border: 1.5px solid #e2e8f0;
-  border-radius: 8px; font-size: 14px; color: #2d2d3a;
-  transition: border-color 0.2s; outline: none; font-family: inherit;
-}
-input:focus, select:focus { border-color: #553c9a; }
-.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
-.btn-save {
-  flex: 1; padding: 11px; background: linear-gradient(135deg, #553c9a, #b94bd8);
-  color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 700;
-  cursor: pointer; transition: opacity 0.2s; font-family: inherit;
-}
-.btn-save:hover { opacity: 0.9; }
-.btn-cancel {
-  flex: 1; padding: 11px; background: #f7fafc; color: #4a5568;
-  border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-weight: 600;
-  cursor: pointer; font-family: inherit;
-}
-.btn-cancel:hover { background: #edf2f7; }
-.divider { border: none; border-top: 1px solid #f0ebff; margin: 16px 0; }
+/* ─── バッジ類 ─── */
+.genre-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle}
+.genre-少年{background:#dbeafe;color:#1d4ed8}
+.genre-少女{background:#fce7f3;color:#be185d}
+.genre-青年{background:#dcfce7;color:#15803d}
+.genre-女性{background:#fef3c7;color:#92400e}
+.genre-全年齢{background:#f3e8ff;color:#7c3aed}
+.completed-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle;background:#e2e8f0;color:#4a5568}
 
-/* ─── 作品管理モーダル ─── */
-.series-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-.series-item {
-  display: flex; align-items: center; justify-content: space-between;
-  background: #f8f5ff; border-radius: 8px; padding: 10px 14px; gap: 12px;
-}
-.series-item-info { flex: 1; min-width: 0; }
-.series-item-title { font-size: 13px; font-weight: 700; }
-.series-item-sub   { font-size: 11px; color: #718096; margin-top: 2px; }
-.series-empty { text-align: center; padding: 20px; color: #a0aec0; font-size: 13px; }
+/* ─── 星評価 ─── */
+.stars{color:#f6ad55;font-size:12px;margin-left:4px}
+.star-input{display:flex;gap:4px;margin-top:6px}
+.star-input span{font-size:24px;cursor:pointer;color:#e2e8f0;transition:color .15s;line-height:1}
+.star-input span.on{color:#f6ad55}
+.star-inline{display:flex;gap:2px;margin-top:3px}
+.star-inline span{font-size:18px;cursor:pointer;color:#e2e8f0;transition:color .15s;line-height:1;user-select:none}
+.star-inline span.on{color:#f6ad55}
+.star-inline span:hover{color:#f6ad55}
+
+/* ─── ジャンルフィルター ─── */
+.genre-filter-wrap{padding:8px 20px 0;max-width:900px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.genre-filter-wrap::-webkit-scrollbar{display:none}
+.genre-chip{padding:5px 12px;border-radius:20px;border:1.5px solid #e9e0ff;background:#fff;font-size:12px;color:#718096;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:inherit;flex-shrink:0}
+.genre-chip.active{background:#553c9a;border-color:#553c9a;color:#fff}
+.genre-chip:hover:not(.active){border-color:#553c9a;color:#553c9a}
+
+/* ─── グラフビュー ─── */
+.graph-wrap{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(85,60,154,.1);margin-bottom:20px}
+.graph-title{font-size:15px;font-weight:700;color:#4a4a6a;margin-bottom:16px}
+.graph-bars{display:flex;align-items:flex-end;gap:8px;height:200px;padding-bottom:4px;border-bottom:2px solid #e9e0ff;position:relative}
+.graph-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;position:relative}
+.graph-bar{width:100%;border-radius:6px 6px 0 0;transition:height .4s;min-height:2px;position:relative}
+.graph-bar.this-month{background:linear-gradient(180deg,#b94bd8,#553c9a)}
+.graph-bar.past{background:#c4b5fd}
+.graph-bar-val{font-size:9px;color:#553c9a;font-weight:700;text-align:center;white-space:nowrap}
+.graph-bar-label{font-size:10px;color:#718096;white-space:nowrap}
+.graph-budget-line{position:absolute;left:0;right:0;border-top:2px dashed #e53e3e;pointer-events:none}
+.graph-budget-text{position:absolute;right:0;font-size:10px;color:#e53e3e;font-weight:700;transform:translateY(-100%);padding-right:4px}
+.graph-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.graph-stat{background:#f8f5ff;border-radius:10px;padding:12px;text-align:center}
+.graph-stat .gs-label{font-size:11px;color:#718096;margin-bottom:4px}
+.graph-stat .gs-val{font-size:18px;font-weight:700;color:#553c9a}
+@media(max-width:480px){.graph-stat .gs-val{font-size:15px}}
+
+/* ─── カレンダービュー ─── */
+.cal-wrap{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(85,60,154,.1);margin-bottom:20px}
+.cal-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px}
+.cal-nav button{background:#f8f5ff;border:1.5px solid #e9e0ff;color:#553c9a;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer}
+.cal-nav .cal-month-label{font-size:16px;font-weight:700;color:#4a4a6a;min-width:120px;text-align:center}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow{text-align:center;font-size:11px;font-weight:700;color:#718096;padding:4px 0}
+.cal-day{min-height:64px;border-radius:8px;padding:4px;background:#f8f5ff;cursor:default;position:relative}
+.cal-day.other-month{background:#fafafa;opacity:.5}
+.cal-day.today{background:#ede9fe;border:2px solid #553c9a}
+.cal-day-num{font-size:12px;font-weight:700;color:#4a4a6a;margin-bottom:3px}
+.cal-day.today .cal-day-num{color:#553c9a}
+.cal-release{font-size:9px;background:#553c9a;color:#fff;border-radius:3px;padding:1px 4px;margin-bottom:2px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.cal-release.purchased{background:#38a169}
+@media(max-width:480px){.cal-day{min-height:48px}.cal-release{font-size:8px}}
+
+/* ─── 履歴ビュー ─── */
+.history-month-header{font-size:13px;font-weight:700;color:#553c9a;padding:14px 0 6px;border-bottom:2px solid #e9e0ff;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+.history-month-total{font-size:12px;color:#718096;font-weight:600}
 
 /* ─── 検索バー ─── */
-.search-wrap {
-  padding: 12px 20px 0; max-width: 900px; margin: 0 auto;
-}
-.search-box {
-  position: relative; display: flex; align-items: center;
-}
-.search-box input {
-  width: 100%; padding: 10px 40px 10px 40px;
-  border: 1.5px solid #e9e0ff; border-radius: 24px;
-  font-size: 14px; color: #2d2d3a; background: white;
-  outline: none; font-family: inherit;
-  box-shadow: 0 2px 8px rgba(85,60,154,0.08);
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.search-box input:focus {
-  border-color: #553c9a;
-  box-shadow: 0 2px 12px rgba(85,60,154,0.2);
-}
-.search-icon { position: absolute; left: 14px; font-size: 16px; pointer-events: none; opacity: 0.5; }
-.search-clear {
-  position: absolute; right: 12px; background: none; border: none;
-  color: #a0aec0; font-size: 18px; cursor: pointer; padding: 4px;
-  display: none; line-height: 1; transition: color 0.2s;
-}
-.search-clear.show { display: block; }
-.search-clear:hover { color: #553c9a; }
-.search-hint {
-  font-size: 12px; color: #553c9a; font-weight: 600;
-  margin-top: 6px; padding-left: 14px; min-height: 18px;
-}
+.search-wrap{padding:12px 20px 0;max-width:900px;margin:0 auto}
+.search-box{position:relative;display:flex;align-items:center}
+.search-box input{width:100%;padding:10px 40px;border:1.5px solid #e9e0ff;border-radius:24px;font-size:14px;color:#2d2d3a;background:#fff;outline:none;font-family:inherit;box-shadow:0 2px 8px rgba(85,60,154,.08);transition:border-color .2s,box-shadow .2s}
+.search-box input:focus{border-color:#553c9a;box-shadow:0 2px 12px rgba(85,60,154,.2)}
+.search-icon{position:absolute;left:14px;font-size:16px;pointer-events:none;opacity:.5}
+.search-clear{position:absolute;right:12px;background:none;border:none;color:#a0aec0;font-size:18px;cursor:pointer;padding:4px;display:none;line-height:1}
+.search-clear.show{display:block}
+.search-hint{font-size:12px;color:#553c9a;font-weight:600;margin-top:6px;padding-left:14px;min-height:18px}
+
+/* ─── FAB ─── */
+.fab{position:fixed;right:24px;bottom:28px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#553c9a,#b94bd8);color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(85,60,154,.5);display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s;z-index:100}
+.fab:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(85,60,154,.6)}
+
+/* ─── モーダル共通 ─── */
+.modal-overlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.hidden{display:none!important}
+.modal{background:#fff;border-radius:16px;padding:28px 24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:20px;color:#2d2d3a}
+.form-group{margin-bottom:14px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:12px;color:#718096;margin-bottom:4px}
+input,select,textarea{width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#2d2d3a;transition:border-color .2s;outline:none;font-family:inherit}
+input:focus,select:focus,textarea:focus{border-color:#553c9a}
+textarea{resize:vertical;min-height:60px}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.btn-save{flex:1;padding:11px;background:linear-gradient(135deg,#553c9a,#b94bd8);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s;font-family:inherit}
+.btn-save:hover{opacity:.9}
+.btn-cancel{flex:1;padding:11px;background:#f7fafc;color:#4a5568;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-cancel:hover{background:#edf2f7}
+.divider{border:none;border-top:1px solid #f0ebff;margin:16px 0}
+
+/* ─── 作品管理モーダル ─── */
+.series-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.series-item{background:#f8f5ff;border-radius:8px;padding:10px 14px}
+.series-item-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.series-item-info{flex:1;min-width:0}
+.series-item-title{font-size:13px;font-weight:700}
+.series-item-sub{font-size:11px;color:#718096;margin-top:2px}
+.series-edit-form{margin-top:10px;padding-top:10px;border-top:1px solid #e9e0ff;display:none}
+.series-empty{text-align:center;padding:20px;color:#a0aec0;font-size:13px}
+
+/* ─── バーコードモーダル ─── */
+.barcode-video-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3}
+#barcodeVideo{width:100%;height:100%;object-fit:cover;display:block}
+.barcode-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.barcode-frame{width:60%;height:40%;border:3px solid #b94bd8;border-radius:8px;box-shadow:0 0 0 2000px rgba(0,0,0,.4)}
+#barcodeStatus{text-align:center;font-size:13px;color:#4a5568;margin-top:10px;min-height:20px}
+
+/* ─── 書籍検索モーダル ─── */
+.book-search-input-wrap{display:flex;gap:8px;margin-bottom:12px}
+.book-search-input-wrap input{flex:1}
+.btn-search-go{padding:9px 16px;background:linear-gradient(135deg,#553c9a,#b94bd8);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity .2s}
+.btn-search-go:hover{opacity:.85}
+.book-results{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}
+.book-result-item{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:8px;border:1.5px solid #e9e0ff;background:#fdf9ff;cursor:pointer;transition:all .15s}
+.book-result-item:hover{background:#e9d8fd;border-color:#553c9a}
+.book-result-thumb{width:40px;height:56px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#e9e0ff}
+.book-result-thumb-placeholder{width:40px;height:56px;border-radius:4px;flex-shrink:0;background:#e9e0ff;display:flex;align-items:center;justify-content:center;font-size:20px}
+.book-result-info{flex:1;min-width:0}
+.book-result-title{font-size:13px;font-weight:700;color:#2d2d3a;line-height:1.4}
+.book-result-sub{font-size:11px;color:#718096;margin-top:3px}
+.book-search-status{text-align:center;padding:20px;color:#a0aec0;font-size:13px}
+.book-search-btn-wrap{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
+.btn-open-book-search{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#f8f5ff;color:#553c9a;border:1.5px solid #c4b5fd;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-open-book-search:hover{background:#ede9fe}
+
+/* ─── 予算警告 ─── */
+.budget-warning{background:#fff5f5;border:1.5px solid #feb2b2;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px;color:#c53030;display:none}
+.budget-warning.show{display:block}
+
+/* ─── 発売日検索 ─── */
+.btn-search-release{padding:8px 10px;background:#f8f5ff;border:1.5px solid #c4b5fd;border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s;flex-shrink:0}
+.btn-search-release:hover{background:#ede9fe;border-color:#553c9a}
+.release-date-results{margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
+.release-date-item{padding:7px 10px;border-radius:6px;border:1.5px solid #e9e0ff;background:#fdf9ff;cursor:pointer;font-size:12px;transition:all .15s}
+.release-date-item:hover{background:#e9d8fd;border-color:#553c9a}
+.rdi-date{color:#553c9a;font-weight:700}
+.rdi-title{color:#718096;font-size:11px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ─── 発売日未定カード ─── */
+.pending-card{border:2px dashed #c4b5fd}
+.pending-card .card-header h2{color:#7c3aed}
 
 /* ─── 保存インジケーター ─── */
-.saving-indicator {
-  position: fixed; bottom: 96px; right: 24px;
-  background: #38a169; color: white; padding: 8px 16px;
-  border-radius: 20px; font-size: 13px; font-weight: 600;
-  opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200;
-}
-.saving-indicator.show { opacity: 1; }
+.saving-indicator{position:fixed;bottom:96px;right:24px;background:#38a169;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
+.saving-indicator.show{opacity:1}
+
+/* ─── アフィリエイト ─── */
+.btn-icon.amazon{color:#e07b00}
+.btn-icon.amazon:hover{color:#ff9900}
+.btn-icon.rakuten{color:#bf0000;font-weight:bold;font-size:11px}
+.btn-icon.rakuten:hover{color:#990000}
+.btn-icon.public-on{color:#3182ce}
+.btn-icon.public-off{color:#cbd5e0}
+.btn-icon.public-off:hover{color:#3182ce}
 </style>
 </head>
 <body>
@@ -271,28 +283,73 @@ input:focus, select:focus { border-color: #553c9a; }
 <!-- 新刊追加モーダル -->
 <div id="addModal" class="modal-overlay hidden">
   <div class="modal">
-    <h3 id="addModalTitle">📖 新刊を追加</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 id="addModalTitle" style="margin:0">📖 新刊を追加</h3>
+      <button onclick="closeAddModal()" style="font-size:20px;line-height:1;background:none;border:none;color:#a0aec0;cursor:pointer;padding:2px 6px" title="閉じる">✕</button>
+    </div>
     <input type="hidden" id="editVolumeId">
-
-    <div class="form-group">
-      <label>作品</label>
-      <select id="seriesSelect" onchange="onSeriesChange()">
-        <option value="">── 作品を選択 ──</option>
-        <option value="__new__">＋ 新しい作品を登録</option>
+    <input type="hidden" id="editRakutenUrl">
+    <input type="hidden" id="editAsin">
+    <input type="hidden" id="editIsbn">
+    <!-- 作品名（検索・新規兼用） -->
+    <div class="form-group" style="position:relative">
+      <label>作品名 <span style="color:#e53e3e">*</span></label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="seriesSearchInput" placeholder="タイトルを入力…（自動で書籍検索）" autocomplete="off"
+          oninput="onSeriesSearchInput()" onfocus="openSeriesDropdown()" style="flex:1">
+        <button type="button" class="btn-open-book-search" style="white-space:nowrap" onclick="openBarcodeScanner()">📷</button>
+      </div>
+      <div id="seriesDropdown" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid #d6bcfa;border-radius:8px;width:100%;max-height:380px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12);top:100%;left:0"></div>
+      <select id="seriesSelect" style="display:none">
+        <option value="">──</option>
+        <option value="__new__">新規</option>
       </select>
     </div>
-
-    <!-- 新規作品入力（作品選択で「新しい作品」を選んだとき表示） -->
+    <!-- 新作品追加フィールド（既存選択時は非表示） -->
     <div id="newSeriesFields" style="display:none">
-      <div class="form-group">
-        <label>作品タイトル <span style="color:#e53e3e">*</span></label>
-        <input type="text" id="newSeriesTitle" placeholder="例: 鬼滅の刃">
-      </div>
-      <div class="form-row">
+      <input type="hidden" id="newSeriesTitle">
+      <input type="hidden" id="newSeriesCoverUrl">
+      <div class="form-row" style="margin-top:10px">
+        <div class="form-group" style="margin:0">
+          <label>作者名</label>
+          <input type="text" id="newSeriesAuthor" autocomplete="off" placeholder="例: 吾峠呼世晴">
+        </div>
         <div class="form-group" style="margin:0">
           <label>出版社</label>
-          <input type="text" id="newSeriesPublisher" placeholder="例: 集英社">
+          <input type="text" id="newSeriesPublisher" autocomplete="off" placeholder="例: 集英社">
         </div>
+      </div>
+      <div class="form-row" style="margin-top:10px">
+        <div class="form-group" style="margin:0">
+          <label>レーベル</label>
+          <input type="text" id="newSeriesLabel" autocomplete="off" placeholder="例: ジャンプコミックス">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>掲載雑誌</label>
+          <input type="text" id="newSeriesMagazine" autocomplete="off" placeholder="例: 週刊少年ジャンプ">
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:10px">
+        <div class="form-group" style="margin:0">
+          <label>ジャンル</label>
+          <select id="newSeriesGenre">
+            <option value="">── 未設定 ──</option>
+            <option value="少年">少年</option>
+            <option value="少女">少女</option>
+            <option value="青年">青年</option>
+            <option value="女性">女性</option>
+            <option value="全年齢">全年齢</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>完結済み</label>
+          <select id="newSeriesCompleted">
+            <option value="">連載中</option>
+            <option value="1">完結済み</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:10px">
         <div class="form-group" style="margin:0">
           <label>通常価格（円）</label>
           <input type="number" id="newSeriesPrice" placeholder="例: 550">
@@ -300,31 +357,83 @@ input:focus, select:focus { border-color: #553c9a; }
       </div>
       <hr class="divider">
     </div>
-
-    <div class="form-row">
+    <!-- 巻数・発売日・価格（常時表示） -->
+    <div class="form-row" style="margin-top:10px">
       <div class="form-group" style="margin:0">
         <label>巻数</label>
-        <input type="text" id="volumeNum" placeholder="例: 12 / 完結編">
+        <input type="text" id="volumeNum" autocomplete="off" placeholder="例: 12">
       </div>
       <div class="form-group" style="margin:0">
-        <label>発売日 <span style="color:#e53e3e">*</span></label>
-        <input type="date" id="releaseDate">
+        <label>発売日</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="date" id="releaseDate" style="flex:1">
+          <button type="button" class="btn-search-release" onclick="searchReleaseDate()" title="発売日を検索">🔍</button>
+        </div>
+        <div id="releaseDateResults" class="release-date-results"></div>
       </div>
     </div>
-    <div class="form-row" style="margin-top:14px">
-      <div class="form-group" style="margin:0">
+    <div class="form-row" style="margin-top:10px">
+      <div id="volumePublisherWrap" class="form-group" style="margin:0">
         <label>出版社</label>
-        <input type="text" id="publisher" placeholder="自動入力されます">
+        <input type="text" id="publisher" autocomplete="off" placeholder="自動入力">
       </div>
       <div class="form-group" style="margin:0">
         <label>価格（円・税込）</label>
-        <input type="number" id="price" placeholder="550">
+        <input type="number" id="price" placeholder="550" oninput="checkBudgetWarning()">
       </div>
     </div>
-
+    <div id="volumeAuthorWrap" class="form-group" style="margin-top:10px">
+      <label>作者名</label>
+      <input type="text" id="volumeAuthor" autocomplete="off" placeholder="自動入力">
+    </div>
+    <div class="form-group" style="margin-top:14px">
+      <label>メモ</label>
+      <textarea id="volumeMemo" placeholder="例: 図書館で借りる・Kindle版待ち など"></textarea>
+    </div>
+    <div class="budget-warning" id="budgetWarning"></div>
+    <div id="apiRefetchStatus" style="display:none;font-size:12px;color:#718096;margin-bottom:8px;text-align:center"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddModal()">キャンセル</button>
-      <button class="btn-save"   onclick="saveVolume()">保存する</button>
+      <button id="btnApiRefetch" style="display:none;font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid #9b59b6;background:#f5f0ff;color:#6b46c1;cursor:pointer" onclick="refetchBookInfo()">🔄 APIで再取得</button>
+      <button class="btn-save" onclick="saveVolume()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 書籍検索モーダル -->
+<div id="bookSearchModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:480px">
+    <h3>🔍 書籍を検索</h3>
+    <div class="book-search-input-wrap">
+      <input type="text" id="bookSearchInput" placeholder="作品名を入力..." onkeydown="if(event.key==='Enter')searchBooks()">
+      <button class="btn-search-go" onclick="searchBooks()">検索</button>
+    </div>
+    <div class="book-results" id="bookResults">
+      <div class="book-search-status">作品名を入力して検索してください</div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-cancel" onclick="closeBookSearch()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- バーコードスキャナーモーダル -->
+<div id="barcodeModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:400px">
+    <h3>📷 バーコードをスキャン</h3>
+    <div id="barcodeVideoWrap" class="barcode-video-wrap">
+      <video id="barcodeVideo" playsinline muted></video>
+      <div class="barcode-overlay"><div class="barcode-frame"></div></div>
+    </div>
+    <div id="barcodeUnsupported" style="display:none;text-align:center;padding:20px">
+      <div style="font-size:40px;margin-bottom:10px">📷</div>
+      <p style="font-size:13px;color:#718096;margin-bottom:14px">お使いのブラウザはバーコードスキャンに対応していません。<br>ISBNコード（13桁）を直接入力してください。</p>
+      <input type="text" id="isbnManualInput" placeholder="例: 9784088820262" style="margin-bottom:10px">
+      <button class="btn-save" onclick="lookupISBNManual()" style="width:100%">検索する</button>
+    </div>
+    <div id="barcodeStatus">バーコードをカメラに向けてください</div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn-cancel" onclick="stopBarcodeScanner()">閉じる</button>
     </div>
   </div>
 </div>
@@ -332,7 +441,11 @@ input:focus, select:focus { border-color: #553c9a; }
 <!-- 作品管理モーダル -->
 <div id="seriesModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:480px">
-    <h3>📚 作品の管理</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <h3 style="margin:0">📚 作品の管理</h3>
+      <button onclick="closeSeriesModal()" style="font-size:20px;line-height:1;background:none;border:none;color:#a0aec0;cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    <div id="seriesGenreFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
     <div class="series-list" id="seriesListEl"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeSeriesModal()">閉じる</button>
@@ -340,550 +453,1706 @@ input:focus, select:focus { border-color: #553c9a; }
   </div>
 </div>
 
+<!-- 設定モーダル -->
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:360px">
+    <h3>⚙️ 設定</h3>
+    <div class="form-group">
+      <label>月の漫画購入予算（円）</label>
+      <input type="number" id="budgetInput" placeholder="例: 3000（0で無制限）">
+      <div style="font-size:11px;color:#718096;margin-top:4px">設定すると予算超過時に警告が表示されます</div>
+    </div>
+    <hr class="divider">
+    <div class="form-group">
+      <label>Amazon アソシエイトタグ</label>
+      <input type="text" id="amazonTagInput" placeholder="例: yourname-22" autocomplete="off">
+      <div style="font-size:11px;color:#718096;margin-top:4px">
+        <a href="https://affiliate.amazon.co.jp/" target="_blank" rel="noopener" style="color:#553c9a">Amazon アソシエイト</a>に登録後のタグID（なければ空欄でOK・リンクは機能します）
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeSettingsModal()">キャンセル</button>
+      <button class="btn-save" onclick="saveSettings()">保存する</button>
+    </div>
+  </div>
+</div>
+
 <!-- ヘッダー -->
 <div class="header">
   <div class="header-user">
-    <span id="userName"></span>
+    <span id="userName" style="font-size:12px"></span>
+    <button id="notifBtn" onclick="toggleNotification()">🔔 通知</button>
     <button onclick="openSeriesModal()">📚 作品管理</button>
+    <button onclick="openSettingsModal()">⚙️ 予算設定</button>
     <button onclick="signOut()">サインアウト</button>
   </div>
   <h1>📚 漫画発売リスト</h1>
   <div class="subtitle">欲しい漫画の発売スケジュール管理</div>
-  <div class="month-nav">
+  <div class="month-nav" id="monthNav">
     <button onclick="changeMonth(-1)">&#8249;</button>
     <div class="current-month" id="currentMonthLabel"></div>
     <button onclick="changeMonth(1)">&#8250;</button>
+    <button id="goTodayBtn" onclick="goToCurrentMonth()" title="今月に戻る" style="margin-left:8px;width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(135deg,#9b59b6,#6b46c1);color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(107,70,193,.35);flex-shrink:0">⌂</button>
   </div>
 </div>
 
-<!-- 検索バー -->
-<div class="search-wrap">
+<!-- ナビタブ -->
+<div class="nav-tabs">
+  <button class="nav-tab active" id="tab-monthly"  onclick="setView('monthly')">📅 月別</button>
+  <button class="nav-tab"        id="tab-history"  onclick="setView('history')">📋 購入履歴</button>
+  <button class="nav-tab"        id="tab-graph"    onclick="setView('graph')">📊 グラフ</button>
+  <button class="nav-tab"        id="tab-calendar" onclick="setView('calendar')">🗓️ カレンダー</button>
+</div>
+
+<!-- 検索バー（月別のみ） -->
+<div class="search-wrap" id="searchWrap">
   <div class="search-box">
     <span class="search-icon">🔍</span>
-    <input type="text" id="searchInput" placeholder="作品名で検索（全期間）..."
-      oninput="onSearchInput()" autocomplete="off">
+    <input type="text" id="searchInput" placeholder="作品名で検索（全期間）..." oninput="onSearchInput()" autocomplete="off">
     <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
   </div>
   <div class="search-hint" id="searchHint"></div>
 </div>
 
-<div class="container">
+<!-- ジャンルフィルター（月別のみ） -->
+<div class="genre-filter-wrap" id="genreFilterWrap">
+  <button class="genre-chip active" onclick="setGenreFilter('')">すべて</button>
+  <button class="genre-chip" onclick="setGenreFilter('少年')">少年</button>
+  <button class="genre-chip" onclick="setGenreFilter('少女')">少女</button>
+  <button class="genre-chip" onclick="setGenreFilter('青年')">青年</button>
+  <button class="genre-chip" onclick="setGenreFilter('女性')">女性</button>
+  <button class="genre-chip" onclick="setGenreFilter('全年齢')">全年齢</button>
+  <button class="genre-chip" onclick="setGenreFilter('__serializing__')">連載中のみ</button>
+  <button class="genre-chip" onclick="setGenreFilter('__completed__')">完結のみ</button>
+</div>
+
+<div class="container" id="mainContainer">
   <!-- サマリー -->
-  <div class="summary-grid">
+  <div class="summary-grid" id="summaryGrid">
     <div class="summary-card total">
-      <div class="label">今月の発売冊数</div>
+      <div class="label" id="summaryLabel1">今月の発売冊数</div>
       <div class="amount" id="totalCount">0冊</div>
     </div>
     <div class="summary-card bought">
-      <div class="label">購入済み合計</div>
+      <div class="label" id="summaryLabel2">購入済み合計</div>
       <div class="amount" id="boughtTotal">¥0</div>
     </div>
     <div class="summary-card unbought">
-      <div class="label">未購入合計</div>
+      <div class="label" id="summaryLabel3">未購入合計</div>
       <div class="amount" id="unboughtTotal">¥0</div>
     </div>
   </div>
 
-  <!-- 発売リスト -->
-  <div class="card">
-    <div class="card-header">
-      <h2 id="listTitle">📖 2026年6月 発売リスト</h2>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>発売日</th>
-            <th id="thMonth" style="display:none">発売月</th>
-            <th>タイトル</th>
-            <th>巻数</th>
-            <th>出版社</th>
-            <th style="text-align:right">価格</th>
-            <th>購入</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="volumeTableBody"></tbody>
-      </table>
-    </div>
-    <div id="emptyState" class="empty-state" style="display:none">
-      <div class="icon">📭</div>
-      <p>この月の登録はありません<br>右下の＋ボタンで追加してください</p>
-    </div>
-  </div>
+  <!-- リスト/グラフ/カレンダー表示エリア -->
+  <div id="viewArea"></div>
 </div>
 
-<!-- FAB -->
 <button class="fab" onclick="openAddModal()" title="新刊を追加">＋</button>
 
 <script>
 // ── Firebase ──
 const firebaseConfig = {
-  apiKey:            "AIzaSyAOOw461kpoaIU8iUqzqhKuTa594Y8CO0M",
-  authDomain:        "bucket-list-a486e.firebaseapp.com",
-  databaseURL:       "https://bucket-list-a486e-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:         "bucket-list-a486e",
-  storageBucket:     "bucket-list-a486e.firebasestorage.app",
-  messagingSenderId: "735695765139",
-  appId:             "1:735695765139:web:ecf09b708e922d7b6c9766"
+  apiKey:"AIzaSyAqImITQFZLDQFzwqfdBUrrsspDHhLLeyk",
+  authDomain:"kenny-s-52241.firebaseapp.com",
+  databaseURL:"https://kenny-s-52241-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"kenny-s-52241",
+  storageBucket:"kenny-s-52241.firebasestorage.app",
+  messagingSenderId:"825817371134",
+  appId:"1:825817371134:web:9560851d315b72ce08f0af"
 };
 firebase.initializeApp(firebaseConfig);
-const auth     = firebase.auth();
+const auth = firebase.auth();
 const database = firebase.database();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-let currentUser    = null;
-let dbSeriesRef    = null;
-let dbVolumesRef   = null;
-let attachedUid    = null;
-let seriesList     = {};   // { id: { title, publisher, price } }
-let volumesList    = {};   // { id: { seriesId, title, volume, releaseDate, price, publisher, purchased } }
-let currentYear    = new Date().getFullYear();
-let currentMonth   = new Date().getMonth() + 1;
-let searchQuery    = '';
+let currentUser = null, dbSeriesRef = null, dbVolumesRef = null, dbSettingsRef = null, attachedUid = null;
+let seriesList = {}, volumesList = {}, userSettings = { budget: 0 };
+let currentYear = new Date().getFullYear(), currentMonth = new Date().getMonth() + 1;
+let calYear = currentYear, calMonth = currentMonth;
+let searchQuery = '', sortBy = 'date', sortDir = 'asc', genreFilter = '', viewMode = 'monthly';
+
+// ── ステータスユーティリティ ──
+function getStatus(v) {
+  if (v.status) return v.status;
+  return v.purchased ? 'unread' : 'none';
+}
+function isPurchased(v) { return getStatus(v) !== 'none'; }
+const STATUS_CYCLE = { none: 'unread', unread: 'read', read: 'none' };
+const STATUS_LABEL = { none: '未購入', unread: '📦 未読', read: '✓ 読了' };
 
 // ── 認証UI ──
-function setAuthStatus(msg) {
-  const el = document.getElementById('authStatus');
-  if (el) el.textContent = msg || '';
-}
-function hideLoginOverlay() {
-  const el = document.getElementById('loginOverlay');
-  if (!el) return;
-  el.classList.add('hidden'); el.style.display = 'none';
-}
-function showLoginOverlay() {
-  if (auth.currentUser) return;
-  hideAuthLoading();
-  const el = document.getElementById('loginOverlay');
-  if (!el) return;
-  el.classList.remove('hidden'); el.style.display = 'flex';
-}
-function showAuthLoading(msg) {
-  hideLoginOverlay();
-  const el = document.getElementById('authLoading');
-  if (!el) return;
-  el.textContent = msg || 'サインイン処理中…';
-  el.classList.remove('hidden');
-}
-function hideAuthLoading() {
-  const el = document.getElementById('authLoading');
-  if (el) el.classList.add('hidden');
-}
+function setAuthStatus(msg) { const el=document.getElementById('authStatus'); if(el) el.textContent=msg||''; }
+function hideLoginOverlay() { const el=document.getElementById('loginOverlay'); if(!el)return; el.classList.add('hidden'); el.style.display='none'; }
+function showLoginOverlay() { if(auth.currentUser)return; hideAuthLoading(); const el=document.getElementById('loginOverlay'); if(!el)return; el.classList.remove('hidden'); el.style.display='flex'; }
+function showAuthLoading(msg) { hideLoginOverlay(); const el=document.getElementById('authLoading'); if(!el)return; el.textContent=msg||'サインイン処理中…'; el.classList.remove('hidden'); }
+function hideAuthLoading() { const el=document.getElementById('authLoading'); if(el) el.classList.add('hidden'); }
+
+let redirectPending = localStorage.getItem('mg_auth_pending')==='1';
+
 function createGoogleSignInButton(onClick) {
-  const btn = document.createElement('button');
-  btn.type = 'button'; btn.className = 'login-btn';
-  btn.innerHTML = ['<svg width="20" height="20" viewBox="0 0 48 48">',
-    '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>',
-    '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>',
-    '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>',
-    '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>',
-    '</svg> Googleでサインイン'].join('');
-  btn.onclick = onClick;
-  return btn;
+  const btn=document.createElement('button'); btn.type='button'; btn.className='login-btn';
+  btn.innerHTML='<svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Googleでサインイン';
+  btn.onclick=onClick; return btn;
 }
 async function handleSignIn() {
-  const provider = new firebase.auth.GoogleAuthProvider();
-  provider.addScope('email');
+  const provider=new firebase.auth.GoogleAuthProvider(); provider.addScope('email');
   showAuthLoading('サインイン処理中…');
-  try {
-    await auth.signInWithPopup(provider);
-    hideAuthLoading();
-  } catch (err) {
-    const popupErr = ['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'];
-    if (popupErr.includes(err.code)) {
-      localStorage.setItem('mg_auth_pending', '1');
-      showAuthLoading('Googleに移動しています…');
-      await auth.signInWithRedirect(provider);
-    } else {
-      hideAuthLoading(); showLoginOverlay();
-      setAuthStatus('エラー: ' + err.message); initSignInButton();
-    }
+  try { await auth.signInWithPopup(provider); hideAuthLoading(); }
+  catch(err) {
+    const popupErr=['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request'];
+    if(popupErr.includes(err.code)) { localStorage.setItem('mg_auth_pending','1'); redirectPending=true; showAuthLoading('Googleに移動しています…'); await auth.signInWithRedirect(provider); }
+    else { hideAuthLoading(); showLoginOverlay(); setAuthStatus('エラー: '+err.message); initSignInButton(); }
   }
 }
 function initSignInButton() {
-  if (auth.currentUser) return;
-  const container = document.getElementById('googleSignInDiv');
-  if (!container) return;
-  container.innerHTML = ''; setAuthStatus('');
-  container.appendChild(createGoogleSignInButton(handleSignIn));
+  if(auth.currentUser)return;
+  const c=document.getElementById('googleSignInDiv'); if(!c)return;
+  c.innerHTML=''; setAuthStatus(''); c.appendChild(createGoogleSignInButton(handleSignIn));
 }
 
 // ── DB接続 ──
 function attachDatabase(user) {
-  if (attachedUid === user.uid && dbSeriesRef) return;
-  if (dbSeriesRef)  dbSeriesRef.off();
-  if (dbVolumesRef) dbVolumesRef.off();
-  attachedUid = user.uid;
-
-  dbSeriesRef = database.ref(`users/${user.uid}/manga_series`);
-  dbSeriesRef.on('value', snapshot => {
-    seriesList = snapshot.val() || {};
-    updateSeriesSelect();
-    render();
-  });
-
-  dbVolumesRef = database.ref(`users/${user.uid}/manga_volumes`);
-  dbVolumesRef.on('value', snapshot => {
-    volumesList = snapshot.val() || {};
-    render();
-  });
+  if(attachedUid===user.uid && dbSeriesRef)return;
+  if(dbSeriesRef) dbSeriesRef.off(); if(dbVolumesRef) dbVolumesRef.off(); if(dbSettingsRef) dbSettingsRef.off();
+  attachedUid=user.uid;
+  dbSeriesRef=database.ref(`users/${user.uid}/manga_series`);
+  dbSeriesRef.on('value', snap => { seriesList=snap.val()||{}; updateSeriesSelect(); render(); });
+  dbVolumesRef=database.ref(`users/${user.uid}/manga_volumes`);
+  dbVolumesRef.on('value', snap => { volumesList=snap.val()||{}; render(); checkNotifications(user.uid); });
+  dbSettingsRef=database.ref(`users/${user.uid}/settings`);
+  dbSettingsRef.on('value', snap => { userSettings=snap.val()||{budget:0}; updateNotifBtn(); });
 }
 
-function showSaved() {
-  const el = document.getElementById('savingIndicator');
-  if (!el) return;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 1500);
+function showSaved() { const el=document.getElementById('savingIndicator'); if(!el)return; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),1500); }
+
+function onUserSignedIn(user) {
+  currentUser=user; redirectPending=false; localStorage.removeItem('mg_auth_pending');
+  hideAuthLoading(); hideLoginOverlay();
+  document.getElementById('userName').textContent=user.displayName||user.email;
+  attachDatabase(user); updateNotifBtn();
+  if(Notification.permission==='default') setTimeout(()=>requestNotifPermission(),2000);
 }
-
-// ── 認証状態 ──
-auth.onAuthStateChanged(user => {
-  if (user) {
-    currentUser = user;
-    localStorage.removeItem('mg_auth_pending');
-    hideAuthLoading(); hideLoginOverlay();
-    document.getElementById('userName').textContent = user.displayName || user.email;
-    attachDatabase(user);
-  } else {
-    currentUser = null; attachedUid = null;
-    if (dbSeriesRef)  { dbSeriesRef.off();  dbSeriesRef  = null; }
-    if (dbVolumesRef) { dbVolumesRef.off(); dbVolumesRef = null; }
-    seriesList = {}; volumesList = {};
-    render(); showLoginOverlay(); initSignInButton();
-  }
-});
-
+function onUserSignedOut() {
+  currentUser=null; attachedUid=null;
+  if(dbSeriesRef){dbSeriesRef.off();dbSeriesRef=null;} if(dbVolumesRef){dbVolumesRef.off();dbVolumesRef=null;} if(dbSettingsRef){dbSettingsRef.off();dbSettingsRef=null;}
+  seriesList={}; volumesList={}; render(); showLoginOverlay(); initSignInButton();
+}
+auth.onAuthStateChanged(user => { if(user) onUserSignedIn(user); else if(!redirectPending) onUserSignedOut(); });
 async function initAuth() {
-  if (localStorage.getItem('mg_auth_pending') === '1') showAuthLoading('サインイン処理中…');
+  if(redirectPending) showAuthLoading('サインイン処理中…');
   try {
-    const result = await auth.getRedirectResult();
-    if (result && result.user) return;
-    localStorage.removeItem('mg_auth_pending');
-  } catch (err) {
-    localStorage.removeItem('mg_auth_pending');
-    hideAuthLoading();
-    setAuthStatus('サインインに失敗しました。再度お試しください。');
+    const result=await auth.getRedirectResult();
+    if(result&&result.user){redirectPending=false;onUserSignedIn(result.user);return;}
+    redirectPending=false; localStorage.removeItem('mg_auth_pending');
+  } catch(err) { redirectPending=false; localStorage.removeItem('mg_auth_pending'); hideAuthLoading(); setAuthStatus('サインインに失敗しました。再度お試しください。'); }
+}
+function signOut() { if(confirm('サインアウトしますか？')) auth.signOut(); }
+
+// ── 通知 ──
+function updateNotifBtn() {
+  const btn=document.getElementById('notifBtn'); if(!btn)return;
+  btn.textContent=Notification.permission==='granted'?'🔔 通知オン':'🔕 通知オフ';
+  btn.classList.toggle('notif-on',Notification.permission==='granted');
+}
+async function requestNotifPermission() {
+  if(!('Notification' in window))return;
+  await Notification.requestPermission(); updateNotifBtn();
+  if(Notification.permission==='granted'&&currentUser) checkNotifications(currentUser.uid);
+}
+function toggleNotification() {
+  if(!('Notification' in window)){alert('このブラウザは通知に対応していません');return;}
+  if(Notification.permission==='granted'){
+    const today=new Date();today.setHours(0,0,0,0);
+    const upcoming=[];
+    Object.entries(volumesList).forEach(([id,v])=>{
+      if(isPurchased(v)||!v.releaseDate)return;
+      const rd=new Date(v.releaseDate);rd.setHours(0,0,0,0);
+      const diff=(rd-today)/86400000;
+      if(diff===0) upcoming.push(`本日発売: 「${v.title}${v.volume?' 第'+v.volume+'巻':''}」`);
+      else if(diff===1) upcoming.push(`明日発売: 「${v.title}${v.volume?' 第'+v.volume+'巻':''}」`);
+    });
+    if(upcoming.length===0) alert('通知がありません\n（本日・明日に発売の未購入作品はありません）');
+    else alert('📚 発売予定\n\n'+upcoming.join('\n'));
+  } else if(Notification.permission==='denied'){
+    alert('通知がブロックされています。\nブラウザのアドレスバーの🔒アイコン → 通知 → 許可 に変更してください。');
+  } else {
+    requestNotifPermission();
   }
 }
-function signOut() {
-  if (confirm('サインアウトしますか？')) auth.signOut();
+function checkNotifications(uid) {
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const tomorrow=new Date(today); tomorrow.setDate(tomorrow.getDate()+1);
+  const key=`mg_notified_${uid}`;
+  const notified=JSON.parse(localStorage.getItem(key)||'[]');
+  Object.entries(volumesList).forEach(([id,v])=>{
+    if(isPurchased(v)||!v.releaseDate||notified.includes(id))return;
+    const rd=new Date(v.releaseDate); rd.setHours(0,0,0,0);
+    const diff=(rd-today)/86400000;
+    let msg=null;
+    if(diff===0) msg=`本日発売！「${v.title}${v.volume?' 第'+v.volume+'巻':''}」`;
+    else if(diff===1) msg=`明日発売！「${v.title}${v.volume?' 第'+v.volume+'巻':''}」`;
+    if(msg){ new Notification('📚 漫画発売リスト',{body:msg}); notified.push(id); }
+  });
+  localStorage.setItem(key,JSON.stringify(notified));
+}
+
+// ── 設定 ──
+function openSettingsModal() {
+  document.getElementById('budgetInput').value=userSettings.budget||'';
+  document.getElementById('amazonTagInput').value=userSettings.amazonTag||'';
+  document.getElementById('settingsModal').classList.remove('hidden');
+}
+function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
+async function saveSettings() {
+  if(!currentUser||!dbSettingsRef)return;
+  const budget=parseInt(document.getElementById('budgetInput').value)||0;
+  const amazonTag=(document.getElementById('amazonTagInput').value||'').trim();
+  await dbSettingsRef.set({budget,amazonTag});
+  showSaved(); closeSettingsModal();
+}
+
+// ── 予算チェック ──
+function checkBudgetWarning() {
+  const warn=document.getElementById('budgetWarning');
+  if(!warn)return;
+  const budget=userSettings.budget||0;
+  if(!budget){warn.classList.remove('show');return;}
+  const price=parseFloat(document.getElementById('price').value)||0;
+  if(!price){warn.classList.remove('show');return;}
+  const editId=document.getElementById('editVolumeId').value;
+  const rd=document.getElementById('releaseDate').value;
+  if(!rd){warn.classList.remove('show');return;}
+  const d=new Date(rd);
+  const monthTotal=Object.entries(volumesList)
+    .filter(([id,v])=>{ if(id===editId)return false; if(!isPurchased(v)||!v.releaseDate)return false; const dv=new Date(v.releaseDate); return dv.getFullYear()===d.getFullYear()&&dv.getMonth()===d.getMonth(); })
+    .reduce((s,[,v])=>s+(v.price||0),0);
+  if(monthTotal+price>budget) {
+    warn.textContent=`⚠️ ${d.getFullYear()}年${d.getMonth()+1}月の予算（¥${budget.toLocaleString()}）を超えます（現在¥${monthTotal.toLocaleString()} + ¥${price.toLocaleString()} = ¥${(monthTotal+price).toLocaleString()}）`;
+    warn.classList.add('show');
+  } else { warn.classList.remove('show'); }
 }
 
 // ── 検索 ──
-function onSearchInput() {
-  searchQuery = document.getElementById('searchInput').value.trim();
-  document.getElementById('searchClear').classList.toggle('show', searchQuery !== '');
+function onSearchInput() { searchQuery=document.getElementById('searchInput').value.trim(); document.getElementById('searchClear').classList.toggle('show',searchQuery!==''); render(); }
+function clearSearch() { document.getElementById('searchInput').value=''; searchQuery=''; document.getElementById('searchClear').classList.remove('show'); document.getElementById('searchHint').textContent=''; render(); }
+
+// ── ジャンルフィルター ──
+function setGenreFilter(genre) {
+  genreFilter=genre;
+  document.querySelectorAll('.genre-chip').forEach(btn=>{
+    const map={'すべて':'','連載中のみ':'__serializing__','完結のみ':'__completed__'};
+    const g=map[btn.textContent]!==undefined?map[btn.textContent]:btn.textContent;
+    btn.classList.toggle('active',g===genre);
+  });
   render();
 }
-function clearSearch() {
-  document.getElementById('searchInput').value = '';
-  searchQuery = '';
-  document.getElementById('searchClear').classList.remove('show');
-  document.getElementById('searchHint').textContent = '';
+function passesGenreFilter(v) {
+  if(!genreFilter)return true;
+  const series=seriesList[v.seriesId];
+  if(genreFilter==='__completed__') return series&&series.completed;
+  if(genreFilter==='__serializing__') return !(series&&series.completed);
+  return series&&series.genre===genreFilter;
+}
+
+// ── ソート ──
+function toggleSort(by) {
+  sortDir=sortBy===by?(sortDir==='asc'?'desc':'asc'):'asc'; sortBy=by;
+  const map={date:'sortBtnDate',title:'sortBtnTitle',price:'sortBtnPrice'};
+  const lbl={date:'📅 発売日',title:'🔤 タイトル',price:'💴 価格'};
+  document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
+  const ab=document.getElementById(map[by]);
+  if(ab){ab.classList.add('active');ab.textContent=lbl[by]+(sortDir==='asc'?' ▲':' ▼');}
   render();
+}
+function sortVolumes(vols) {
+  return [...vols].sort((a,b)=>{
+    let c=0;
+    if(sortBy==='date'){c=new Date(a.releaseDate||0)-new Date(b.releaseDate||0);}
+    else if(sortBy==='title'){c=(a.title||'').localeCompare(b.title||'','ja');}
+    else if(sortBy==='price'){c=(a.price||0)-(b.price||0);}
+    return sortDir==='asc'?c:-c;
+  });
 }
 
 // ── 月ナビ ──
 function changeMonth(delta) {
-  currentMonth += delta;
-  if (currentMonth > 12) { currentMonth = 1; currentYear++; }
-  if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
+  currentMonth+=delta;
+  if(currentMonth>12){currentMonth=1;currentYear++;}
+  if(currentMonth<1){currentMonth=12;currentYear--;}
+  render();
+}
+function goToCurrentMonth() {
+  const now=new Date();
+  currentYear=now.getFullYear(); currentMonth=now.getMonth()+1;
   render();
 }
 
-// ── レンダリング ──
+// ── ビュー切り替え ──
+function setView(mode) {
+  viewMode=mode;
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+mode).classList.add('active');
+  const isMonthly=mode==='monthly';
+  document.getElementById('monthNav').style.display=isMonthly?'':'none';
+  document.getElementById('searchWrap').style.display=isMonthly?'':'none';
+  document.getElementById('genreFilterWrap').style.display=isMonthly?'':'none';
+  render();
+}
+
+// ── メインレンダリング ──
 function render() {
-  const isSearch = searchQuery !== '';
+  document.getElementById('currentMonthLabel').textContent=`${currentYear}年${currentMonth}月`;
+  const ps=document.getElementById('pendingSection');if(ps)ps.remove();
+  if(viewMode==='graph')    { renderGraph();    return; }
+  if(viewMode==='calendar') { renderCalendar(); return; }
+  if(viewMode==='history')  { renderHistory();  return; }
+  renderMonthly();
+}
 
-  // 月ヘッダー・検索ヒント
-  document.getElementById('currentMonthLabel').textContent = `${currentYear}年${currentMonth}月`;
-  const thMonth = document.getElementById('thMonth');
+// ── 発売日未定セクション ──
+let _pendingOpen=false;
+function togglePendingSection() {
+  _pendingOpen=!_pendingOpen;
+  renderPendingSection();
+}
+function renderPendingSection() {
+  const pending=Object.entries(volumesList).map(([id,v])=>({id,...v})).filter(v=>!v.releaseDate&&!isPurchased(v));
+  const container=document.getElementById('viewArea');
+  let el=document.getElementById('pendingSection');
+  if(pending.length===0){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='pendingSection';container.appendChild(el);}
+  const arrow=_pendingOpen?'▲':'▼';
+  el.innerHTML=`<div class="card pending-card">
+    <div class="card-header" onclick="togglePendingSection()" style="cursor:pointer;user-select:none">
+      <h2>📋 発売日未定（${pending.length}件）<span style="font-size:12px;color:#9b59b6;margin-left:8px">${arrow}</span></h2>
+    </div>
+    ${_pendingOpen?`<div class="table-wrap"><table>
+      <thead><tr><th>タイトル</th><th>巻数</th><th>出版社</th><th></th></tr></thead>
+      <tbody>${pending.map(v=>{
+        const volStr=v.volume?`第${v.volume}巻`:'─';
+        const series=seriesList[v.seriesId];
+        const genre=series&&series.genre?series.genre:'';
+        const genreBadge=genre?`<span class="genre-badge genre-${escHtml(genre)}">${escHtml(genre)}</span>`:'';
+        return `<tr>
+          <td class="td-title">${escHtml(v.title)}${genreBadge}</td>
+          <td class="td-vol">${volStr}</td>
+          <td class="td-pub">${escHtml(v.publisher||'─')}</td>
+          <td class="td-actions">
+            <a class="btn-icon amazon" href="${getAffilLink(v)}" target="_blank" rel="noopener sponsored" title="Amazonで購入">🛒</a>
+            <a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a>
+            
+            <button class="btn-icon edit" onclick="openEditModal('${v.id}')" title="発売日を入力">✎</button>
+            <button class="btn-icon" onclick="deleteVolume('${v.id}')" title="削除">✕</button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`:''}
+  </div>`;
+}
 
-  if (isSearch) {
-    document.getElementById('listTitle').textContent = `🔍 「${searchQuery}」の検索結果`;
-    thMonth.style.display = '';
-  } else {
-    document.getElementById('listTitle').textContent = `📖 ${currentYear}年${currentMonth}月 発売リスト`;
-    thMonth.style.display = 'none';
-  }
+// ── 月別レンダリング ──
+function renderMonthly() {
+  const isSearch=searchQuery!=='';
+  const rawVols=isSearch?getSearchVolumes():getMonthVolumes();
+  const vols=sortVolumes(rawVols);
+  document.getElementById('summaryLabel1').textContent=isSearch?'検索件数':'今月の発売冊数';
+  document.getElementById('summaryLabel2').textContent='購入済み合計';
+  document.getElementById('summaryLabel3').textContent='未購入合計';
+  document.getElementById('totalCount').textContent=`${vols.length}冊`;
+  document.getElementById('boughtTotal').textContent=`¥${vols.filter(v=>isPurchased(v)).reduce((s,v)=>s+(v.price||0),0).toLocaleString('ja-JP')}`;
+  document.getElementById('unboughtTotal').textContent=`¥${vols.filter(v=>!isPurchased(v)).reduce((s,v)=>s+(v.price||0),0).toLocaleString('ja-JP')}`;
+  document.getElementById('searchHint').textContent=isSearch?(vols.length>0?`${vols.length}件ヒット`:'該当なし'):'';
+  const title=isSearch?`🔍 「${searchQuery}」の検索結果`:`📖 ${currentYear}年${currentMonth}月 発売リスト`;
+  const today=new Date(); today.setHours(0,0,0,0);
+  document.getElementById('viewArea').innerHTML=`
+    <div class="card">
+      <div class="card-header">
+        <h2>${escHtml(title)}</h2>
+        <div class="sort-controls">
+          <button class="sort-btn active" id="sortBtnDate"  onclick="toggleSort('date')">📅 発売日</button>
+          <button class="sort-btn"        id="sortBtnTitle" onclick="toggleSort('title')">🔤 タイトル</button>
+          <button class="sort-btn"        id="sortBtnPrice" onclick="toggleSort('price')">💴 価格</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="mainTable">
+          <thead><tr>
+            <th>発売日</th>
+            <th id="thMonth" ${isSearch?'':'style="display:none"'}>発売月</th>
+            <th>タイトル</th><th>巻数</th><th>出版社</th>
+            <th style="text-align:right">価格</th><th>ステータス</th><th></th>
+          </tr></thead>
+          <tbody>${vols.length===0?'':(vols.map(v=>volumeRow(v,isSearch,today)).join(''))}</tbody>
+        </table>
+      </div>
+      ${vols.length===0?`<div class="empty-state"><div class="icon">📭</div><p>${isSearch?`「${escHtml(searchQuery)}」に一致する作品はありません`:'この月の登録はありません<br>右下の＋ボタンで追加してください'}</p></div>`:''}
+    </div>`;
+  renderPendingSection();
+}
 
-  const volumes = isSearch ? getSearchVolumes() : getMonthVolumes();
+function volumeRow(v, isSearch, today) {
+  const d=v.releaseDate?new Date(v.releaseDate):null;
+  const dateStr=d?d.toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'─';
+  const monthStr=d?`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`:'─';
+  const volStr=v.volume?`第${v.volume}巻`:'─';
+  const priceStr=v.price?`¥${Number(v.price).toLocaleString('ja-JP')}`:'─';
+  const status=getStatus(v);
+  const series=seriesList[v.seriesId];
+  const genre=series&&series.genre?series.genre:'';
+  const completed=series&&series.completed;
+  const rating=series&&series.rating?series.rating:0;
+  const genreBadge=genre?`<span class="genre-badge genre-${escHtml(genre)}">${escHtml(genre)}</span>`:'';
+  const completedBadge=completed?`<span class="completed-badge">完結</span>`:'';
+  const ratingHtml=rating?`<span class="stars">${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</span>`:'';
+  const memoHtml=v.memo?`<div class="td-memo">💬 ${escHtml(v.memo)}</div>`:'';
+  const titleHtml=isSearch?highlight(v.title,searchQuery):escHtml(v.title);
+  let dateMark='';
+  if(d){const rd=new Date(d);rd.setHours(0,0,0,0);const diff=(rd-today)/86400000;if(diff===0)dateMark=' 🔴';else if(diff===1)dateMark=' 🟡';}
+  const gcalUrl=gcalLink(v);
+  return `<tr class="${status==='read'?'status-read':''}" id="row_${v.id}">
+    <td class="td-date">${dateStr}${dateMark}</td>
+    <td class="td-vol" ${isSearch?'':'style="display:none"'}>${monthStr}</td>
+    <td class="td-title"><div class="td-title-inner">
+      <div>${titleHtml}${genreBadge}${completedBadge}${ratingHtml}</div>${memoHtml}
+    </div></td>
+    <td class="td-vol">${volStr}</td>
+    <td class="td-pub">${escHtml(v.publisher||'─')}</td>
+    <td class="td-price" style="text-align:right">${priceStr}</td>
+    <td class="td-actions"><button class="status-btn ${status}" onclick="cycleStatus('${v.id}')">${STATUS_LABEL[status]}</button></td>
+    <td class="td-actions">
+      <button class="btn-icon next-vol" onclick="openNextVolumeModal('${v.id}')" title="次巻を登録">📖+</button>
+      <a class="btn-icon amazon" href="${getAffilLink(v)}" target="_blank" rel="noopener sponsored" title="Amazonで購入">🛒</a>
+      <a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a>
+      <a class="btn-icon gcal" href="${gcalUrl}" target="_blank" rel="noopener" title="Googleカレンダーに追加">📅</a>
+      
+      <button class="btn-icon edit" onclick="openEditModal('${v.id}')" title="編集">✎</button>
+      <button class="btn-icon" onclick="deleteVolume('${v.id}')" title="削除">✕</button>
+    </td>
+  </tr>`;
+}
 
-  // 検索ヒント
-  if (isSearch) {
-    document.getElementById('searchHint').textContent =
-      volumes.length > 0 ? `${volumes.length}件ヒット` : '該当なし';
-  } else {
-    document.getElementById('searchHint').textContent = '';
-  }
-
-  const boughtAmt   = volumes.filter(v => v.purchased).reduce((s, v) => s + (v.price || 0), 0);
-  const unboughtAmt = volumes.filter(v => !v.purchased).reduce((s, v) => s + (v.price || 0), 0);
-
-  document.getElementById('totalCount').textContent    = `${volumes.length}冊`;
-  document.getElementById('boughtTotal').textContent   = `¥${boughtAmt.toLocaleString('ja-JP')}`;
-  document.getElementById('unboughtTotal').textContent = `¥${unboughtAmt.toLocaleString('ja-JP')}`;
-
-  const tbody = document.getElementById('volumeTableBody');
-  const empty = document.getElementById('emptyState');
-
-  if (volumes.length === 0) {
-    tbody.innerHTML = '';
-    empty.style.display = '';
-    empty.querySelector('p').innerHTML = isSearch
-      ? `「${escHtml(searchQuery)}」に一致する作品はありません`
-      : 'この月の登録はありません<br>右下の＋ボタンで追加してください';
-    document.querySelector('table').style.display = 'none';
+// ── 購入履歴レンダリング ──
+function renderHistory() {
+  const all=Object.entries(volumesList).map(([id,v])=>({id,...v})).filter(v=>isPurchased(v)&&v.releaseDate).sort((a,b)=>new Date(b.releaseDate)-new Date(a.releaseDate));
+  const totalAmt=all.reduce((s,v)=>s+(v.price||0),0);
+  document.getElementById('summaryLabel1').textContent='購入済み冊数';
+  document.getElementById('summaryLabel2').textContent='購入済み合計（全期間）';
+  document.getElementById('summaryLabel3').textContent='うち読了';
+  document.getElementById('totalCount').textContent=`${all.length}冊`;
+  document.getElementById('boughtTotal').textContent=`¥${totalAmt.toLocaleString('ja-JP')}`;
+  document.getElementById('unboughtTotal').textContent=`${all.filter(v=>getStatus(v)==='read').length}冊`;
+  if(all.length===0){
+    document.getElementById('viewArea').innerHTML='<div class="empty-state"><div class="icon">📭</div><p>まだ購入済みの作品がありません</p></div>';
     return;
   }
-  empty.style.display = 'none';
-  document.querySelector('table').style.display = '';
+  const groups={};
+  all.forEach(v=>{const d=new Date(v.releaseDate);const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;if(!groups[k])groups[k]=[];groups[k].push(v);});
+  let html='<div class="card"><div class="table-wrap"><table><thead><tr><th>発売日</th><th>タイトル</th><th>巻数</th><th>出版社</th><th style="text-align:right">価格</th><th>ステータス</th><th></th></tr></thead><tbody>';
+  Object.keys(groups).sort((a,b)=>b.localeCompare(a)).forEach(key=>{
+    const [y,m]=key.split('-');
+    const items=groups[key];
+    const monthTotal=items.reduce((s,v)=>s+(v.price||0),0);
+    html+=`<tr><td colspan="7" style="padding:0"><div class="history-month-header"><span>${y}年${parseInt(m)}月</span><span class="history-month-total">${items.length}冊 / ¥${monthTotal.toLocaleString('ja-JP')}</span></div></td></tr>`;
+    items.forEach(v=>{
+      const d=new Date(v.releaseDate);
+      const dateStr=d.toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'});
+      const volStr=v.volume?`第${v.volume}巻`:'─';
+      const priceStr=v.price?`¥${Number(v.price).toLocaleString('ja-JP')}`:'─';
+      const status=getStatus(v);
+      const series=seriesList[v.seriesId];
+      const genre=series&&series.genre?series.genre:'';
+      const completed=series&&series.completed;
+      const genreBadge=genre?`<span class="genre-badge genre-${escHtml(genre)}">${escHtml(genre)}</span>`:'';
+      const completedBadge=completed?`<span class="completed-badge">完結</span>`:'';
+      const memoHtml=v.memo?`<div class="td-memo">💬 ${escHtml(v.memo)}</div>`:'';
+      html+=`<tr class="${status==='read'?'status-read':''}"><td class="td-date">${dateStr}</td>
+        <td class="td-title"><div class="td-title-inner"><div>${escHtml(v.title)}${genreBadge}${completedBadge}</div>${memoHtml}</div></td>
+        <td class="td-vol">${volStr}</td><td class="td-pub">${escHtml(v.publisher||'─')}</td>
+        <td class="td-price" style="text-align:right">${priceStr}</td>
+        <td class="td-actions"><button class="status-btn ${status}" onclick="cycleStatus('${v.id}')">${STATUS_LABEL[status]}</button></td>
+        <td class="td-actions"><button class="btn-icon next-vol" onclick="openNextVolumeModal('${v.id}')" title="次巻を登録">📖+</button><a class="btn-icon amazon" href="${getAffilLink(v)}" target="_blank" rel="noopener sponsored" title="Amazonで購入">🛒</a><a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a><button class="btn-icon edit" onclick="openEditModal('${v.id}')">✎</button><button class="btn-icon" onclick="deleteVolume('${v.id}')">✕</button></td>
+      </tr>`;
+    });
+  });
+  html+='</tbody></table></div></div>';
+  document.getElementById('viewArea').innerHTML=html;
+}
 
-  tbody.innerHTML = volumes.map(v => {
-    const d = v.releaseDate ? new Date(v.releaseDate) : null;
-    const dateStr  = d ? d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : '─';
-    const monthStr = d ? `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}` : '─';
-    const volStr   = v.volume ? `第${v.volume}巻` : '─';
-    const priceStr = v.price ? `¥${Number(v.price).toLocaleString('ja-JP')}` : '─';
-    const chkCls   = v.purchased ? 'check-btn bought' : 'check-btn';
-    const chkTxt   = v.purchased ? '✓ 購入済み' : '未購入';
-    const monthTd  = isSearch
-      ? `<td class="td-vol" style="display:table-cell">${monthStr}</td>`
-      : `<td class="td-vol" style="display:none"></td>`;
-
-    // 検索時はキーワードをハイライト
-    const titleHtml = isSearch ? highlight(v.title, searchQuery) : escHtml(v.title);
-
-    return `<tr class="${v.purchased ? 'purchased' : ''}" id="row_${v.id}">
-      <td class="td-date">${dateStr}</td>
-      ${monthTd}
-      <td class="td-title">${titleHtml}</td>
-      <td class="td-vol">${volStr}</td>
-      <td class="td-pub">${escHtml(v.publisher || '─')}</td>
-      <td class="td-price" style="text-align:right">${priceStr}</td>
-      <td class="td-actions">
-        <button class="${chkCls}" onclick="togglePurchased('${v.id}')">${chkTxt}</button>
-      </td>
-      <td class="td-actions">
-        <button class="btn-icon edit" onclick="openEditModal('${v.id}')" title="編集">✎</button>
-        <button class="btn-icon"      onclick="deleteVolume('${v.id}')"  title="削除">✕</button>
-      </td>
-    </tr>`;
+// ── グラフレンダリング ──
+function renderGraph() {
+  const now=new Date();
+  const months=[];
+  for(let i=11;i>=0;i--){let y=now.getFullYear(),m=now.getMonth()+1-i;while(m<1){m+=12;y--;}months.push({y,m});}
+  const budget=userSettings.budget||0;
+  const monthData=months.map(({y,m})=>{
+    const vols=Object.values(volumesList).filter(v=>isPurchased(v)&&v.releaseDate&&(()=>{const d=new Date(v.releaseDate);return d.getFullYear()===y&&d.getMonth()+1===m;})());
+    return {y,m,total:vols.reduce((s,v)=>s+(v.price||0),0),count:vols.length};
+  });
+  const maxVal=Math.max(...monthData.map(d=>d.total),budget||0,1);
+  const thisM=now.getMonth()+1,thisY=now.getFullYear();
+  const totalAll=monthData.reduce((s,d)=>s+d.total,0);
+  const avgM=Math.round(totalAll/12);
+  const thisMonthData=monthData.find(d=>d.y===thisY&&d.m===thisM);
+  document.getElementById('summaryLabel1').textContent='過去12ヶ月合計';
+  document.getElementById('summaryLabel2').textContent='月平均';
+  document.getElementById('summaryLabel3').textContent='今月の支出';
+  document.getElementById('totalCount').textContent=`¥${totalAll.toLocaleString('ja-JP')}`;
+  document.getElementById('boughtTotal').textContent=`¥${avgM.toLocaleString('ja-JP')}`;
+  document.getElementById('unboughtTotal').textContent=`¥${(thisMonthData?thisMonthData.total:0).toLocaleString('ja-JP')}`;
+  const budgetLineHtml=budget?`<div class="graph-budget-line" style="bottom:${(budget/maxVal*100).toFixed(1)}%"><span class="graph-budget-text">予算¥${budget.toLocaleString()}</span></div>`:'';
+  const barsHtml=monthData.map(d=>{
+    const h=maxVal>0?(d.total/maxVal*100).toFixed(1):0;
+    const isThis=d.y===thisY&&d.m===thisM;
+    const over=budget&&d.total>budget;
+    return `<div class="graph-bar-wrap" title="${d.y}年${d.m}月: ¥${d.total.toLocaleString()}">
+      <div class="graph-bar-val">${d.total>0?'¥'+Math.round(d.total/1000)+'k':''}</div>
+      <div class="graph-bar ${isThis?'this-month':'past'}" style="height:${h}%;${over?'background:#e53e3e':''}"></div>
+      <div class="graph-bar-label">${d.m}月</div>
+    </div>`;
   }).join('');
+  document.getElementById('viewArea').innerHTML=`
+    <div class="graph-wrap">
+      <div class="graph-title">📊 月別支出グラフ（過去12ヶ月）${budget?` <span style="font-size:12px;color:#e53e3e">予算¥${budget.toLocaleString()}/月</span>`:''}</div>
+      <div class="graph-bars">${budgetLineHtml}${barsHtml}</div>
+    </div>`;
 }
 
+// ── カレンダーレンダリング ──
+function renderCalendar() {
+  document.getElementById('summaryLabel1').textContent='今月の発売冊数';
+  document.getElementById('summaryLabel2').textContent='購入済み';
+  document.getElementById('summaryLabel3').textContent='未購入';
+  const vols=Object.entries(volumesList).map(([id,v])=>({id,...v})).filter(v=>v.releaseDate&&(()=>{const d=new Date(v.releaseDate);return d.getFullYear()===calYear&&d.getMonth()+1===calMonth;})());
+  document.getElementById('totalCount').textContent=`${vols.length}冊`;
+  document.getElementById('boughtTotal').textContent=`${vols.filter(v=>isPurchased(v)).length}冊`;
+  document.getElementById('unboughtTotal').textContent=`${vols.filter(v=>!isPurchased(v)).length}冊`;
+  const byDay={};
+  vols.forEach(v=>{const d=new Date(v.releaseDate).getDate();if(!byDay[d])byDay[d]=[];byDay[d].push(v);});
+  const firstDay=new Date(calYear,calMonth-1,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth,0).getDate();
+  const today=new Date();
+  const dows=['日','月','火','水','木','金','土'];
+  let calHtml=`<div class="cal-wrap">
+    <div class="cal-nav">
+      <button onclick="calChangeMonth(-1)">&#8249;</button>
+      <div class="cal-month-label">${calYear}年${calMonth}月</div>
+      <button onclick="calChangeMonth(1)">&#8250;</button>
+    </div>
+    <div class="cal-grid">
+    ${dows.map((d,i)=>`<div class="cal-dow" style="${i===0?'color:#e53e3e':i===6?'color:#3182ce':''}">${d}</div>`).join('')}`;
+  let day=1,cells=firstDay+daysInMonth;
+  for(let i=0;i<Math.ceil(cells/7)*7;i++){
+    const col=i%7;
+    if(i<firstDay||day>daysInMonth){calHtml+=`<div class="cal-day other-month"></div>`;continue;}
+    const isToday=calYear===today.getFullYear()&&calMonth===today.getMonth()+1&&day===today.getDate();
+    const releases=byDay[day]||[];
+    const releasesHtml=releases.slice(0,3).map(v=>`<div class="cal-release ${isPurchased(v)?'purchased':''}" title="${escHtml(v.title)}">${escHtml(v.title.length>6?v.title.slice(0,5)+'…':v.title)}</div>`).join('');
+    const more=releases.length>3?`<div style="font-size:9px;color:#718096">+${releases.length-3}件</div>`:'';
+    calHtml+=`<div class="cal-day${isToday?' today':''}" style="${col===0?'color:#e53e3e':col===6?'color:#3182ce':''}"><div class="cal-day-num">${day}</div>${releasesHtml}${more}</div>`;
+    day++;
+  }
+  calHtml+=`</div></div>`;
+  document.getElementById('viewArea').innerHTML=calHtml;
+}
+function calChangeMonth(delta) {
+  calMonth+=delta;
+  if(calMonth>12){calMonth=1;calYear++;} if(calMonth<1){calMonth=12;calYear--;}
+  renderCalendar();
+}
+
+// ── Amazon PA-API Worker URL（デプロイ後に設定） ──
+const AMAZON_PA_WORKER_URL = '';
+
+// ── Amazon アフィリエイト ──
+function getAffilLink(v) {
+  const tag=userSettings.amazonTag||'';
+  if(v.asin) return 'https://www.amazon.co.jp/dp/'+v.asin+(tag?'?tag='+encodeURIComponent(tag):'');
+  const q=encodeURIComponent((v.title||'')+(v.volume?' 第'+v.volume+'巻':''));
+  return 'https://www.amazon.co.jp/s?k='+q+(tag?'&tag='+encodeURIComponent(tag):'');
+}
+
+// ── 楽天ブックス アフィリエイト ──
+const RAKUTEN_AFF_ID = '54f0afb4.96d0d3c0.54f0afb5.893704d6';
+const RAKUTEN_APP_ID = '02edcd4d-02f2-4b81-98f2-a0c88b0cfdd9';
+function getRakutenLink(v) {
+  // 1. APIから取得したアフィリエイトURL（最優先）
+  if (v.rakutenUrl) return v.rakutenUrl;
+  // 2. ISBNがあれば商品ページに直接リンク
+  const makeAffLink=target=>{const enc=encodeURIComponent(target);return 'https://hb.afl.rakuten.co.jp/hgc/'+RAKUTEN_AFF_ID+'/?pc='+enc+'&m='+enc;};
+  if (v.isbn) return makeAffLink('https://books.rakuten.co.jp/rb/'+v.isbn+'/');
+  // 3. タイトル+巻数で検索
+  const seriesTitle=(v.title)||(seriesList[v.seriesId]&&seriesList[v.seriesId].title)||'';
+  if(!seriesTitle) return 'https://books.rakuten.co.jp/';
+  const q=encodeURIComponent(seriesTitle+(v.volume?' 第'+v.volume+'巻':''));
+  return makeAffLink('https://books.rakuten.co.jp/search/?sWord='+q);
+}
+
+async function togglePublicSeries(id) {
+  if(!currentUser||!dbSeriesRef)return;
+  const s=seriesList[id]; if(!s)return;
+  const newPublic=!s.isPublic;
+  const pubRef=database.ref('public_catalog/'+id);
+  if(newPublic){
+    const pubData={
+      title:s.title,author:s.author||'',publisher:s.publisher||'',
+      genre:s.genre||'',completed:s.completed||false,rating:s.rating||0,
+      label:s.label||'',coverUrl:s.coverUrl||'',
+      ownerId:currentUser.uid,publishedAt:Date.now()
+    };
+    await pubRef.set(pubData);
+    await database.ref('public_config/amazonTag').set(userSettings.amazonTag||'');
+  } else {
+    await pubRef.remove();
+  }
+  await dbSeriesRef.child(id).update({isPublic:newPublic});
+  showSaved(); renderSeriesList();
+}
+
+// ── ユーティリティ ──
 function getMonthVolumes() {
-  return Object.entries(volumesList)
-    .map(([id, v]) => ({ id, ...v }))
-    .filter(v => {
-      if (!v.releaseDate) return false;
-      const d = new Date(v.releaseDate);
-      return d.getFullYear() === currentYear && d.getMonth() + 1 === currentMonth;
-    })
-    .sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+  return Object.entries(volumesList).map(([id,v])=>({id,...v})).filter(v=>{
+    if(!v.releaseDate)return false;
+    const d=new Date(v.releaseDate);
+    return d.getFullYear()===currentYear&&d.getMonth()+1===currentMonth&&passesGenreFilter(v);
+  });
 }
-
 function getSearchVolumes() {
-  const q = searchQuery.toLowerCase();
-  return Object.entries(volumesList)
-    .map(([id, v]) => ({ id, ...v }))
-    .filter(v => v.title && v.title.toLowerCase().includes(q))
-    .sort((a, b) => new Date(a.releaseDate) - new Date(b.releaseDate));
+  const q=searchQuery.toLowerCase();
+  return Object.entries(volumesList).map(([id,v])=>({id,...v})).filter(v=>{
+    if(!passesGenreFilter(v))return false;
+    const s=seriesList[v.seriesId]||{};
+    const haystack=[v.title,v.author,s.author,v.publisher,s.publisher,s.label,s.magazine].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(q);
+  });
 }
-
-function highlight(text, query) {
-  if (!query) return escHtml(text);
-  const escaped = escHtml(text);
-  const escapedQ = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return escaped.replace(
-    new RegExp(escapedQ, 'gi'),
-    m => `<mark style="background:#e9d8fd;color:#553c9a;border-radius:3px;padding:0 2px">${m}</mark>`
-  );
+function highlight(text,query) {
+  if(!query)return escHtml(text);
+  return escHtml(text).replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark style="background:#e9d8fd;color:#553c9a;border-radius:3px;padding:0 2px">${m}</mark>`);
 }
-
 function escHtml(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function gcalLink(v) {
+  if(!v.releaseDate)return '#';
+  const d=v.releaseDate.replace(/-/g,'');
+  const next=new Date(v.releaseDate); next.setDate(next.getDate()+1);
+  const d2=`${next.getFullYear()}${String(next.getMonth()+1).padStart(2,'0')}${String(next.getDate()).padStart(2,'0')}`;
+  const title=encodeURIComponent(`📚 ${v.title}${v.volume?' 第'+v.volume+'巻':''} 発売`);
+  return `https://calendar.google.com/calendar/r/eventedit?text=${title}&dates=${d}/${d2}`;
 }
 
-// ── 購入済みトグル ──
-function togglePurchased(id) {
-  if (!currentUser || !dbVolumesRef) return;
-  const v = volumesList[id];
-  if (!v) return;
-  dbVolumesRef.child(id).update({ purchased: !v.purchased }).then(showSaved);
+// ── ステータス切り替え ──
+function cycleStatus(id) {
+  if(!currentUser||!dbVolumesRef)return;
+  const v=volumesList[id]; if(!v)return;
+  const next=STATUS_CYCLE[getStatus(v)];
+  dbVolumesRef.child(id).update({status:next,purchased:next!=='none'}).then(showSaved);
 }
 
 // ── 削除 ──
 function deleteVolume(id) {
-  const v = volumesList[id];
-  if (!v) return;
-  const volStr = v.volume ? `第${v.volume}巻` : '';
-  if (!confirm(`「${v.title} ${volStr}」を削除しますか？`)) return;
+  const v=volumesList[id]; if(!v)return;
+  if(!confirm(`「${v.title}${v.volume?' 第'+v.volume+'巻':''}」を削除しますか？`))return;
   dbVolumesRef.child(id).remove().then(showSaved);
 }
 
-// ── 作品セレクト更新 ──
+// ── 作品セレクト ──
 function updateSeriesSelect() {
-  const sel = document.getElementById('seriesSelect');
-  const current = sel.value;
-  const sorted = Object.entries(seriesList).sort((a, b) => a[1].title.localeCompare(b[1].title, 'ja'));
-  sel.innerHTML = '<option value="">── 作品を選択 ──</option>' +
-    sorted.map(([id, s]) => `<option value="${id}">${escHtml(s.title)}</option>`).join('') +
+  const sel=document.getElementById('seriesSelect');
+  const cur=sel.value;
+  const sorted=Object.entries(seriesList).sort((a,b)=>a[1].title.localeCompare(b[1].title,'ja'));
+  sel.innerHTML='<option value="">── 作品を選択 ──</option>'+
+    sorted.map(([id,s])=>`<option value="${id}">${escHtml(s.title)}${s.completed?' [完結]':''}</option>`).join('')+
     '<option value="__new__">＋ 新しい作品を登録</option>';
-  if (current) sel.value = current;
+  if(cur) sel.value=cur;
+}
+function openSeriesDropdown() {
+  filterSeriesDropdown();
+  document.getElementById('seriesDropdown').style.display='';
+  document.addEventListener('click', closeSeriesDropdownOutside, {once:true, capture:true});
+}
+function closeSeriesDropdownOutside(e) {
+  const dd=document.getElementById('seriesDropdown');
+  const inp=document.getElementById('seriesSearchInput');
+  if(dd&&!dd.contains(e.target)&&e.target!==inp) dd.style.display='none';
+  else document.addEventListener('click', closeSeriesDropdownOutside, {once:true, capture:true});
+}
+function filterSeriesDropdown() {
+  const q=(document.getElementById('seriesSearchInput').value||'').trim().toLowerCase();
+  const dd=document.getElementById('seriesDropdown');
+  const sorted=Object.entries(seriesList).sort((a,b)=>a[1].title.localeCompare(b[1].title,'ja'));
+  const filtered=sorted.filter(([,s])=>!q||s.title.toLowerCase().includes(q));
+  const st='padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0ebff';
+  let html=filtered.map(([id,s])=>`<div style="${st}" onmousedown="selectSeriesItem('${id}','${s.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${escHtml(s.title)}${s.completed?' <span style="font-size:11px;color:#a0aec0">[完結]</span>':''}</div>`).join('');
+  const cur=(document.getElementById('seriesSearchInput').value||'').trim();
+  const newLabel=cur?`＋「${escHtml(cur)}」を新しく登録`:'＋ 新しい作品を登録';
+  html+=`<div style="${st};color:#6b46c1;font-weight:600" onmousedown="selectSeriesItem('__new__','')">${newLabel}</div>`;
+  html+='<div id="seriesApiSection"></div>';
+  dd.innerHTML=html;
+  dd.style.display='';
 }
 
+let _ssiTimer=null;
+function onSeriesSearchInput(){
+  filterSeriesDropdown();
+  clearTimeout(_ssiTimer);
+  const q=(document.getElementById('seriesSearchInput').value||'').trim();
+  if(q.length<2)return;
+  _ssiTimer=setTimeout(()=>searchBooksInline(q),500);
+}
+
+async function searchBooksInline(q){
+  const sec=document.getElementById('seriesApiSection'); if(!sec)return;
+  sec.innerHTML='<div style="padding:8px 14px;font-size:12px;color:#718096;border-top:1px solid #e9e0ff">🔍 書籍を検索中…</div>';
+  const qEnc=encodeURIComponent(q);
+  const settled=await Promise.allSettled([
+    fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=20').then(r=>r.json()),
+    Promise.resolve({Items:[]}),
+    fetch('https://itunes.apple.com/search?term='+qEnc+'&country=jp&media=ebook&limit=20').then(r=>r.json()),
+    ...(AMAZON_PA_WORKER_URL?[fetch(AMAZON_PA_WORKER_URL+'/search?keywords='+qEnc).then(r=>r.json())]:[] ),
+  ]);
+  const hanmotoItems=settled[0].status==='fulfilled'?(settled[0].value.books||[]).map(normHanmoto):[];
+  const rakutenItems=settled[1].status==='fulfilled'?((settled[1].value.Items||[]).map(i=>i.Item).map(normRakuten)):[];
+  const itunesItems=settled[2].status==='fulfilled'?(settled[2].value.results||[]).map(normItunes).filter(it=>it.price>0||it.releaseDate):[];
+  const amazonItems=AMAZON_PA_WORKER_URL&&settled[3]&&settled[3].status==='fulfilled'?((settled[3].value.SearchResult&&settled[3].value.SearchResult.Items)||[]).map(normAmazonPA):[];
+  const normKey=t=>t.replace(/[\s　\-－・【】「」]/g,'').toLowerCase();
+  const seen={};const merged=[];
+  [...amazonItems,...rakutenItems,...hanmotoItems,...itunesItems].forEach(item=>{
+    const key=normKey(item.title).substring(0,25);
+    if(!seen[key]){seen[key]=true;merged.push(item);}
+  });
+  const ql=normKey(q);
+  merged.sort((a,b)=>{
+    const sa=normKey(a.cleanTitle).startsWith(ql)?0:1;
+    const sb=normKey(b.cleanTitle).startsWith(ql)?0:1;
+    if(sa!==sb)return sa-sb;
+    return (b.price>0?1:0)-(a.price>0?1:0); // 価格ありを優先
+  });
+  window._inlineResults=merged.slice(0,12);
+  const sec2=document.getElementById('seriesApiSection'); if(!sec2)return;
+  if(!window._inlineResults.length){
+    sec2.innerHTML='<div style="padding:8px 14px;font-size:12px;color:#a0aec0;border-top:1px solid #e9e0ff">書籍が見つかりませんでした</div>';
+    return;
+  }
+  const st2='padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0ebff;display:flex;gap:8px;align-items:flex-start';
+  let h='<div style="padding:5px 14px;font-size:11px;color:#9b59b6;background:#faf5ff;font-weight:600;border-top:2px solid #e9e0ff">── 書籍データベース ──</div>';
+  window._inlineResults.forEach((item,i)=>{
+    const badge=item._src==='amazon'
+      ?'<span style="font-size:9px;background:#fff8e1;color:#e07b00;border-radius:3px;padding:1px 4px">Amazon</span>'
+      :item._src==='rakuten'
+      ?'<span style="font-size:9px;background:#ffe9e9;color:#bf0000;border-radius:3px;padding:1px 4px">楽天</span>'
+      :item._src==='hanmoto'
+      ?'<span style="font-size:9px;background:#fff3e0;color:#e65100;border-radius:3px;padding:1px 4px">版元</span>'
+      :'<span style="font-size:9px;background:#e3f2fd;color:#1565c0;border-radius:3px;padding:1px 4px">iTunes</span>';
+    const priceStr=item.price>0?` <span style="font-size:10px;color:#553c9a;font-weight:700">¥${item.price.toLocaleString()}</span>`:'';
+    const sub=[item.author,item.publisher,item.releaseDate?item.releaseDate.substring(0,7):''].filter(Boolean).join(' · ');
+    h+=`<div style="${st2}" onmousedown="selectBookInline(${i})"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap"><span style="font-weight:600">${escHtml(item.cleanTitle)}${item.volume?' '+item.volume+'巻':''}</span>${badge}${priceStr}</div>${sub?`<div style="font-size:11px;color:#718096;margin-top:2px">${escHtml(sub)}</div>`:''}</div></div>`;
+  });
+  sec2.innerHTML=h;
+}
+
+function parseNdl(xmlText){
+  if(!xmlText)return[];
+  try{
+    const doc=new DOMParser().parseFromString(xmlText,'text/xml');
+    return Array.from(doc.querySelectorAll('item')).map(item=>{
+      const get=tag=>{const el=item.getElementsByTagNameNS('http://purl.org/dc/elements/1.1/',tag)[0]||item.getElementsByTagNameNS('http://purl.org/dc/terms/',tag)[0];return el?el.textContent.trim():'';};
+      const rawTitle=(item.querySelector('title')||{}).textContent||get('title');
+      const ev=extractVolume(rawTitle.trim());
+      const issued=get('issued')||'';
+      return{_src:'ndl',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,author:normalizeAuthor(get('creator')),publisher:get('publisher'),label:'',magazine:'',price:0,releaseDate:issued.length>=7?issued.slice(0,7)+'-01':issued||'',thumb:'',isbn:''};
+    }).filter(it=>it.cleanTitle&&it.cleanTitle.length>0);
+  }catch(e){return[];}
+}
+
+function selectBookInline(idx){
+  const item=(window._inlineResults||[])[idx]; if(!item)return;
+  const normKey=t=>t.replace(/[\s　\-－・【】「」]/g,'').toLowerCase();
+  const match=Object.entries(seriesList).find(([,s])=>normKey(s.title)===normKey(item.cleanTitle));
+  document.getElementById('seriesSearchInput').value=item.cleanTitle;
+  document.getElementById('seriesDropdown').style.display='none';
+  if(match){
+    document.getElementById('seriesSelect').value=match[0];
+  }else{
+    document.getElementById('seriesSelect').value='__new__';
+    document.getElementById('newSeriesTitle').value=item.cleanTitle;
+    document.getElementById('newSeriesAuthor').value=item.author||'';
+    document.getElementById('newSeriesPublisher').value=item.publisher||'';
+    document.getElementById('newSeriesLabel').value=item.label||'';
+    document.getElementById('newSeriesMagazine').value=item.magazine||'';
+    document.getElementById('newSeriesCoverUrl').value=item.thumb||'';
+    if(item.price>0)document.getElementById('newSeriesPrice').value=item.price;
+  }
+  document.getElementById('editRakutenUrl').value=item.rakutenUrl||'';
+  document.getElementById('editAsin').value=item.asin||'';
+  document.getElementById('editIsbn').value=item.isbn||'';
+  onSeriesChange();
+  // onSeriesChange後にAPI取得値で確実に上書き（既存/新規シリーズ両方）
+  if(item.volume)document.getElementById('volumeNum').value=item.volume;
+  if(item.releaseDate)document.getElementById('releaseDate').value=item.releaseDate;
+  // 価格：price フィールドに常にセット（最優先）
+  if(item.price>0){
+    document.getElementById('price').value=item.price;
+    document.getElementById('newSeriesPrice').value=item.price;
+  }
+  // 出版社：publisher（非表示時でも値を保持）と newSeriesPublisher（表示）両方にセット
+  if(item.publisher){
+    document.getElementById('publisher').value=item.publisher;
+    document.getElementById('newSeriesPublisher').value=item.publisher;
+  }
+}
+function selectSeriesItem(id, title) {
+  const inp=document.getElementById('seriesSearchInput');
+  if(id==='__new__'){
+    document.getElementById('newSeriesTitle').value=inp.value.trim();
+    // 手動で「新規」を選んだ場合はprice/publisherをクリア
+    document.getElementById('publisher').value='';
+    document.getElementById('price').value='';
+  } else {
+    inp.value=title;
+    document.getElementById('newSeriesTitle').value=title;
+  }
+  document.getElementById('seriesSelect').value=id;
+  document.getElementById('seriesDropdown').style.display='none';
+  onSeriesChange();
+}
+function getNextVolumeNum(seriesId) {
+  const vols=Object.values(volumesList).filter(v=>v.seriesId===seriesId&&v.volume);
+  if(vols.length===0)return 1;
+  const nums=vols.map(v=>parseInt(v.volume,10)).filter(n=>!isNaN(n));
+  return nums.length>0?Math.max(...nums)+1:1;
+}
 function onSeriesChange() {
-  const val = document.getElementById('seriesSelect').value;
-  const newFields = document.getElementById('newSeriesFields');
-  if (val === '__new__') {
-    newFields.style.display = '';
-    document.getElementById('publisher').value = '';
-    document.getElementById('price').value     = '';
-  } else if (val && seriesList[val]) {
-    newFields.style.display = 'none';
-    document.getElementById('publisher').value = seriesList[val].publisher || '';
-    document.getElementById('price').value     = seriesList[val].price     || '';
+  const val=document.getElementById('seriesSelect').value;
+  const nf=document.getElementById('newSeriesFields');
+  const editId=document.getElementById('editVolumeId').value;
+  const pubWrap=document.getElementById('volumePublisherWrap');
+  const authWrap=document.getElementById('volumeAuthorWrap');
+  if(val==='__new__'){
+    nf.style.display='';
+    if(pubWrap)pubWrap.style.display='none';
+    if(authWrap)authWrap.style.display='none';
+  } else if(val&&seriesList[val]){
+    nf.style.display='none';
+    if(pubWrap)pubWrap.style.display='';
+    if(authWrap)authWrap.style.display='';
+    document.getElementById('publisher').value=seriesList[val].publisher||'';
+    document.getElementById('price').value=seriesList[val].price||'';
+    document.getElementById('volumeAuthor').value=seriesList[val].author||'';
+    if(!editId){document.getElementById('volumeNum').value=getNextVolumeNum(val);}
   } else {
-    newFields.style.display = 'none';
-    document.getElementById('publisher').value = '';
-    document.getElementById('price').value     = '';
+    nf.style.display='none';
+    if(pubWrap)pubWrap.style.display='';
+    if(authWrap)authWrap.style.display='';
+    document.getElementById('publisher').value='';
   }
 }
 
-// ── 新刊追加モーダル ──
+// ── モーダル開閉 ──
 function openAddModal() {
-  document.getElementById('addModalTitle').textContent = '📖 新刊を追加';
-  document.getElementById('editVolumeId').value = '';
-  document.getElementById('seriesSelect').value = '';
-  document.getElementById('newSeriesFields').style.display = 'none';
-  document.getElementById('newSeriesTitle').value     = '';
-  document.getElementById('newSeriesPublisher').value = '';
-  document.getElementById('newSeriesPrice').value     = '';
-  document.getElementById('volumeNum').value   = '';
-  document.getElementById('publisher').value   = '';
-  document.getElementById('price').value       = '';
-  const today = new Date();
-  document.getElementById('releaseDate').value =
-    `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
+  document.getElementById('addModalTitle').textContent='📖 新刊を追加';
+  document.getElementById('editVolumeId').value='';
+  ['seriesSelect','volumeNum','publisher','price','volumeMemo','volumeAuthor'].forEach(id=>document.getElementById(id).value='');
+  const _si=document.getElementById('seriesSearchInput'); if(_si)_si.value='';
+  document.getElementById('newSeriesFields').style.display='none';
+  const _pw=document.getElementById('volumePublisherWrap'); if(_pw)_pw.style.display='';
+  const _aw=document.getElementById('volumeAuthorWrap'); if(_aw)_aw.style.display='';
+  ['newSeriesTitle','newSeriesAuthor','newSeriesPublisher','newSeriesPrice','newSeriesLabel','newSeriesMagazine','newSeriesCoverUrl'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('editRakutenUrl').value='';
+  document.getElementById('editAsin').value='';
+  document.getElementById('editIsbn').value='';
+  document.getElementById('btnApiRefetch').style.display='none';
+  document.getElementById('apiRefetchStatus').style.display='none';
+  document.getElementById('newSeriesGenre').value=''; document.getElementById('newSeriesCompleted').value='';
+  document.getElementById('budgetWarning').classList.remove('show');
+  const today=new Date();
+  document.getElementById('releaseDate').value=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-01`;
   document.getElementById('addModal').classList.remove('hidden');
 }
-
 function openEditModal(id) {
-  const v = volumesList[id];
-  if (!v) return;
-  document.getElementById('addModalTitle').textContent = '✎ 新刊を編集';
-  document.getElementById('editVolumeId').value = id;
-  document.getElementById('seriesSelect').value = v.seriesId || '';
-  document.getElementById('newSeriesFields').style.display = 'none';
-  document.getElementById('volumeNum').value   = v.volume      || '';
-  document.getElementById('releaseDate').value = v.releaseDate || '';
-  document.getElementById('publisher').value   = v.publisher   || '';
-  document.getElementById('price').value       = v.price       || '';
+  const v=volumesList[id]; if(!v)return;
+  document.getElementById('addModalTitle').textContent='✎ 新刊を編集';
+  document.getElementById('editVolumeId').value=id;
+  const _ssi=document.getElementById('seriesSearchInput');
+  const _sv=v.seriesId||'';
+  const series=seriesList[_sv]||{};
+  document.getElementById('seriesSelect').value=_sv;
+  if(_ssi)_ssi.value=series.title||'';
+  document.getElementById('newSeriesFields').style.display='none';
+  const _pw=document.getElementById('volumePublisherWrap'); if(_pw)_pw.style.display='';
+  const _aw=document.getElementById('volumeAuthorWrap'); if(_aw)_aw.style.display='';
+  document.getElementById('volumeNum').value=v.volume||'';
+  document.getElementById('releaseDate').value=v.releaseDate||'';
+  document.getElementById('publisher').value=v.publisher||series.publisher||'';
+  document.getElementById('price').value=v.price||'';
+  document.getElementById('volumeMemo').value=v.memo||'';
+  document.getElementById('volumeAuthor').value=v.author||series.author||'';
+  document.getElementById('editRakutenUrl').value=v.rakutenUrl||'';
+  document.getElementById('editAsin').value=v.asin||'';
+  document.getElementById('editIsbn').value=v.isbn||'';
+  document.getElementById('budgetWarning').classList.remove('show');
+  document.getElementById('btnApiRefetch').style.display='';
+  document.getElementById('apiRefetchStatus').style.display='none';
+  document.getElementById('apiRefetchStatus').textContent='';
   document.getElementById('addModal').classList.remove('hidden');
 }
+function openNextVolumeModal(id) {
+  const v=volumesList[id]; if(!v)return;
+  document.getElementById('addModalTitle').textContent='📖 次巻を追加';
+  document.getElementById('editVolumeId').value='';
+  const _ssi2=document.getElementById('seriesSearchInput');
+  const _sv2=v.seriesId||'';
+  document.getElementById('seriesSelect').value=_sv2;
+  if(_ssi2)_ssi2.value=(_sv2&&seriesList[_sv2])?seriesList[_sv2].title:'';
+  document.getElementById('newSeriesFields').style.display='none';
+  document.getElementById('publisher').value=v.publisher||'';
+  document.getElementById('price').value=v.price||'';
+  document.getElementById('volumeMemo').value='';
+  document.getElementById('volumeAuthor').value=seriesList[v.seriesId]?.author||v.author||'';
+  document.getElementById('editRakutenUrl').value='';
+  document.getElementById('editAsin').value='';
+  document.getElementById('editIsbn').value='';
+  document.getElementById('budgetWarning').classList.remove('show');
+  const numVol=parseInt(v.volume,10);
+  document.getElementById('volumeNum').value=isNaN(numVol)?'':(numVol+1).toString();
+  document.getElementById('releaseDate').value='';
+  document.getElementById('addModal').classList.remove('hidden');
+}
+function closeAddModal() {
+  document.getElementById('addModal').classList.add('hidden');
+  document.getElementById('releaseDateResults').innerHTML='';
+}
 
-function closeAddModal() { document.getElementById('addModal').classList.add('hidden'); }
+// ── 巻数抽出ユーティリティ ──
+function extractVolumeFromTitle(title) {
+  const m=title.match(/[第]?\s*([\d０-９]+)\s*[巻冊]?[\s　]*$/);
+  if(!m)return '';
+  return m[1].replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+}
+function normalizeVolume(vol) {
+  if(!vol)return '';
+  return String(vol).replace(/[第巻冊\s　]/g,'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+}
 
-async function saveVolume() {
-  if (!currentUser || !dbVolumesRef) return;
+// ── 発売日検索 ──
+async function searchReleaseDate() {
+  const seriesId=document.getElementById('seriesSelect').value;
+  const volumeNum=document.getElementById('volumeNum').value.trim();
+  let title='';
+  if(seriesId&&seriesList[seriesId]) title=seriesList[seriesId].title;
+  else if(seriesId==='__new__') title=document.getElementById('newSeriesTitle').value.trim();
+  if(!title){alert('先に作品を選択してください');return;}
+  const el=document.getElementById('releaseDateResults');
+  el.innerHTML='<div style="font-size:12px;color:#718096;padding:4px">検索中...</div>';
+  const normKey=t=>t.replace(/[\s　\-－・【】「」（）()]/g,'').toLowerCase();
+  const nTitle=normKey(title);
+  const matchesTitle=t=>{const n=normKey(t);return n.includes(nTitle)||nTitle.includes(n);};
+  const q=volumeNum?`${title} ${volumeNum}巻`:title;
+  const qEnc=encodeURIComponent(q);
+  const results=[];
 
-  const editId      = document.getElementById('editVolumeId').value;
-  const seriesId    = document.getElementById('seriesSelect').value;
-  const releaseDate = document.getElementById('releaseDate').value;
-  const volumeNum   = document.getElementById('volumeNum').value.trim();
-  const publisher   = document.getElementById('publisher').value.trim();
-  const price       = parseFloat(document.getElementById('price').value) || 0;
+  // 楽天ブックス＋OpenBD 並列実行
+  const [rRes,oRes]=await Promise.allSettled([
+    Promise.resolve({Items:[]}),
+    fetch('https://api.openbd.jp/v1/search?title='+qEnc+'&limit=20').then(r=>r.json())
+  ]);
 
-  if (!releaseDate) { alert('発売日を入力してください'); return; }
-
-  let resolvedSeriesId = seriesId;
-  let resolvedTitle    = '';
-
-  if (seriesId === '__new__') {
-    const newTitle = document.getElementById('newSeriesTitle').value.trim();
-    if (!newTitle) { alert('作品タイトルを入力してください'); return; }
-    const newPub   = document.getElementById('newSeriesPublisher').value.trim();
-    const newPrice = parseFloat(document.getElementById('newSeriesPrice').value) || 0;
-    const newRef   = dbSeriesRef.push();
-    resolvedSeriesId = newRef.key;
-    resolvedTitle    = newTitle;
-    await newRef.set({ title: newTitle, publisher: newPub, price: newPrice });
-  } else if (seriesId && seriesList[seriesId]) {
-    resolvedTitle = seriesList[seriesId].title;
-  } else {
-    alert('作品を選択してください'); return;
+  // 楽天ブックス（タイトルフィルタあり）
+  if(rRes.status==='fulfilled'){
+    (rRes.value.Items||[]).map(i=>normRakuten(i.Item)).filter(it=>matchesTitle(it.cleanTitle)).forEach(it=>{
+      if(!it.releaseDate)return;
+      const d=new Date(it.releaseDate); if(isNaN(d))return;
+      results.push({date:it.releaseDate,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),bookTitle:it.title,volume:it.volume,publisher:it.publisher,author:it.author,price:it.price||0,_src:'rakuten'});
+    });
   }
 
-  const data = {
-    seriesId:    resolvedSeriesId,
-    title:       resolvedTitle,
-    volume:      volumeNum,
-    releaseDate,
-    publisher,
-    price,
-    purchased:   editId ? (volumesList[editId]?.purchased || false) : false
+  // OpenBD（タイトルフィルタあり）
+  if(oRes.status==='fulfilled'&&Array.isArray(oRes.value)){
+    oRes.value.filter(item=>matchesTitle(item.title||'')).forEach(item=>{
+      const pd=item.pubdate||''; if(pd.length<8)return;
+      const norm=`${pd.slice(0,4)}-${pd.slice(4,6)}-${pd.slice(6,8)}`;
+      const d=new Date(norm); if(isNaN(d))return;
+      const vol=normalizeVolume(item.volume)||extractVolumeFromTitle(item.title||'');
+      results.push({date:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),bookTitle:item.title||'',volume:vol,publisher:item.publisher||'',author:item.author||'',_src:'openbd'});
+    });
+  }
+
+  // iTunes フォールバック
+  if(results.length===0){
+    try{
+      const data=await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&country=jp&media=ebook&limit=20`).then(r=>r.json());
+      (data.results||[]).filter(item=>matchesTitle(item.trackName||'')).forEach(item=>{
+        if(!item.releaseDate)return;
+        const d=new Date(item.releaseDate); if(isNaN(d))return;
+        const norm=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        results.push({date:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),bookTitle:item.trackName||'',volume:extractVolumeFromTitle(item.trackName||''),_src:'itunes'});
+      });
+    }catch(e){}
+  }
+
+  // 重複排除（日付+巻数）・降順ソート
+  const seen=new Set();
+  const unique=results
+    .filter(r=>{const k=r.date+(r.volume||'');if(seen.has(k))return false;seen.add(k);return true;})
+    .sort((a,b)=>b.date.localeCompare(a.date));
+
+  if(unique.length===0){el.innerHTML='<div style="font-size:12px;color:#a0aec0;padding:4px">見つかりませんでした（手動で入力してください）</div>';return;}
+  el.innerHTML='';
+  unique.forEach(r=>{
+    const volLabel=r.volume?` <span style="color:#553c9a;font-weight:700">第${r.volume}巻</span>`:'';
+    const srcBadge=r._src==='rakuten'
+      ?'<span style="font-size:9px;background:#ffe9e9;color:#bf0000;border-radius:3px;padding:1px 4px;margin-left:4px">楽天</span>'
+      :r._src==='openbd'
+      ?'<span style="font-size:9px;background:#e8f5e9;color:#2e7d32;border-radius:3px;padding:1px 4px;margin-left:4px">OpenBD</span>':'';
+    const div=document.createElement('div'); div.className='release-date-item';
+    div.innerHTML=`<div class="rdi-date">${r.label}${volLabel}${srcBadge}</div><div class="rdi-title">${escHtml(r.bookTitle)}</div>`;
+    div.addEventListener('click',()=>{
+      document.getElementById('releaseDate').value=r.date;
+      if(r.volume) document.getElementById('volumeNum').value=r.volume;
+      if(r.publisher){document.getElementById('publisher').value=r.publisher;document.getElementById('newSeriesPublisher').value=r.publisher;}
+      if(r.author) document.getElementById('newSeriesAuthor').value=r.author;
+      if(r.price>0){document.getElementById('price').value=r.price;document.getElementById('newSeriesPrice').value=r.price;}
+      el.innerHTML='';
+    });
+    el.appendChild(div);
+  });
+}
+
+// ── APIで書籍情報を再取得（編集中の場合はFirebaseにも即保存）──
+async function refetchBookInfo() {
+  const editId=document.getElementById('editVolumeId').value;
+  const seriesId=document.getElementById('seriesSelect').value;
+  const seriesTitle=(seriesList[seriesId]&&seriesList[seriesId].title)||document.getElementById('seriesSearchInput').value.trim();
+  const volNum=document.getElementById('volumeNum').value.trim();
+  if(!seriesTitle){alert('作品名が取得できませんでした');return;}
+  const statusEl=document.getElementById('apiRefetchStatus');
+  const btn=document.getElementById('btnApiRefetch');
+  btn.disabled=true; btn.textContent='🔄 検索中…';
+  statusEl.style.display=''; statusEl.textContent='';
+
+  const best=await fetchBestBookCandidate(seriesTitle, volNum);
+  if(!best){statusEl.textContent='❌ 書籍情報が見つかりませんでした';btn.disabled=false;btn.textContent='🔄 APIで再取得';return;}
+
+  // フォームフィールドを更新
+  const updated=[];
+  if(best.releaseDate){document.getElementById('releaseDate').value=best.releaseDate;updated.push('発売日');}
+  if(best.price>0){document.getElementById('price').value=best.price;document.getElementById('newSeriesPrice').value=best.price;updated.push('価格¥'+best.price);}
+  if(best.publisher){document.getElementById('publisher').value=best.publisher;document.getElementById('newSeriesPublisher').value=best.publisher;updated.push('出版社');}
+  if(best.author){document.getElementById('volumeAuthor').value=best.author;document.getElementById('newSeriesAuthor').value=best.author;updated.push('作者');}
+  if(best.rakutenUrl){document.getElementById('editRakutenUrl').value=best.rakutenUrl;updated.push('楽天URL');}
+  if(best.isbn){document.getElementById('editIsbn').value=best.isbn;updated.push('ISBN');}
+  if(best.thumb&&seriesId!=='__new__'&&seriesList[seriesId]&&!seriesList[seriesId].coverUrl){
+    document.getElementById('newSeriesCoverUrl').value=best.thumb;
+  }
+
+  // 既存巻の編集中はFirebaseに即保存
+  if(editId&&dbVolumesRef&&updated.length>0){
+    const saves={};
+    if(best.price>0) saves.price=best.price;
+    if(best.releaseDate) saves.releaseDate=best.releaseDate;
+    if(best.publisher) saves.publisher=best.publisher;
+    if(best.author) saves.author=best.author;
+    if(best.rakutenUrl) saves.rakutenUrl=best.rakutenUrl;
+    if(best.isbn) saves.isbn=best.isbn;
+    await dbVolumesRef.child(editId).update(saves);
+    showSaved();
+  }
+
+  statusEl.textContent=updated.length?'✅ 保存しました: '+updated.join('・'):'ℹ️ 更新できる項目がありませんでした';
+  btn.disabled=false; btn.textContent='🔄 APIで再取得';
+}
+
+// ── 書籍APIで最良候補を取得 ──
+async function fetchBestBookCandidate(seriesTitle, volNum) {
+  const normKey=t=>t.replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
+  const ns=normKey(seriesTitle);
+  const volStr=String(volNum||'');
+
+  // マッチ判定：先頭4文字一致 or 相互includes
+  const matchFilter=it=>{
+    const nc=normKey(it.cleanTitle), nt=normKey(it.title);
+    if(nc===ns||nt===ns) return true;
+    if(nt.includes(ns)||ns.includes(nt)) return true;
+    if(nc.length>=3&&(ns.includes(nc)||nc.includes(ns))) return true;
+    if(ns.length>=4&&nc.length>=4&&ns.slice(0,4)===nc.slice(0,4)) return true;
+    return false;
   };
 
-  if (editId) {
-    await dbVolumesRef.child(editId).set(data);
-  } else {
-    await dbVolumesRef.push(data);
+  const pickBest=items=>{
+    const cs=items.filter(matchFilter);
+    if(!cs.length) return null;
+    return cs.find(it=>String(it.volume)===volStr)
+      ||cs.find(it=>it.volume&&volStr&&normKey(String(it.volume))===normKey(volStr))
+      ||cs[0];
+  };
+
+  // 1st pass: 楽天(title+keyword)・版元・GoogleBooks 並列
+  const qEnc=encodeURIComponent(seriesTitle);
+  const [rTRes,rKRes,hmRes,gbRes]=await Promise.allSettled([
+    Promise.resolve({Items:[]}),
+    Promise.resolve({Items:[]}),
+    fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=30').then(r=>r.json()),
+    fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
+  ]);
+  const rT=rTRes.status==='fulfilled'?((rTRes.value.Items||[]).map(i=>i.Item).map(normRakuten)):[];
+  const rK=rKRes.status==='fulfilled'?((rKRes.value.Items||[]).map(i=>i.Item).map(normRakuten)):[];
+  const seenR=new Set();
+  const rakutenAll=[...rT,...rK].filter(it=>{const k=it.isbn||it.title;if(seenR.has(k))return false;seenR.add(k);return true;});
+  const allItems=[
+    ...rakutenAll,
+    ...(hmRes.status==='fulfilled'?(hmRes.value.books||[]).map(normHanmoto):[]),
+    ...(gbRes.status==='fulfilled'?(gbRes.value.items||[]).map(normGbooks):[]),
+  ];
+  const best1=pickBest(allItems);
+  if(best1) return best1;
+
+  // 2nd pass: 先頭5文字で再検索（英数字混じりタイトル対策）
+  const shortTitle=seriesTitle.replace(/[a-zA-Z]+/g,'').trim().slice(0,5);
+  if(shortTitle.length>=2&&shortTitle!==seriesTitle){
+    try{
+      const q2=encodeURIComponent(shortTitle);
+      const r2=await Promise.resolve({Items:[]});
+      const items2=(r2.Items||[]).map(i=>i.Item).map(normRakuten);
+      const best2=pickBest(items2);
+      if(best2) return best2;
+    }catch(e){}
+  }
+  return null;
+}
+
+// ── 発売リストから直接API更新 ──
+async function quickUpdateVolume(id) {
+  if(!currentUser||!dbVolumesRef)return;
+  const v=volumesList[id]; if(!v)return;
+  const btn=document.getElementById('updbtn_'+id);
+  if(btn){btn.textContent='⏳';btn.disabled=true;}
+
+  const seriesTitle=v.title||(seriesList[v.seriesId]&&seriesList[v.seriesId].title)||'';
+  if(!seriesTitle){if(btn){btn.textContent='🔄';btn.disabled=false;}return;}
+
+  const best=await fetchBestBookCandidate(seriesTitle, v.volume);
+
+  if(!best){
+    if(btn){btn.textContent='❌';setTimeout(()=>{btn.textContent='🔄';btn.disabled=false;},2000);}
+    return;
   }
 
-  showSaved();
-  closeAddModal();
+  // 価格・出版社・作者は常に上書き、発売日は楽天優先で上書き
+  const updates={};
+  if(best.price>0) updates.price=best.price;
+  if(best.releaseDate&&(!v.releaseDate||best._src==='rakuten')) updates.releaseDate=best.releaseDate;
+  if(best.publisher) updates.publisher=best.publisher;
+  if(best.author) updates.author=best.author;
+  if(best.rakutenUrl) updates.rakutenUrl=best.rakutenUrl;
+  if(best.isbn) updates.isbn=best.isbn;
 
-  // 追加した月に移動
-  const d = new Date(releaseDate);
-  currentYear  = d.getFullYear();
-  currentMonth = d.getMonth() + 1;
+  if(Object.keys(updates).length===0){
+    if(btn){btn.textContent='✓';setTimeout(()=>{btn.textContent='🔄';btn.disabled=false;},1500);}
+    return;
+  }
+
+  await dbVolumesRef.child(id).update(updates);
+  showSaved();
+  if(btn){btn.textContent='✅';setTimeout(()=>{btn.textContent='🔄';btn.disabled=false;},1500);}
+}
+
+// ── 保存（重複チェック付き） ──
+async function saveVolume() {
+  if(!currentUser||!dbVolumesRef)return;
+  const editId=document.getElementById('editVolumeId').value;
+  const seriesId=document.getElementById('seriesSelect').value;
+  const releaseDate=document.getElementById('releaseDate').value;
+  const volumeNum=document.getElementById('volumeNum').value.trim();
+  const publisher=document.getElementById('publisher').value.trim()||(seriesId==='__new__'?document.getElementById('newSeriesPublisher').value.trim():(seriesList[seriesId]?.publisher||''));
+  const author=document.getElementById('volumeAuthor').value.trim()||(seriesId!=='__new__'?(seriesList[seriesId]?.author||''):(document.getElementById('newSeriesAuthor').value.trim()));
+  const price=parseFloat(document.getElementById('price').value)||0;
+  const memo=document.getElementById('volumeMemo').value.trim();
+  const rakutenUrl=(document.getElementById('editRakutenUrl').value||'').trim();
+  const asin=(document.getElementById('editAsin').value||'').trim();
+  const isbn=(document.getElementById('editIsbn').value||'').trim();
+  // releaseDate は未定でも登録可（空欄許可）
+  let resolvedSeriesId=seriesId, resolvedTitle='';
+  if(seriesId==='__new__'){
+    const newTitle=(document.getElementById('newSeriesTitle').value||document.getElementById('seriesSearchInput').value||'').trim();
+    if(!newTitle){alert('作品タイトルを入力してください');return;}
+    // 同名シリーズの重複チェック
+    const normT=t=>t.replace(/[\s　]/g,'').toLowerCase();
+    const dupSeries=Object.entries(seriesList).find(([,s])=>normT(s.title)===normT(newTitle));
+    if(dupSeries){
+      if(!confirm(`「${newTitle}」は既に登録されています（既存シリーズに追加します）。\n続けて新規登録しますか？`)){
+        // 既存シリーズを選択して続行
+        document.getElementById('seriesSelect').value=dupSeries[0];
+        document.getElementById('seriesSearchInput').value=dupSeries[1].title;
+        onSeriesChange(); return;
+      }
+    }
+    const newAuthor=document.getElementById('newSeriesAuthor').value.trim();
+    const newPub=document.getElementById('newSeriesPublisher').value.trim();
+    const newPrice=parseFloat(document.getElementById('newSeriesPrice').value)||0;
+    const newGenre=document.getElementById('newSeriesGenre').value;
+    const newCompleted=document.getElementById('newSeriesCompleted').value==='1';
+    const newRef=dbSeriesRef.push();
+    resolvedSeriesId=newRef.key; resolvedTitle=newTitle;
+    const newLabel=document.getElementById('newSeriesLabel').value.trim();
+    const newMagazine=document.getElementById('newSeriesMagazine').value.trim();
+    const newCoverUrl=document.getElementById('newSeriesCoverUrl').value.trim();
+    await newRef.set({title:newTitle,author:newAuthor,publisher:newPub,price:newPrice,genre:newGenre,completed:newCompleted,rating:0,label:newLabel,magazine:newMagazine,coverUrl:newCoverUrl});
+  } else if(seriesId&&seriesList[seriesId]){
+    resolvedTitle=seriesList[seriesId].title;
+  } else {alert('作品を選択してください');return;}
+
+  // 重複チェック
+  if(volumeNum) {
+    const dup=Object.entries(volumesList).find(([id,v])=>id!==editId&&v.seriesId===resolvedSeriesId&&v.volume===volumeNum);
+    if(dup&&!confirm(`「${resolvedTitle} 第${volumeNum}巻」はすでに登録されています。\n続けて登録しますか？`))return;
+  }
+
+  const data={seriesId:resolvedSeriesId,title:resolvedTitle,volume:volumeNum,releaseDate,publisher,author,price,memo,rakutenUrl,asin,isbn,status:editId?(volumesList[editId]?.status||'none'):'none',purchased:false};
+  if(editId){await dbVolumesRef.child(editId).set({...data,status:volumesList[editId]?.status||'none',purchased:volumesList[editId]?.purchased||false});}
+  else{await dbVolumesRef.push(data);}
+  showSaved(); closeAddModal();
+  if(releaseDate){const d=new Date(releaseDate);if(!isNaN(d)){currentYear=d.getFullYear();currentMonth=d.getMonth()+1;}}
 }
 
 // ── 作品管理モーダル ──
-function openSeriesModal() {
-  renderSeriesList();
-  document.getElementById('seriesModal').classList.remove('hidden');
-}
+let _seriesGenreFilter='';
+function openSeriesModal() { _seriesGenreFilter=''; renderSeriesList(); document.getElementById('seriesModal').classList.remove('hidden'); }
 function closeSeriesModal() { document.getElementById('seriesModal').classList.add('hidden'); }
-
+function setSeriesGenreFilter(g) { _seriesGenreFilter=g; renderSeriesList(); }
 function renderSeriesList() {
-  const el = document.getElementById('seriesListEl');
-  const sorted = Object.entries(seriesList).sort((a, b) => a[1].title.localeCompare(b[1].title, 'ja'));
-  if (sorted.length === 0) {
-    el.innerHTML = '<div class="series-empty">登録作品がありません</div>';
-    return;
+  const el=document.getElementById('seriesListEl');
+  // ジャンルフィルタータブ生成
+  const genres=['少年','少女','青年','女性','全年齢'];
+  const all=Object.values(seriesList);
+  const counts={};
+  genres.forEach(g=>{counts[g]=all.filter(s=>s.genre===g).length;});
+  counts['未設定']=all.filter(s=>!s.genre).length;
+  const tabStyle=(active)=>`padding:4px 10px;border-radius:20px;border:1px solid ${active?'#9b59b6':'#e2d9f3'};background:${active?'#9b59b6':'#faf5ff'};color:${active?'#fff':'#6b46c1'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}`;
+  const filterWrap=document.getElementById('seriesGenreFilterWrap');
+  if(filterWrap){
+    filterWrap.innerHTML=[
+      {label:`すべて (${all.length})`,val:''},
+      ...genres.filter(g=>counts[g]>0).map(g=>({label:`${g} (${counts[g]})`,val:g})),
+      ...(counts['未設定']>0?[{label:`未設定 (${counts['未設定']})`,val:'__none__'}]:[])
+    ].map(t=>`<button style="${tabStyle(_seriesGenreFilter===t.val)}" onclick="setSeriesGenreFilter('${t.val}')">${escHtml(t.label)}</button>`).join('');
   }
-  el.innerHTML = sorted.map(([id, s]) => {
-    const sub = [s.publisher, s.price ? `¥${Number(s.price).toLocaleString()}` : ''].filter(Boolean).join(' · ');
-    return `<div class="series-item">
-      <div class="series-item-info">
-        <div class="series-item-title">${escHtml(s.title)}</div>
-        ${sub ? `<div class="series-item-sub">${escHtml(sub)}</div>` : ''}
+  const filtered=Object.entries(seriesList).filter(([,s])=>{
+    if(_seriesGenreFilter==='')return true;
+    if(_seriesGenreFilter==='__none__')return !s.genre;
+    return s.genre===_seriesGenreFilter;
+  });
+  const sorted=filtered.sort((a,b)=>a[1].title.localeCompare(b[1].title,'ja'));
+  if(sorted.length===0){el.innerHTML=`<div class="series-empty">${_seriesGenreFilter?'該当する作品がありません':'登録作品がありません'}</div>`;return;}
+  el.innerHTML=sorted.map(([id,s])=>{
+    const sub=[s.author,s.publisher,s.genre,s.price?`¥${Number(s.price).toLocaleString()}`:''].filter(Boolean).join(' · ');
+    const rating=s.rating||0;
+    const starsHtml=`<span class="stars">${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</span>`;
+    const completedBadge=s.completed?`<span class="completed-badge">完結</span>`:'';
+    return `<div class="series-item" id="si_${id}">
+      <div class="series-item-row">
+        <div class="series-item-info">
+          <div class="series-item-title">${escHtml(s.title)}${completedBadge}</div>
+          <div class="star-inline" id="sti_${id}">${[1,2,3,4,5].map(n=>`<span id="istar_${id}_${n}" class="${n<=rating?'on':''}" onclick="setInlineRating('${id}',${n})" title="${n}★">${n<=rating?'★':'☆'}</span>`).join('')}</div>
+          ${sub?`<div class="series-item-sub">${escHtml(sub)}</div>`:''}
+        </div>
+        <button class="btn-icon" onclick="openNextVolumeFromSeries('${id}')" title="次巻を追加" style="color:#6b46c1;font-size:16px;font-weight:700">＋</button>
+        <button class="btn-icon ${s.isPublic?'public-on':'public-off'}" onclick="togglePublicSeries('${id}')" title="${s.isPublic?'公開中（クリックで非公開に）':'クリックで公開サイトに掲載'}">🌐</button>
+        <button class="btn-icon edit" onclick="toggleSeriesEdit('${id}')" title="編集">✎</button>
+        <button class="btn-icon" onclick="deleteSeries('${id}')" title="削除">✕</button>
       </div>
-      <button class="btn-icon" onclick="deleteSeries('${id}')" title="削除">✕</button>
+      <div class="series-edit-form" id="sef_${id}">
+        <div class="form-row">
+          <div class="form-group" style="margin:0"><label>ジャンル</label>
+            <select id="seg_${id}">
+              <option value="">未設定</option>
+              ${['少年','少女','青年','女性','全年齢'].map(g=>`<option value="${g}" ${s.genre===g?'selected':''}>${g}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="margin:0"><label>完結</label>
+            <select id="sec_${id}">
+              <option value="">連載中</option>
+              <option value="1" ${s.completed?'selected':''}>完結済み</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:10px"><label>作者名</label>
+          <input type="text" id="sea_${id}" value="${escHtml(s.author||'')}" placeholder="例: 吾峠呼世晴">
+        </div>
+        <div class="form-group" style="margin-top:10px"><label>出版社</label>
+          <input type="text" id="sep_${id}" value="${escHtml(s.publisher||'')}" placeholder="例: 集英社">
+        </div>
+        <div class="form-row" style="margin-top:10px">
+          <div class="form-group" style="margin:0"><label>レーベル</label>
+            <input type="text" id="sel_${id}" value="${escHtml(s.label||'')}" placeholder="例: ジャンプコミックス">
+          </div>
+          <div class="form-group" style="margin:0"><label>掲載雑誌</label>
+            <input type="text" id="sem_${id}" value="${escHtml(s.magazine||'')}" placeholder="例: 週刊少年ジャンプ">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:10px"><label>評価（★）</label>
+          <div class="star-input" id="ser_${id}">
+            ${[1,2,3,4,5].map(n=>`<span id="star_${id}_${n}" class="${n<=rating?'on':''}" onclick="setRating('${id}',${n})">${n<=rating?'★':'☆'}</span>`).join('')}
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:10px"><label>表紙画像URL（任意・公開サイト表示用）</label>
+          <input type="text" id="secv_${id}" value="${escHtml(s.coverUrl||'')}" placeholder="例: https://books.google.com/...">
+        </div>
+        <div class="modal-actions" style="margin-top:10px">
+          <button class="btn-cancel" onclick="toggleSeriesEdit('${id}')">閉じる</button>
+          <button class="btn-save" onclick="saveSeriesEdit('${id}')">保存</button>
+        </div>
+      </div>
     </div>`;
   }).join('');
 }
-
+function openNextVolumeFromSeries(id) {
+  closeSeriesModal();
+  const s=seriesList[id]; if(!s)return;
+  // 登録済み最大巻数を探す
+  const vols=Object.values(volumesList).filter(v=>v.seriesId===id&&v.volume);
+  const nums=vols.map(v=>parseInt(v.volume,10)).filter(n=>!isNaN(n));
+  const nextNum=nums.length>0?Math.max(...nums)+1:1;
+  const lastVol=vols.sort((a,b)=>parseInt(b.volume)||0-parseInt(a.volume)||0)[0];
+  document.getElementById('addModalTitle').textContent='📖 次巻を追加';
+  document.getElementById('editVolumeId').value='';
+  const _ssi=document.getElementById('seriesSearchInput');
+  document.getElementById('seriesSelect').value=id;
+  if(_ssi)_ssi.value=s.title;
+  document.getElementById('newSeriesFields').style.display='none';
+  document.getElementById('volumePublisherWrap').style.display='';
+  document.getElementById('volumeAuthorWrap').style.display='';
+  document.getElementById('volumeNum').value=nextNum;
+  document.getElementById('releaseDate').value='';
+  document.getElementById('publisher').value=s.publisher||'';
+  document.getElementById('price').value=s.price||'';
+  document.getElementById('volumeAuthor').value=s.author||'';
+  document.getElementById('volumeMemo').value='';
+  document.getElementById('editRakutenUrl').value='';
+  document.getElementById('editAsin').value='';
+  document.getElementById('editIsbn').value='';
+  document.getElementById('btnApiRefetch').style.display='none';
+  document.getElementById('apiRefetchStatus').style.display='none';
+  document.getElementById('budgetWarning').classList.remove('show');
+  document.getElementById('addModal').classList.remove('hidden');
+}
+function toggleSeriesEdit(id) {
+  const form=document.getElementById('sef_'+id);
+  form.style.display=form.style.display==='block'?'none':'block';
+}
+function setRating(id,n) {
+  const cur=parseInt(document.getElementById(`star_${id}_${n}`).getAttribute('data-cur')||'0');
+  const newRating=(cur===n)?0:n;
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById(`star_${id}_${i}`);
+    if(!el)continue;
+    el.textContent=i<=newRating?'★':'☆';
+    el.className=i<=newRating?'on':'';
+    el.setAttribute('data-cur',newRating);
+  }
+  document.getElementById(`ser_${id}`).setAttribute('data-rating',newRating);
+}
+async function saveSeriesEdit(id) {
+  if(!currentUser||!dbSeriesRef)return;
+  const genre=document.getElementById(`seg_${id}`).value;
+  const completed=document.getElementById(`sec_${id}`).value==='1';
+  const ratingEl=document.getElementById(`ser_${id}`);
+  const rating=parseInt(ratingEl.getAttribute('data-rating')||ratingEl.querySelectorAll('.on').length)||0;
+  const author=document.getElementById(`sea_${id}`)?.value.trim()||'';
+  const publisher=document.getElementById(`sep_${id}`)?.value.trim()||'';
+  const label=document.getElementById(`sel_${id}`)?.value.trim()||'';
+  const magazine=document.getElementById(`sem_${id}`)?.value.trim()||'';
+  const coverUrl=document.getElementById(`secv_${id}`)?.value.trim()||'';
+  await dbSeriesRef.child(id).update({genre,completed,rating,author,publisher,label,magazine,coverUrl});
+  showSaved(); renderSeriesList();
+}
+async function setInlineRating(id,n) {
+  if(!currentUser||!dbSeriesRef)return;
+  const cur=parseInt(document.getElementById(`sti_${id}`)?.getAttribute('data-rating')||seriesList[id]?.rating||'0');
+  const newRating=(cur===n)?0:n;
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById(`istar_${id}_${i}`);
+    if(!el)continue;
+    el.textContent=i<=newRating?'★':'☆';
+    el.className=i<=newRating?'on':'';
+  }
+  document.getElementById(`sti_${id}`)?.setAttribute('data-rating',newRating);
+  await dbSeriesRef.child(id).update({rating:newRating});
+  showSaved();
+}
 function deleteSeries(id) {
-  const s = seriesList[id];
-  if (!s) return;
-  const usedCount = Object.values(volumesList).filter(v => v.seriesId === id).length;
-  const msg = usedCount > 0
-    ? `「${s.title}」を削除しますか？\n登録済みの新刊データ ${usedCount}件 は残ります`
-    : `「${s.title}」を削除しますか？`;
-  if (!confirm(msg)) return;
-  dbSeriesRef.child(id).remove().then(() => { renderSeriesList(); showSaved(); });
+  const s=seriesList[id]; if(!s)return;
+  const usedCount=Object.values(volumesList).filter(v=>v.seriesId===id).length;
+  const msg=usedCount>0?`「${s.title}」を削除しますか？\n登録済みの新刊データ ${usedCount}件 は残ります`:`「${s.title}」を削除しますか？`;
+  if(!confirm(msg))return;
+  dbSeriesRef.child(id).remove().then(()=>{renderSeriesList();showSaved();});
+}
+
+
+
+// ── 書籍検索 ──
+function openBookSearch() {
+  const q=document.getElementById('seriesSearchInput').value.trim()||document.getElementById('newSeriesTitle').value.trim();
+  document.getElementById('bookSearchInput').value=q;
+  document.getElementById('bookResults').innerHTML='<div class="book-search-status">作品名を入力して検索してください</div>';
+  document.getElementById('bookSearchModal').classList.remove('hidden');
+  document.getElementById('bookSearchInput').focus();
+  if(q) searchBooks();
+}
+function closeBookSearch() { document.getElementById('bookSearchModal').classList.add('hidden'); }
+
+function normalizeAuthor(s) {
+  return (s||'').replace(/[\/／]\s*著\s*$/,'').replace(/[\s　]+著\s*$/,'').replace(/\s*著$/,'').replace(/\s*\(著\)\s*$/,'').trim();
+}
+
+function extractVolume(title) {
+  // パターン1: 括弧・漢字付き（例: 第1巻, （1）, (1), 1話）
+  let m=title.match(/[\s　（(【]*第?([\d０-９]+)\s*[巻冊話）)】]/);
+  if(m){
+    const volume=m[1].replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+    const cleanTitle=title.replace(/[\s　（(【]*第?[\d０-９]+\s*[巻冊話）)】][^\s　]*\s*$/,'').trim();
+    return {volume, cleanTitle};
+  }
+  // パターン2: 末尾スペース+数字（例: "タイトル 1"）楽天で多い形式
+  m=title.match(/^(.+?)[\s　]+(\d{1,3})\s*$/);
+  if(m){return {volume:m[2], cleanTitle:m[1].trim()};}
+  return {volume:'', cleanTitle:title.trim()};
+}
+
+function normItunes(item) {
+  var ev=extractVolume(item.trackName||'');
+  var thumb=(item.artworkUrl60||'').replace('60x60bb','200x200bb');
+  var rd='';
+  if(item.releaseDate){var d=new Date(item.releaseDate);if(!isNaN(d))rd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  var seller=item.sellerName||'';
+  var author=item.artistName||'';
+  var publisher=(seller&&seller!==author)?seller:'';
+  var label=(item.collectionName&&item.collectionName!==ev.cleanTitle)?item.collectionName:'';
+  var price=item.currency==='JPY'?(item.price||0):0;
+  return {_src:'itunes',title:item.trackName||'',cleanTitle:ev.cleanTitle,volume:ev.volume,author:author,publisher:publisher,label:label,magazine:'',price:price,releaseDate:rd,thumb:thumb,isbn:'',rakutenUrl:''};
+}
+
+function normGbooks(item) {
+  var vi=item.volumeInfo||{};
+  var rawTitle=vi.title||'';
+  var ev=extractVolume(rawTitle);
+  var imgLinks=vi.imageLinks||{};
+  var thumb=(imgLinks.thumbnail||imgLinks.smallThumbnail||'').replace('http://','https://').replace('zoom=1','zoom=2');
+  var rd=vi.publishedDate||'';
+  if(rd&&rd.length===4)rd=rd+'-01-01';
+  else if(rd&&rd.length===7)rd=rd+'-01';
+  var author=(vi.authors||[]).join('、');
+  var publisher=vi.publisher||'';
+  var isbns=vi.industryIdentifiers||[];
+  var isbn13=isbns.filter(function(x){return x.type==='ISBN_13';})[0];
+  var isbn=isbn13?isbn13.identifier:'';
+  var si=item.saleInfo||{};
+  var lp=si.listPrice||{};var rp=si.retailPrice||{};
+  var price=(lp.currencyCode==='JPY'?lp.amount:0)||(rp.currencyCode==='JPY'?rp.amount:0)||0;
+  return {_src:'gbooks',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,author:author,publisher:publisher,label:'',magazine:'',price:price,releaseDate:rd,thumb:thumb,isbn:isbn,rakutenUrl:''};
+}
+function normHanmoto(item) {
+  var rawTitle=item.title||'';
+  var ev=extractVolume(rawTitle);
+  var rd='';
+  var pd=item.pubdate||'';
+  if(pd.length===8) rd=pd.substring(0,4)+'-'+pd.substring(4,6)+'-'+pd.substring(6,8);
+  else if(pd.length===6) rd=pd.substring(0,4)+'-'+pd.substring(4,6)+'-01';
+  var thumb=item.cover?item.cover.replace('http://','https://'):'';
+  var author=normalizeAuthor(item.author||'');
+  return {_src:'hanmoto',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,author:author,publisher:item.publisher||'',label:item.labelname||'',magazine:'',price:item.price||0,releaseDate:rd,thumb:thumb,isbn:item.isbn||'',rakutenUrl:''};
+}
+
+function normRakuten(item) {
+  var rawTitle=item.title||'';
+  var ev=extractVolume(rawTitle);
+  var dateStr=item.salesDate||'';
+  var dm=dateStr.match(/(\d{4})年(\d{1,2})月(?:(\d{1,2})日)?/);
+  var rd=dm?dm[1]+'-'+dm[2].padStart(2,'0')+'-'+(dm[3]?dm[3].padStart(2,'0'):'01'):'';
+  var thumb=(item.largeImageUrl||item.mediumImageUrl||'').replace('http://','https://');
+  return {_src:'rakuten',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,
+    author:normalizeAuthor(item.author||''),publisher:item.publisherName||'',
+    label:'',magazine:'',price:Number(item.itemPrice||item.listPrice||0),releaseDate:rd,thumb:thumb,isbn:item.isbn||'',
+    rakutenUrl:item.affiliateUrl||item.itemUrl||''};
+}
+
+function normAmazonPA(item) {
+  var rawTitle=(item.ItemInfo&&item.ItemInfo.Title&&item.ItemInfo.Title.DisplayValue)||'';
+  var ev=extractVolume(rawTitle);
+  var authors=((item.ItemInfo&&item.ItemInfo.ByLineInfo&&item.ItemInfo.ByLineInfo.Authors)||[]).map(function(a){return a.Name;}).join('、');
+  var publisher=(item.ItemInfo&&item.ItemInfo.ByLineInfo&&item.ItemInfo.ByLineInfo.Brand&&item.ItemInfo.ByLineInfo.Brand.DisplayValue)||'';
+  var rd=(item.ItemInfo&&item.ItemInfo.ContentInfo&&item.ItemInfo.ContentInfo.PublicationDate&&item.ItemInfo.ContentInfo.PublicationDate.DisplayValue)||'';
+  if(rd&&rd.length>10)rd=rd.substring(0,10);
+  var isbn=((item.ItemInfo&&item.ItemInfo.ExternalIds&&item.ItemInfo.ExternalIds.ISBNs&&item.ItemInfo.ExternalIds.ISBNs.DisplayValues)||[])[0]||'';
+  var thumb=(item.Images&&item.Images.Primary&&(item.Images.Primary.Large||item.Images.Primary.Medium)&&(item.Images.Primary.Large||item.Images.Primary.Medium).URL)||'';
+  var price=(item.Offers&&item.Offers.Listings&&item.Offers.Listings[0]&&item.Offers.Listings[0].Price&&item.Offers.Listings[0].Price.Amount)||0;
+  var asin=item.ASIN||'';
+  return {_src:'amazon',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,
+    author:authors,publisher:publisher,label:'',magazine:'',price:price,
+    releaseDate:rd.length>=7?rd:'',thumb:thumb,isbn:isbn,rakutenUrl:'',asin:asin};
+}
+
+async function searchBooks() {
+  var q=document.getElementById('bookSearchInput').value.trim(); if(!q)return;
+  var el=document.getElementById('bookResults');
+  el.innerHTML='<div class="book-search-status">検索中…</div>';
+  var qEnc=encodeURIComponent(q);
+  var gbEnc=encodeURIComponent(q+' 漫画');
+  var fetches=[
+    fetch('https://itunes.apple.com/search?term='+qEnc+'&country=jp&media=ebook&limit=40').then(function(r){return r.json();}),
+    fetch('https://www.googleapis.com/books/v1/volumes?q='+gbEnc+'&country=JP&langRestrict=ja&maxResults=40&orderBy=relevance').then(function(r){return r.json();}),
+    fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20&orderBy=relevance').then(function(r){return r.json();}),
+    fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=50').then(function(r){return r.json();}),
+    Promise.resolve({Items:[]}),
+  ];
+  if(AMAZON_PA_WORKER_URL) fetches.push(fetch(AMAZON_PA_WORKER_URL+'/search?keywords='+qEnc).then(function(r){return r.json();}));
+  var settled=await Promise.allSettled(fetches);
+  var itunesItems=(settled[0].status==='fulfilled'?(settled[0].value.results||[]):[]).map(normItunes);
+  var gbItems1=(settled[1].status==='fulfilled'?(settled[1].value.items||[]):[]).map(normGbooks);
+  var gbItems2=(settled[2].status==='fulfilled'?(settled[2].value.items||[]):[]).map(normGbooks);
+  var hanmotoItems=(settled[3].status==='fulfilled'?(settled[3].value.books||[]):[]).map(normHanmoto);
+  var rakutenItems=(settled[4].status==='fulfilled'?((settled[4].value.Items||[]).map(function(i){return i.Item;}).map(normRakuten)):[]);
+  var amazonItems=AMAZON_PA_WORKER_URL&&settled[5]&&settled[5].status==='fulfilled'?((settled[5].value.SearchResult&&settled[5].value.SearchResult.Items)||[]).map(normAmazonPA):[];
+  var norm=function(t){return t.replace(/[\s　\-－・【】「」]/g,'').toLowerCase();};
+  var seen={};
+  var merged=[];
+  // Amazon→楽天→版元ドットコム→Google Books→iTunes の優先順
+  amazonItems.concat(rakutenItems).concat(hanmotoItems).concat(gbItems1).concat(gbItems2).concat(itunesItems).forEach(function(item){
+    var key=norm(item.title).substring(0,20);
+    if(!seen[key]){seen[key]=true;merged.push(item);}
+  });
+  // タイトル一致度でスコアリング・ソート
+  var ql=norm(q);
+  merged.sort(function(a,b){
+    var sa=norm(a.cleanTitle).startsWith(ql)?0:1;
+    var sb=norm(b.cleanTitle).startsWith(ql)?0:1;
+    return sa-sb;
+  });
+  renderBookResults(el,merged);
+}
+
+function renderBookResults(el,items) {
+  if(!items||items.length===0){el.innerHTML='<div class="book-search-status">見つかりませんでした</div>';return;}
+  el.innerHTML='';
+  items.forEach(function(item){
+    var sub=[item.author,item.publisher,item.releaseDate?item.releaseDate.substring(0,7):'',item.price?'\xa5'+item.price:''].filter(Boolean).join(' \xb7 ');
+    var badge=item._src==='amazon'
+      ?'<span style="font-size:10px;background:#fff8e1;color:#e07b00;border-radius:3px;padding:1px 4px;margin-left:4px">Amazon</span>'
+      :item._src==='rakuten'
+      ?'<span style="font-size:10px;background:#ffe9e9;color:#bf0000;border-radius:3px;padding:1px 4px;margin-left:4px">楽天</span>'
+      :item._src==='hanmoto'
+      ?'<span style="font-size:10px;background:#fff3e0;color:#e65100;border-radius:3px;padding:1px 4px;margin-left:4px">版元</span>'
+      :item._src==='gbooks'
+      ?'<span style="font-size:10px;background:#e8f5e9;color:#2e7d32;border-radius:3px;padding:1px 4px;margin-left:4px">Google</span>'
+      :'<span style="font-size:10px;background:#e3f2fd;color:#1565c0;border-radius:3px;padding:1px 4px;margin-left:4px">iTunes</span>';
+    var div=document.createElement('div'); div.className='book-result-item';
+    var imgHtml=item.thumb?'<img class="book-result-thumb" src="'+escHtml(item.thumb)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">':'';
+    var phStyle=item.thumb?'style="display:none"':'';
+    div.innerHTML=imgHtml+'<div class="book-result-thumb-placeholder" '+phStyle+'>📚</div>'+
+      '<div class="book-result-info"><div class="book-result-title">'+escHtml(item.title)+badge+'</div>'+
+      '<div class="book-result-sub">'+escHtml(sub)+'</div></div>';
+    div.addEventListener('click',function(){selectBook(item);});
+    el.appendChild(div);
+  });
+}
+
+function selectBook(item) {
+  document.getElementById('newSeriesTitle').value=item.cleanTitle;
+  document.getElementById('seriesSearchInput').value=item.cleanTitle;
+  document.getElementById('seriesSelect').value='__new__';
+  document.getElementById('newSeriesAuthor').value=item.author;
+  document.getElementById('newSeriesPublisher').value=item.publisher;
+  document.getElementById('newSeriesLabel').value=item.label;
+  document.getElementById('newSeriesMagazine').value=item.magazine;
+  if(item.price>0)document.getElementById('newSeriesPrice').value=item.price;
+  document.getElementById('newSeriesCoverUrl').value=item.thumb||'';
+  document.getElementById('newSeriesFields').style.display='';
+  if(item.volume)document.getElementById('volumeNum').value=item.volume;
+  if(item.releaseDate)document.getElementById('releaseDate').value=item.releaseDate;
+  if(item.publisher)document.getElementById('publisher').value=item.publisher;
+  if(item.price>0)document.getElementById('price').value=item.price;
+  document.getElementById('editRakutenUrl').value=item.rakutenUrl||'';
+  document.getElementById('editAsin').value=item.asin||'';
+  document.getElementById('editIsbn').value=item.isbn||'';
+  closeBookSearch();
+}
+
+// ── バーコードスキャナー ──
+let scannerStream=null, scannerAnimFrame=null;
+async function openBarcodeScanner() {
+  document.getElementById('barcodeModal').classList.remove('hidden');
+  document.getElementById('barcodeStatus').textContent='カメラを起動中…';
+  document.getElementById('barcodeUnsupported').style.display='none';
+  document.getElementById('barcodeVideoWrap').style.display='';
+  if(!('BarcodeDetector' in window)){
+    document.getElementById('barcodeVideoWrap').style.display='none';
+    document.getElementById('barcodeUnsupported').style.display='';
+    return;
+  }
+  try {
+    scannerStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const video=document.getElementById('barcodeVideo');
+    video.srcObject=scannerStream; await video.play();
+    const detector=new BarcodeDetector({formats:['ean_13','ean_8']});
+    document.getElementById('barcodeStatus').textContent='バーコードをカメラに向けてください';
+    const scan=async()=>{
+      if(!scannerStream)return;
+      try{const codes=await detector.detect(video);if(codes.length>0){stopBarcodeScanner();await lookupISBN(codes[0].rawValue);return;}}catch(e){}
+      scannerAnimFrame=requestAnimationFrame(scan);
+    };
+    scannerAnimFrame=requestAnimationFrame(scan);
+  } catch(e){
+    document.getElementById('barcodeVideoWrap').style.display='none';
+    document.getElementById('barcodeUnsupported').style.display='';
+  }
+}
+function stopBarcodeScanner() {
+  if(scannerAnimFrame){cancelAnimationFrame(scannerAnimFrame);scannerAnimFrame=null;}
+  if(scannerStream){scannerStream.getTracks().forEach(t=>t.stop());scannerStream=null;}
+  document.getElementById('barcodeModal').classList.add('hidden');
+}
+async function lookupISBNManual() {
+  const isbn=document.getElementById('isbnManualInput').value.trim();
+  if(!isbn){alert('ISBNコードを入力してください');return;}
+  stopBarcodeScanner(); await lookupISBN(isbn);
+}
+async function lookupISBN(isbn) {
+  try {
+    const data=await fetch(`https://api.openbd.jp/v1/get?isbn=${isbn}`).then(r=>r.json());
+    if(data&&data[0]&&data[0].summary){
+      const s=data[0].summary;
+      const detail=data[0].onix||{};
+      const coll=(detail.DescriptiveDetail&&detail.DescriptiveDetail.Collection)||[];
+      const labelObj=coll.find(c=>c.CollectionType==='20'||c.CollectionType==='10');
+      const labelName=labelObj?.TitleDetail?.TitleElement?.TitleText?.content||'';
+      const magName=(detail.SerialPublication&&detail.SerialPublication.SerialWork&&detail.SerialPublication.SerialWork.Work&&detail.SerialPublication.SerialWork.Work.NameAsGivenOnProduct)||'';
+      const volTitle=s.title||'';
+      const volMatch=volTitle.match(/[\s　（(【]*第?([\d０-９]+)[巻冊話）)】]*\s*$/);
+      const vol=volMatch?volMatch[1].replace(/[０-９]/g,ch=>String.fromCharCode(ch.charCodeAt(0)-0xFEE0)):'';
+      const cleanT=vol?volTitle.replace(/[\s　（(【]*第?[\d０-９]+[巻冊話）)】]*\s*$/,'').trim():volTitle;
+      document.getElementById('newSeriesTitle').value=cleanT;
+      document.getElementById('newSeriesAuthor').value=s.author||'';
+      document.getElementById('newSeriesPublisher').value=s.publisher||'';
+      document.getElementById('newSeriesLabel').value=labelName;
+      document.getElementById('newSeriesMagazine').value=magName;
+      document.getElementById('newSeriesFields').style.display='';
+      document.getElementById('seriesSelect').value='__new__';
+      if(vol) document.getElementById('volumeNum').value=vol;
+      onSeriesChange();
+      document.getElementById('newSeriesTitle').value=cleanT;
+      document.getElementById('newSeriesAuthor').value=s.author||'';
+      document.getElementById('newSeriesPublisher').value=s.publisher||'';
+      document.getElementById('newSeriesLabel').value=labelName;
+      document.getElementById('newSeriesMagazine').value=magName;
+      document.getElementById('newSeriesFields').style.display='';
+    } else {
+      alert(`ISBN: ${isbn}\n\n書籍情報が見つかりませんでした。\n手動で入力してください。`);
+    }
+  } catch(e){alert('通信エラーが発生しました');}
 }
 
 // ── 初期化 ──
-function init() {
-  initAuth();
-}
+function init() { initAuth(); updateNotifBtn(); }
 init();
 </script>
 </body>
