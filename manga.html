@@ -250,6 +250,14 @@ textarea{resize:vertical;min-height:60px}
 /* ─── 発売日未定カード ─── */
 .pending-card{border:2px dashed #c4b5fd}
 .pending-card .card-header h2{color:#7c3aed}
+.pending-card .card-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.btn-check-pending{background:linear-gradient(135deg,#7c3aed,#553c9a);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;white-space:nowrap}
+.btn-check-pending:disabled{opacity:.6;cursor:not-allowed}
+/* ─── 発売日チェック促進バナー ─── */
+.pending-reminder-banner{display:none;align-items:center;gap:10px;background:#fdf4ff;border:1px solid #d6bcfa;border-radius:10px;padding:10px 14px;margin:8px 16px;font-size:13px;color:#553c9a}
+.pending-reminder-banner button{border:none;cursor:pointer;border-radius:6px;padding:4px 10px;font-size:12px}
+.pending-reminder-banner .btn-remind-check{background:#7c3aed;color:#fff}
+.pending-reminder-banner .btn-remind-close{background:none;color:#a0aec0;font-size:16px;padding:0 4px}
 
 /* ─── 保存インジケーター ─── */
 .saving-indicator{position:fixed;bottom:96px;right:24px;background:#38a169;color:#fff;padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200}
@@ -477,6 +485,28 @@ textarea{resize:vertical;min-height:60px}
   </div>
 </div>
 
+<!-- 発売日チェック結果モーダル -->
+<div id="pendingCheckModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:480px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 id="pendingCheckCount" style="margin:0">📅 発売日が確定した作品</h3>
+      <button onclick="closePendingCheckModal()" style="font-size:20px;line-height:1;background:none;border:none;color:#a0aec0;cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    <div id="pendingCheckBody" style="max-height:380px;overflow-y:auto;margin-bottom:16px"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closePendingCheckModal()">キャンセル</button>
+      <button class="btn-save" onclick="applyPendingCheckResults()">✅ 保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 発売日チェック促進バナー -->
+<div id="pendingCheckBanner" class="pending-reminder-banner">
+  ⚠️ 発売日未定リストを<strong id="pendingReminderDays"></strong>チェックしていません
+  <button class="btn-remind-check" onclick="document.getElementById('pendingCheckBanner').style.display='none';checkAllPendingDates()">今すぐチェック</button>
+  <button class="btn-remind-close" onclick="localStorage.setItem('pendingDateLastCheck',String(Date.now()));document.getElementById('pendingCheckBanner').style.display='none'" title="今月は表示しない">✕</button>
+</div>
+
 <!-- ヘッダー -->
 <div class="header">
   <div class="header-user">
@@ -618,7 +648,8 @@ function attachDatabase(user) {
   dbSeriesRef=database.ref(`users/${user.uid}/manga_series`);
   dbSeriesRef.on('value', snap => { seriesList=snap.val()||{}; updateSeriesSelect(); render(); });
   dbVolumesRef=database.ref(`users/${user.uid}/manga_volumes`);
-  dbVolumesRef.on('value', snap => { volumesList=snap.val()||{}; render(); checkNotifications(user.uid); });
+  let _reminderChecked=false;
+  dbVolumesRef.on('value', snap => { volumesList=snap.val()||{}; render(); checkNotifications(user.uid); if(!_reminderChecked){_reminderChecked=true;setTimeout(checkPendingDateReminder,1500);} });
   dbSettingsRef=database.ref(`users/${user.uid}/settings`);
   dbSettingsRef.on('value', snap => { userSettings=snap.val()||{budget:0}; updateNotifBtn(); });
 }
@@ -823,9 +854,16 @@ function renderPendingSection() {
   if(pending.length===0){if(el)el.remove();return;}
   if(!el){el=document.createElement('div');el.id='pendingSection';container.appendChild(el);}
   const arrow=_pendingOpen?'▲':'▼';
+  const lastCheck=parseInt(localStorage.getItem('pendingDateLastCheck')||'0');
+  const daysAgo=lastCheck?Math.floor((Date.now()-lastCheck)/(1000*60*60*24)):-1;
+  const lastCheckLabel=daysAgo<0?'未チェック':daysAgo===0?'今日チェック済み':`${daysAgo}日前にチェック`;
   el.innerHTML=`<div class="card pending-card">
-    <div class="card-header" onclick="togglePendingSection()" style="cursor:pointer;user-select:none">
-      <h2>📋 発売日未定（${pending.length}件）<span style="font-size:12px;color:#9b59b6;margin-left:8px">${arrow}</span></h2>
+    <div class="card-header" style="cursor:pointer;user-select:none">
+      <h2 onclick="togglePendingSection()">📋 発売日未定（${pending.length}件）<span style="font-size:12px;color:#9b59b6;margin-left:8px">${arrow}</span></h2>
+      <div style="display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
+        <span style="font-size:11px;color:#a0aec0">${lastCheckLabel}</span>
+        <button id="btnCheckPending" class="btn-check-pending" onclick="checkAllPendingDates()">🔄 発売日チェック</button>
+      </div>
     </div>
     ${_pendingOpen?`<div class="table-wrap"><table>
       <thead><tr><th>タイトル</th><th>巻数</th><th>出版社</th><th></th></tr></thead>
@@ -839,7 +877,6 @@ function renderPendingSection() {
           <td class="td-vol">${volStr}</td>
           <td class="td-pub">${escHtml(v.publisher||'─')}</td>
           <td class="td-actions">
-            <a class="btn-icon amazon" href="${getAffilLink(v)}" target="_blank" rel="noopener sponsored" title="Amazonで購入">🛒</a>
             <a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a>
             
             <button class="btn-icon edit" onclick="openEditModal('${v.id}')" title="発売日を入力">✎</button>
@@ -849,6 +886,113 @@ function renderPendingSection() {
       }).join('')}</tbody>
     </table></div>`:''}
   </div>`;
+}
+
+// ── 発売日未定 一括チェック ──
+let _pendingCheckResults = [];
+
+async function checkAllPendingDates() {
+  const pending = Object.entries(volumesList).map(([id,v])=>({id,...v})).filter(v=>!v.releaseDate&&!isPurchased(v));
+  if(pending.length === 0){ alert('発売日未定の作品はありません'); return; }
+
+  const btn = document.getElementById('btnCheckPending');
+  if(btn){ btn.disabled=true; btn.textContent='🔄 検索中...'; }
+
+  const normKey = t => t.replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
+  const found = [];
+  const BATCH = 5;
+
+  for(let i=0; i<pending.length; i+=BATCH){
+    const batch = pending.slice(i, i+BATCH);
+    if(btn) btn.textContent = `🔄 ${i}/${pending.length}件…`;
+    await Promise.all(batch.map(async v => {
+      const seriesTitle = v.title||(seriesList[v.seriesId]&&seriesList[v.seriesId].title)||'';
+      if(!seriesTitle) return;
+      const volStr = String(v.volume||'');
+      const matchT = t => { const ns=normKey(seriesTitle),nt=normKey(t||''); return nt.includes(ns)||ns.includes(nt); };
+      const matchV = vol => !volStr||String(vol)===volStr;
+
+      // OpenBD
+      try{
+        const items = await fetch('https://api.openbd.jp/v1/search?title='+encodeURIComponent(seriesTitle)+'&limit=15').then(r=>r.json());
+        if(Array.isArray(items)){
+          for(const item of items){
+            if(!matchT(item.title)) continue;
+            const vol=normalizeVolume(item.volume||'')||extractVolumeFromTitle(item.title||'');
+            if(!matchV(vol)) continue;
+            const pd=item.pubdate||''; if(pd.length<8) continue;
+            const norm=`${pd.slice(0,4)}-${pd.slice(4,6)}-${pd.slice(6,8)}`;
+            const d=new Date(norm); if(isNaN(d)) continue;
+            found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'OpenBD'});
+            return;
+          }
+        }
+      }catch(e){}
+
+      // 版元ドットコム フォールバック
+      try{
+        const hm = await fetch('https://api.hanmoto.com/books/v1/?title='+encodeURIComponent(seriesTitle)+'&limit=10').then(r=>r.json());
+        for(const item of (hm.books||[]).map(normHanmoto)){
+          if(!matchT(item.title)) continue;
+          if(!matchV(item.volume)) continue;
+          if(!item.releaseDate) continue;
+          const d=new Date(item.releaseDate); if(isNaN(d)) continue;
+          found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:item.releaseDate,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'版元'});
+          return;
+        }
+      }catch(e){}
+    }));
+  }
+
+  // 最終チェック日を更新
+  localStorage.setItem('pendingDateLastCheck', String(Date.now()));
+  if(btn){ btn.disabled=false; btn.textContent='🔄 発売日チェック'; }
+  renderPendingSection();
+
+  if(found.length === 0){ alert('新しい発売日情報は見つかりませんでした'); return; }
+  _pendingCheckResults = found;
+  showPendingCheckModal();
+}
+
+function showPendingCheckModal() {
+  document.getElementById('pendingCheckCount').textContent = `📅 ${_pendingCheckResults.length}件で発売日が確定`;
+  document.getElementById('pendingCheckBody').innerHTML = _pendingCheckResults.map((r,i) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0e9ff;cursor:pointer">
+      <input type="checkbox" id="pcc_${i}" checked style="width:16px;height:16px;accent-color:#7c3aed">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:14px">${escHtml(r.title)}${r.volume?' 第'+r.volume+'巻':''}</div>
+        <div style="color:#7c3aed;font-size:13px;margin-top:2px">📅 ${r.label} <span style="font-size:10px;color:#a0aec0;margin-left:4px">${r._src}</span></div>
+      </div>
+    </label>`).join('');
+  document.getElementById('pendingCheckModal').classList.remove('hidden');
+}
+
+async function applyPendingCheckResults() {
+  if(!currentUser||!dbVolumesRef) return;
+  const updates = {};
+  _pendingCheckResults.forEach((r,i) => {
+    const cb = document.getElementById('pcc_'+i);
+    if(cb&&cb.checked) updates[r.id+'/releaseDate'] = r.newDate;
+  });
+  if(Object.keys(updates).length === 0){ closePendingCheckModal(); return; }
+  await dbVolumesRef.update(updates);
+  showSaved();
+  closePendingCheckModal();
+}
+
+function closePendingCheckModal() {
+  document.getElementById('pendingCheckModal').classList.add('hidden');
+}
+
+function checkPendingDateReminder() {
+  const pending = Object.entries(volumesList).filter(([,v])=>!v.releaseDate&&!isPurchased(v));
+  if(pending.length === 0) return;
+  const last = parseInt(localStorage.getItem('pendingDateLastCheck')||'0');
+  const daysAgo = last ? Math.floor((Date.now()-last)/(1000*60*60*24)) : 999;
+  if(daysAgo < 30) return;
+  const label = last ? `${daysAgo}日間` : '一度も';
+  document.getElementById('pendingReminderDays').textContent = label;
+  document.getElementById('pendingCheckBanner').style.display = 'flex';
 }
 
 // ── 月別レンダリング ──
@@ -922,7 +1066,6 @@ function volumeRow(v, isSearch, today) {
     <td class="td-actions"><button class="status-btn ${status}" onclick="cycleStatus('${v.id}')">${STATUS_LABEL[status]}</button></td>
     <td class="td-actions">
       <button class="btn-icon next-vol" onclick="openNextVolumeModal('${v.id}')" title="次巻を登録">📖+</button>
-      <a class="btn-icon amazon" href="${getAffilLink(v)}" target="_blank" rel="noopener sponsored" title="Amazonで購入">🛒</a>
       <a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a>
       <a class="btn-icon gcal" href="${gcalUrl}" target="_blank" rel="noopener" title="Googleカレンダーに追加">📅</a>
       
@@ -971,7 +1114,7 @@ function renderHistory() {
         <td class="td-vol">${volStr}</td><td class="td-pub">${escHtml(v.publisher||'─')}</td>
         <td class="td-price" style="text-align:right">${priceStr}</td>
         <td class="td-actions"><button class="status-btn ${status}" onclick="cycleStatus('${v.id}')">${STATUS_LABEL[status]}</button></td>
-        <td class="td-actions"><button class="btn-icon next-vol" onclick="openNextVolumeModal('${v.id}')" title="次巻を登録">📖+</button><a class="btn-icon amazon" href="${getAffilLink(v)}" target="_blank" rel="noopener sponsored" title="Amazonで購入">🛒</a><a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a><button class="btn-icon edit" onclick="openEditModal('${v.id}')">✎</button><button class="btn-icon" onclick="deleteVolume('${v.id}')">✕</button></td>
+        <td class="td-actions"><button class="btn-icon next-vol" onclick="openNextVolumeModal('${v.id}')" title="次巻を登録">📖+</button><a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a><button class="btn-icon edit" onclick="openEditModal('${v.id}')">✎</button><button class="btn-icon" onclick="deleteVolume('${v.id}')">✕</button></td>
       </tr>`;
     });
   });
@@ -1076,16 +1219,13 @@ function getAffilLink(v) {
 const RAKUTEN_AFF_ID = '54f0afb4.96d0d3c0.54f0afb5.893704d6';
 const RAKUTEN_APP_ID = '02edcd4d-02f2-4b81-98f2-a0c88b0cfdd9';
 function getRakutenLink(v) {
-  // 1. APIから取得したアフィリエイトURL（最優先）
-  if (v.rakutenUrl) return v.rakutenUrl;
-  // 2. ISBNがあれば商品ページに直接リンク
-  const makeAffLink=target=>{const enc=encodeURIComponent(target);return 'https://hb.afl.rakuten.co.jp/hgc/'+RAKUTEN_AFF_ID+'/?pc='+enc+'&m='+enc;};
-  if (v.isbn) return makeAffLink('https://books.rakuten.co.jp/rb/'+v.isbn+'/');
-  // 3. タイトル+巻数で検索
-  const seriesTitle=(v.title)||(seriesList[v.seriesId]&&seriesList[v.seriesId].title)||'';
+  const makeAffLink=target=>'https://hb.afl.rakuten.co.jp/hgc/'+RAKUTEN_AFF_ID+'/?pc='+encodeURIComponent(target);
+  if(v.isbn) return makeAffLink('https://books.rakuten.co.jp/rb/'+v.isbn+'/');
+  if(v.rakutenUrl) return v.rakutenUrl;
+  const seriesTitle=((v.title)||(seriesList[v.seriesId]&&seriesList[v.seriesId].title)||'').substring(0,30);
   if(!seriesTitle) return 'https://books.rakuten.co.jp/';
-  const q=encodeURIComponent(seriesTitle+(v.volume?' 第'+v.volume+'巻':''));
-  return makeAffLink('https://books.rakuten.co.jp/search/?sWord='+q);
+  const volSuffix=v.volume?' 第'+v.volume+'巻':'';
+  return makeAffLink('https://search.rakuten.co.jp/search/mall/'+encodeURIComponent(seriesTitle+volSuffix)+'/101-/');
 }
 
 async function togglePublicSeries(id) {
