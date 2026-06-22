@@ -25,12 +25,16 @@ export async function GET(
       return NextResponse.json({ error: '見積もりが見つかりません' }, { status: 404 });
     }
 
-    // 明細取得
+    // 明細取得（仕様情報も含む）
     const items = await sql`
-      SELECT id, item_name, sort_order
-      FROM estimate_items
-      WHERE estimate_id = ${estimateId}
-      ORDER BY sort_order, id
+      SELECT ei.id, ei.item_name, ei.sort_order,
+        ei.finish_width_mm, ei.finish_height_mm,
+        ei.front_colors, ei.back_colors,
+        p.name AS paper_name
+      FROM estimate_items ei
+      LEFT JOIN papers p ON ei.paper_id = p.id
+      WHERE ei.estimate_id = ${estimateId}
+      ORDER BY ei.sort_order, ei.id
     `;
 
     // 数量結果取得
@@ -48,6 +52,7 @@ export async function GET(
     // PDFデータ組み立て
     const data: EstimatePdfData = {
       estimate_number: String(estimate.estimate_number),
+      title: String(estimate.title),
       customer_name: String(estimate.customer_name),
       assigned_to_name: estimate.assigned_to_name
         ? String(estimate.assigned_to_name)
@@ -55,19 +60,30 @@ export async function GET(
       created_at: String(estimate.created_at),
       valid_until: estimate.valid_until ? String(estimate.valid_until) : null,
       note: estimate.note ? String(estimate.note) : null,
-      items: items.map((item: Record<string, unknown>) => ({
-        item_name: String(item.item_name),
-        quantities: quantities
-          .filter(
-            (q: Record<string, unknown>) =>
-              Number(q.estimate_item_id) === Number(item.id)
-          )
-          .map((q: Record<string, unknown>) => ({
-            quantity: Number(q.quantity),
-            unit_price: q.unit_price != null ? Number(q.unit_price) : null,
-            total: Number(q.total),
-          })),
-      })),
+      items: items.map((item: Record<string, unknown>) => {
+        const specParts: string[] = [];
+        if (item.finish_width_mm && item.finish_height_mm) {
+          specParts.push(`仕上 ${item.finish_width_mm}×${item.finish_height_mm}mm`);
+        }
+        if (item.paper_name) specParts.push(String(item.paper_name));
+        if (item.front_colors != null || item.back_colors != null) {
+          specParts.push(`表${item.front_colors ?? 0}色／裏${item.back_colors ?? 0}色`);
+        }
+        return {
+          item_name: String(item.item_name),
+          spec: specParts.join('　'),
+          quantities: quantities
+            .filter(
+              (q: Record<string, unknown>) =>
+                Number(q.estimate_item_id) === Number(item.id)
+            )
+            .map((q: Record<string, unknown>) => ({
+              quantity: Number(q.quantity),
+              unit_price: q.unit_price != null ? Number(q.unit_price) : null,
+              total: Number(q.total),
+            })),
+        };
+      }),
     };
 
     // PDF生成

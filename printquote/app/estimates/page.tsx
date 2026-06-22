@@ -1,11 +1,13 @@
 import { neon } from '@neondatabase/serverless';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { getSession } from '@/lib/auth';
+import { EstimateSearchBar } from './_components/EstimateSearchBar';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -18,54 +20,112 @@ const STATUS_LABEL: Record<string, { label: string; variant: 'default' | 'second
 };
 const PRODUCT_LABEL: Record<string, string> = { thick: '厚物', thin: '薄物' };
 
-export default async function EstimatesPage() {
+export default async function EstimatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string }>;
+}) {
   const session = await getSession();
   const isAdmin = session?.role === 'admin';
   const userId = session ? Number(session.sub) : null;
+  const { q, status } = await searchParams;
 
-  const [estimates, [{ total }]] = await Promise.all([
-    isAdmin
-      ? sql`
-          SELECT
-            e.id, e.estimate_number, e.title, e.customer_name,
-            e.product_type, e.category, e.status,
-            e.valid_until, e.created_at,
+  const keyword = q ? `%${q}%` : null;
+  const statusFilter = status || null;
+
+  // 検索条件込みでクエリ
+  const estimates = isAdmin
+    ? keyword && statusFilter
+      ? await sql`
+          SELECT e.id, e.estimate_number, e.title, e.customer_name,
+            e.product_type, e.category, e.status, e.valid_until, e.created_at,
             u.name AS assigned_to_name,
             (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
-          FROM estimates e
-          LEFT JOIN users u ON e.assigned_to = u.id
-          ORDER BY e.created_at DESC
-          LIMIT 100
-        `
-      : sql`
-          SELECT
-            e.id, e.estimate_number, e.title, e.customer_name,
-            e.product_type, e.category, e.status,
-            e.valid_until, e.created_at,
+          FROM estimates e LEFT JOIN users u ON e.assigned_to = u.id
+          WHERE (e.title ILIKE ${keyword} OR e.customer_name ILIKE ${keyword})
+            AND e.status = ${statusFilter}
+          ORDER BY e.created_at DESC LIMIT 100`
+      : keyword
+      ? await sql`
+          SELECT e.id, e.estimate_number, e.title, e.customer_name,
+            e.product_type, e.category, e.status, e.valid_until, e.created_at,
             u.name AS assigned_to_name,
             (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
-          FROM estimates e
-          LEFT JOIN users u ON e.assigned_to = u.id
-          WHERE e.assigned_to = ${userId}
-          ORDER BY e.created_at DESC
-          LIMIT 100
-        `,
-    isAdmin
-      ? sql`SELECT COUNT(*) AS total FROM estimates`
-      : sql`SELECT COUNT(*) AS total FROM estimates WHERE assigned_to = ${userId}`,
-  ]);
+          FROM estimates e LEFT JOIN users u ON e.assigned_to = u.id
+          WHERE e.title ILIKE ${keyword} OR e.customer_name ILIKE ${keyword}
+          ORDER BY e.created_at DESC LIMIT 100`
+      : statusFilter
+      ? await sql`
+          SELECT e.id, e.estimate_number, e.title, e.customer_name,
+            e.product_type, e.category, e.status, e.valid_until, e.created_at,
+            u.name AS assigned_to_name,
+            (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
+          FROM estimates e LEFT JOIN users u ON e.assigned_to = u.id
+          WHERE e.status = ${statusFilter}
+          ORDER BY e.created_at DESC LIMIT 100`
+      : await sql`
+          SELECT e.id, e.estimate_number, e.title, e.customer_name,
+            e.product_type, e.category, e.status, e.valid_until, e.created_at,
+            u.name AS assigned_to_name,
+            (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
+          FROM estimates e LEFT JOIN users u ON e.assigned_to = u.id
+          ORDER BY e.created_at DESC LIMIT 100`
+    // staffは自分の見積のみ
+    : keyword && statusFilter
+    ? await sql`
+        SELECT e.id, e.estimate_number, e.title, e.customer_name,
+          e.product_type, e.category, e.status, e.valid_until, e.created_at,
+          u.name AS assigned_to_name,
+          (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
+        FROM estimates e LEFT JOIN users u ON e.assigned_to = u.id
+        WHERE e.assigned_to = ${userId}
+          AND (e.title ILIKE ${keyword} OR e.customer_name ILIKE ${keyword})
+          AND e.status = ${statusFilter}
+        ORDER BY e.created_at DESC LIMIT 100`
+    : keyword
+    ? await sql`
+        SELECT e.id, e.estimate_number, e.title, e.customer_name,
+          e.product_type, e.category, e.status, e.valid_until, e.created_at,
+          u.name AS assigned_to_name,
+          (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
+        FROM estimates e LEFT JOIN users u ON e.assigned_to = u.id
+        WHERE e.assigned_to = ${userId}
+          AND (e.title ILIKE ${keyword} OR e.customer_name ILIKE ${keyword})
+        ORDER BY e.created_at DESC LIMIT 100`
+    : statusFilter
+    ? await sql`
+        SELECT e.id, e.estimate_number, e.title, e.customer_name,
+          e.product_type, e.category, e.status, e.valid_until, e.created_at,
+          u.name AS assigned_to_name,
+          (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
+        FROM estimates e LEFT JOIN users u ON e.assigned_to = u.id
+        WHERE e.assigned_to = ${userId} AND e.status = ${statusFilter}
+        ORDER BY e.created_at DESC LIMIT 100`
+    : await sql`
+        SELECT e.id, e.estimate_number, e.title, e.customer_name,
+          e.product_type, e.category, e.status, e.valid_until, e.created_at,
+          u.name AS assigned_to_name,
+          (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
+        FROM estimates e LEFT JOIN users u ON e.assigned_to = u.id
+        WHERE e.assigned_to = ${userId}
+        ORDER BY e.created_at DESC LIMIT 100`;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">見積もり一覧</h1>
-          <p className="text-sm text-gray-500">{Number(total)} 件</p>
+          <p className="text-sm text-gray-500">{estimates.length} 件</p>
         </div>
         <Link href="/estimates/new">
           <Button>＋ 新規見積もり</Button>
         </Link>
       </div>
+
+      {/* 検索バー */}
+      <Suspense>
+        <EstimateSearchBar />
+      </Suspense>
 
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
         <Table>
@@ -85,7 +145,7 @@ export default async function EstimatesPage() {
             {estimates.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-12 text-gray-400">
-                  見積もりがありません。「新規見積もり」から作成してください。
+                  {(q || status) ? '検索条件に一致する見積もりがありません。' : '見積もりがありません。「新規見積もり」から作成してください。'}
                 </TableCell>
               </TableRow>
             ) : (

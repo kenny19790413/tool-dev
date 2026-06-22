@@ -1,11 +1,6 @@
 import React from 'react';
 import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Font,
+  Document, Page, Text, View, StyleSheet, Font,
 } from '@react-pdf/renderer';
 
 // ── 型 ─────────────────────────────────────────────────────────
@@ -18,11 +13,13 @@ export interface PdfQuantityRow {
 
 export interface PdfItem {
   item_name: string;
+  spec?: string;   // 仕様テキスト（用紙・サイズ・色数など）
   quantities: PdfQuantityRow[];
 }
 
 export interface EstimatePdfData {
   estimate_number: string;
+  title: string;
   customer_name: string;
   assigned_to_name: string | null;
   created_at: string;
@@ -31,227 +28,183 @@ export interface EstimatePdfData {
   items: PdfItem[];
 }
 
-// ── 日本語フォント登録（プロジェクト内フォント） ──
+// ── フォント ────────────────────────────────────────────────────
 Font.register({
   family: 'NotoSansJP',
   src: process.cwd() + '/public/fonts/NotoSansJP-VF.ttf',
 });
 
 // ── スタイル ────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
   page: {
     fontFamily: 'NotoSansJP',
-    fontSize: 10,
-    paddingTop: 30,
-    paddingBottom: 30,
+    fontSize: 9,
+    paddingTop: 28,
+    paddingBottom: 28,
     paddingHorizontal: 36,
     color: '#000',
   },
-  // ヘッダー
-  headerRow: {
+  // タイトル行
+  titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   title: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    textAlign: 'center',
-    letterSpacing: 8,
-    flex: 1,
+    letterSpacing: 6,
   },
-  dateLabel: {
-    fontSize: 9,
+  estimateNo: {
+    fontSize: 8,
     textAlign: 'right',
-    width: 100,
+    color: '#444',
   },
-  // 宛先・条件エリア
-  addressBlock: {
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  companyName: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  honorific: {
-    fontSize: 10,
-    marginTop: 2,
-  },
-  condRow: {
+  // 宛先と差出人の2カラム
+  headerGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  condLeft: {
-    flex: 1,
-  },
-  condLabel: {
-    fontSize: 9,
-    marginTop: 3,
-  },
-  condValue: {
-    fontSize: 9,
-    marginTop: 3,
-    fontWeight: 'bold',
-  },
-  staffLabel: {
-    fontSize: 9,
-    textAlign: 'right',
-    marginTop: 3,
-  },
-  // 挨拶文
-  greeting: {
-    marginTop: 8,
     marginBottom: 6,
-    fontSize: 9,
-    lineHeight: 1.8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#aaa',
+    borderBottomStyle: 'solid',
+    paddingBottom: 6,
   },
+  headerLeft: { flex: 1 },
+  headerRight: { width: 160, alignItems: 'flex-end' },
+  customerName: { fontSize: 13, fontWeight: 'bold', marginBottom: 2 },
+  honorific: { fontSize: 9 },
+  condRow: { flexDirection: 'row', marginTop: 3 },
+  condLabel: { fontSize: 8, color: '#555', width: 52 },
+  condValue: { fontSize: 8 },
+  companyBlock: { fontSize: 8, lineHeight: 1.6, textAlign: 'right' },
+  // 件名・合計金額バー
+  subjectBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 12,
+  },
+  subjectLabel: { fontSize: 8, color: '#555', width: 28 },
+  subjectValue: { fontSize: 10, fontWeight: 'bold', flex: 1 },
+  grandTotalBox: {
+    borderWidth: 1,
+    borderColor: '#000',
+    borderStyle: 'solid',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignItems: 'flex-end',
+    minWidth: 130,
+  },
+  grandTotalLabel: { fontSize: 7, color: '#555', marginBottom: 1 },
+  grandTotalValue: { fontSize: 12, fontWeight: 'bold' },
+  // 挨拶
+  greeting: { fontSize: 8, marginBottom: 6, lineHeight: 1.7 },
   // テーブル
   table: {
-    borderTopWidth: 1,
-    borderTopColor: '#000',
-    borderTopStyle: 'solid',
+    borderTopWidth: 1, borderTopColor: '#000', borderTopStyle: 'solid',
   },
   tableHeaderRow: {
     flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
-    borderBottomWidth: 1,
-    borderBottomColor: '#000',
-    borderBottomStyle: 'solid',
+    backgroundColor: '#e8e8e8',
+    borderBottomWidth: 1, borderBottomColor: '#000', borderBottomStyle: 'solid',
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#ccc',
-    borderBottomStyle: 'solid',
-    minHeight: 20,
+    borderBottomWidth: 0.5, borderBottomColor: '#ccc', borderBottomStyle: 'solid',
+    minHeight: 18,
   },
   tableRowEmpty: {
     flexDirection: 'row',
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#ccc',
-    borderBottomStyle: 'solid',
-    height: 18,
+    borderBottomWidth: 0.5, borderBottomColor: '#ccc', borderBottomStyle: 'solid',
+    height: 16,
   },
   colName: {
-    flex: 5,
-    paddingHorizontal: 4,
-    paddingVertical: 3,
-    borderRightWidth: 0.5,
-    borderRightColor: '#000',
-    borderRightStyle: 'solid',
+    flex: 5, paddingHorizontal: 4, paddingVertical: 3,
+    borderRightWidth: 0.5, borderRightColor: '#999', borderRightStyle: 'solid',
   },
   colQty: {
-    width: 60,
-    paddingHorizontal: 4,
-    paddingVertical: 3,
-    borderRightWidth: 0.5,
-    borderRightColor: '#000',
-    borderRightStyle: 'solid',
+    width: 55, paddingHorizontal: 4, paddingVertical: 3,
+    borderRightWidth: 0.5, borderRightColor: '#999', borderRightStyle: 'solid',
     textAlign: 'right',
   },
   colUnit: {
-    width: 70,
-    paddingHorizontal: 4,
-    paddingVertical: 3,
-    borderRightWidth: 0.5,
-    borderRightColor: '#000',
-    borderRightStyle: 'solid',
+    width: 70, paddingHorizontal: 4, paddingVertical: 3,
+    borderRightWidth: 0.5, borderRightColor: '#999', borderRightStyle: 'solid',
     textAlign: 'right',
   },
   colAmount: {
-    width: 80,
-    paddingHorizontal: 4,
-    paddingVertical: 3,
+    width: 80, paddingHorizontal: 4, paddingVertical: 3,
     textAlign: 'right',
   },
-  headerText: {
-    fontWeight: 'bold',
-    fontSize: 9,
-    textAlign: 'center',
-  },
-  cellText: {
-    fontSize: 9,
-  },
-  // 合計行
-  totalRow: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#000',
-    borderTopStyle: 'solid',
+  headerText: { fontWeight: 'bold', fontSize: 8, textAlign: 'center' },
+  cellText: { fontSize: 8 },
+  specText: { fontSize: 7, color: '#666', marginTop: 1 },
+  // 合計セクション
+  totalSection: {
     marginTop: 2,
+    alignItems: 'flex-end',
   },
-  totalLabel: {
-    flex: 1,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    fontSize: 8,
-    textAlign: 'right',
-    color: '#555',
+  totalLine: {
+    flexDirection: 'row',
+    borderTopWidth: 0.5, borderTopColor: '#999', borderTopStyle: 'solid',
+    width: 200,
   },
-  totalAmount: {
-    width: 80,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    textAlign: 'right',
-    fontWeight: 'bold',
-    fontSize: 10,
-    borderLeftWidth: 0.5,
-    borderLeftColor: '#000',
-    borderLeftStyle: 'solid',
+  totalLineBold: {
+    flexDirection: 'row',
+    borderTopWidth: 1.5, borderTopColor: '#000', borderTopStyle: 'solid',
+    width: 200,
+    backgroundColor: '#f0f0f0',
+  },
+  totalLineLabel: {
+    flex: 1, paddingHorizontal: 4, paddingVertical: 3,
+    fontSize: 8, textAlign: 'right', color: '#444',
+  },
+  totalLineValue: {
+    width: 80, paddingHorizontal: 4, paddingVertical: 3,
+    fontSize: 8, textAlign: 'right',
+  },
+  totalLineValueBold: {
+    width: 80, paddingHorizontal: 4, paddingVertical: 3,
+    fontSize: 10, textAlign: 'right', fontWeight: 'bold',
   },
   // フッター
   footer: {
-    marginTop: 16,
-    borderTopWidth: 0.5,
-    borderTopColor: '#000',
-    borderTopStyle: 'solid',
+    marginTop: 10,
+    borderTopWidth: 0.5, borderTopColor: '#aaa', borderTopStyle: 'solid',
     paddingTop: 6,
+    flexDirection: 'row',
+    gap: 16,
   },
-  footerLabel: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  noteText: {
-    fontSize: 8,
-    color: '#333',
-    marginBottom: 8,
-    minHeight: 40,
-  },
-  companyInfo: {
-    marginTop: 4,
-    fontSize: 9,
-    lineHeight: 1.6,
-  },
+  footerLeft: { flex: 1 },
+  footerRight: { width: 180 },
+  footerLabel: { fontSize: 8, fontWeight: 'bold', marginBottom: 3 },
+  noteText: { fontSize: 7.5, color: '#333', lineHeight: 1.6, minHeight: 32 },
+  bankInfo: { fontSize: 7.5, color: '#444', lineHeight: 1.6 },
+  pageNo: { fontSize: 7, color: '#aaa', textAlign: 'right', marginTop: 4 },
 });
 
 // ── ユーティリティ ──────────────────────────────────────────────
-
-const fmtYen = (n: number) =>
-  '¥' + Math.round(n).toLocaleString('ja-JP');
-
+const fmtYen = (n: number) => '¥' + Math.round(n).toLocaleString('ja-JP');
 const fmtDate = (iso: string) => {
   const d = new Date(iso);
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
 };
-
-const MAX_ROWS = 24;
+const TAX_RATE = 0.10;
+const MAX_ROWS = 22;
 
 // ── PDF文書コンポーネント ────────────────────────────────────────
-
 export function EstimatePdf({ data }: { data: EstimatePdfData }) {
-  // 品目を数量ごとの行に展開
-  const rows: { name: string; qty: number; unit: number | null; amount: number }[] = [];
+  // 品目を行に展開
+  const rows: { name: string; spec: string; qty: number; unit: number | null; amount: number }[] = [];
   for (const item of data.items) {
     for (const q of item.quantities) {
       rows.push({
         name: item.quantities.length > 1
           ? `${item.item_name}（${q.quantity.toLocaleString()}部）`
           : item.item_name,
+        spec: item.spec ?? '',
         qty: q.quantity,
         unit: q.unit_price,
         amount: q.total,
@@ -259,10 +212,11 @@ export function EstimatePdf({ data }: { data: EstimatePdfData }) {
     }
   }
 
-  // 合計
-  const grandTotal = rows.reduce((sum, r) => sum + r.amount, 0);
+  const subtotal = rows.reduce((sum, r) => sum + r.amount, 0);
+  const tax = Math.round(subtotal * TAX_RATE);
+  const grandTotal = subtotal + tax;
 
-  // 空行でMAX_ROWSまで埋める（1ページ超は次ページ）
+  // ページ分割
   const pages: typeof rows[] = [];
   for (let i = 0; i < Math.max(1, Math.ceil(rows.length / MAX_ROWS)); i++) {
     pages.push(rows.slice(i * MAX_ROWS, (i + 1) * MAX_ROWS));
@@ -270,75 +224,88 @@ export function EstimatePdf({ data }: { data: EstimatePdfData }) {
 
   const createdAt = fmtDate(data.created_at);
   const validUntil = data.valid_until ? fmtDate(data.valid_until) : '—';
-  const staffName = data.assigned_to_name ?? '岡部';
+  const staffName = data.assigned_to_name ?? '';
 
   return (
     <Document>
       {pages.map((pageRows, pageIdx) => {
-        const emptyCount = MAX_ROWS - pageRows.length;
+        const emptyCount = Math.max(0, MAX_ROWS - pageRows.length);
         const isLastPage = pageIdx === pages.length - 1;
 
         return (
           <Page key={pageIdx} size="A4" style={s.page}>
-            {/* ── ヘッダー ── */}
-            <View style={s.headerRow}>
-              <Text style={s.title}>御　　見　　積　　書</Text>
-              <Text style={s.dateLabel}>{createdAt}</Text>
+
+            {/* ── タイトル ── */}
+            <View style={s.titleRow}>
+              <Text style={s.title}>御　見　積　書</Text>
+              <Text style={s.estimateNo}>
+                見積番号：{data.estimate_number}{'\n'}
+                発行日：{createdAt}
+              </Text>
             </View>
 
-            {/* ── 宛先 ── */}
-            <View style={s.addressBlock}>
-              <Text style={s.companyName}>{data.customer_name}</Text>
-              <Text style={s.honorific}>　御中</Text>
-            </View>
-
-            {/* ── 条件行 ── */}
-            <View style={s.condRow}>
-              <View style={s.condLeft}>
-                <Text style={s.condLabel}>納　　期：</Text>
-                <Text style={s.condLabel}>支払条件：</Text>
-                <Text style={s.condLabel}>有効期限：{validUntil}</Text>
+            {/* ── ヘッダーグリッド：宛先 ←→ 差出人 ── */}
+            <View style={s.headerGrid}>
+              <View style={s.headerLeft}>
+                <Text style={s.customerName}>{data.customer_name}</Text>
+                <Text style={s.honorific}>　御中</Text>
+                <View style={s.condRow}>
+                  <Text style={s.condLabel}>有効期限：</Text>
+                  <Text style={s.condValue}>{validUntil}</Text>
+                </View>
+                <View style={s.condRow}>
+                  <Text style={s.condLabel}>担　当　者：</Text>
+                  <Text style={s.condValue}>{staffName}</Text>
+                </View>
               </View>
-              <Text style={s.staffLabel}>担当者：{staffName}</Text>
+              <View style={s.headerRight}>
+                <Text style={s.companyBlock}>
+                  {'〒703-8236\n'}
+                  {'岡山市東区浅川西町3-5\n'}
+                  {'株式会社　岡文館印刷所\n'}
+                  {'TEL 086-279-5151\n'}
+                  {'FAX 086-279-5173'}
+                </Text>
+              </View>
             </View>
 
-            {/* ── 挨拶文 ── */}
-            <View style={s.greeting}>
-              <Text>下記の通りお見積り申し上げます。</Text>
-              <Text>ご検討の上ご下命の程、よろしくお願い致します。</Text>
-            </View>
+            {/* ── 件名・合計金額バー ── */}
+            {pageIdx === 0 && (
+              <>
+                <View style={s.subjectBar}>
+                  <Text style={s.subjectLabel}>件　名：</Text>
+                  <Text style={s.subjectValue}>{data.title}</Text>
+                  <View style={s.grandTotalBox}>
+                    <Text style={s.grandTotalLabel}>お見積り金額（税込）</Text>
+                    <Text style={s.grandTotalValue}>{fmtYen(grandTotal)}</Text>
+                  </View>
+                </View>
+                <View style={s.greeting}>
+                  <Text>下記の通りお見積り申し上げます。ご検討の上ご下命の程、よろしくお願い致します。</Text>
+                </View>
+              </>
+            )}
 
             {/* ── 品目テーブル ── */}
             <View style={s.table}>
-              {/* テーブルヘッダー */}
               <View style={s.tableHeaderRow}>
-                <View style={s.colName}>
-                  <Text style={s.headerText}>品　　　　名</Text>
-                </View>
-                <View style={s.colQty}>
-                  <Text style={s.headerText}>数　量</Text>
-                </View>
-                <View style={s.colUnit}>
-                  <Text style={s.headerText}>単　価</Text>
-                </View>
-                <View style={s.colAmount}>
-                  <Text style={s.headerText}>金　額</Text>
-                </View>
+                <View style={s.colName}><Text style={s.headerText}>品　　　　名</Text></View>
+                <View style={s.colQty}><Text style={s.headerText}>数　量</Text></View>
+                <View style={s.colUnit}><Text style={s.headerText}>単　価</Text></View>
+                <View style={s.colAmount}><Text style={s.headerText}>金　額</Text></View>
               </View>
 
-              {/* データ行 */}
               {pageRows.map((row, i) => (
                 <View key={i} style={s.tableRow}>
                   <View style={s.colName}>
                     <Text style={s.cellText}>{row.name}</Text>
+                    {row.spec ? <Text style={s.specText}>{row.spec}</Text> : null}
                   </View>
                   <View style={s.colQty}>
                     <Text style={s.cellText}>{row.qty.toLocaleString()}</Text>
                   </View>
                   <View style={s.colUnit}>
-                    <Text style={s.cellText}>
-                      {row.unit != null ? fmtYen(row.unit) : ''}
-                    </Text>
+                    <Text style={s.cellText}>{row.unit != null ? fmtYen(row.unit) : ''}</Text>
                   </View>
                   <View style={s.colAmount}>
                     <Text style={s.cellText}>{fmtYen(row.amount)}</Text>
@@ -357,24 +324,45 @@ export function EstimatePdf({ data }: { data: EstimatePdfData }) {
               ))}
             </View>
 
-            {/* ── 合計行（最終ページのみ） ── */}
+            {/* ── 合計（最終ページのみ） ── */}
             {isLastPage && (
-              <View style={s.totalRow}>
-                <Text style={s.totalLabel}>消費税別</Text>
-                <Text style={s.totalAmount}>{fmtYen(grandTotal)}</Text>
+              <View style={s.totalSection}>
+                <View style={s.totalLine}>
+                  <Text style={s.totalLineLabel}>小　計</Text>
+                  <Text style={s.totalLineValue}>{fmtYen(subtotal)}</Text>
+                </View>
+                <View style={s.totalLine}>
+                  <Text style={s.totalLineLabel}>消費税（10%）</Text>
+                  <Text style={s.totalLineValue}>{fmtYen(tax)}</Text>
+                </View>
+                <View style={s.totalLineBold}>
+                  <Text style={s.totalLineLabel}>合　計（税込）</Text>
+                  <Text style={s.totalLineValueBold}>{fmtYen(grandTotal)}</Text>
+                </View>
               </View>
             )}
 
             {/* ── フッター（最終ページのみ） ── */}
             {isLastPage && (
               <View style={s.footer}>
-                <Text style={s.footerLabel}>内容明細・備考</Text>
-                <Text style={s.noteText}>{data.note ?? ''}</Text>
-                <View style={s.companyInfo}>
-                  <Text>株式会社　岡文館印刷所</Text>
-                  <Text>中国銀行　東岡山支店　当座　１２２９０</Text>
+                <View style={s.footerLeft}>
+                  <Text style={s.footerLabel}>備　考</Text>
+                  <Text style={s.noteText}>{data.note ?? ''}</Text>
+                </View>
+                <View style={s.footerRight}>
+                  <Text style={s.footerLabel}>お振込先</Text>
+                  <Text style={s.bankInfo}>
+                    {'中国銀行　東岡山支店\n'}
+                    {'当座　１２２９０\n'}
+                    {'株式会社　岡文館印刷所'}
+                  </Text>
                 </View>
               </View>
+            )}
+
+            {/* ページ番号 */}
+            {pages.length > 1 && (
+              <Text style={s.pageNo}>{pageIdx + 1} / {pages.length}</Text>
             )}
           </Page>
         );
