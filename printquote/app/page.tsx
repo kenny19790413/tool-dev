@@ -39,16 +39,20 @@ function HomeCard({
   primary?: boolean;
 }) {
   return (
-    <div className="bg-white border rounded-xl p-6 flex flex-col gap-4 hover:shadow-md transition-shadow">
-      <div>
-        <p className="font-semibold text-gray-900 text-lg">{title}</p>
-        <p className="text-sm text-gray-500 mt-1">{desc}</p>
-      </div>
-      <Link href={href} className="mt-auto">
-        <Button variant={primary ? 'default' : 'outline'} className="w-full">
+    <Link href={href} className="block">
+      <div className="bg-white border rounded-xl p-6 flex flex-col gap-4 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
+        <div>
+          <p className="font-semibold text-gray-900 text-lg">{title}</p>
+          <p className="text-sm text-gray-500 mt-1">{desc}</p>
+        </div>
+        <div className={`w-full py-2 px-4 rounded-md text-center text-sm font-medium ${
+          primary
+            ? 'bg-blue-600 text-white hover:bg-blue-700'
+            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+        }`}>
           {label}
-        </Button>
-      </Link>
-    </div>
+        </div>
+      </div>
+    </Link>
   );
 }
