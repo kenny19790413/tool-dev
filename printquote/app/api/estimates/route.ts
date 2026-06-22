@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
+import { getSession } from '@/lib/auth';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -43,6 +44,7 @@ export async function GET(req: NextRequest) {
 // POST /api/estimates — 新規見積もり作成
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSession();
     const body = await req.json();
     const {
       title, customerName, customerId,
@@ -62,17 +64,19 @@ export async function POST(req: NextRequest) {
     const validUntil = new Date();
     validUntil.setDate(validUntil.getDate() + 30);
 
+    const assignedTo = session ? Number(session.sub) : null;
+
     const [estimate] = await sql`
       INSERT INTO estimates
         (estimate_number, title, customer_id, customer_name,
          product_type, category, status, valid_until,
-         overhead_rate, note, created_at, updated_at)
+         overhead_rate, note, assigned_to, created_at, updated_at)
       VALUES (
         ${estimateNumber}, ${title},
         ${customerId ?? null}, ${customerName},
         ${productType}::"ProductType", ${category},
         'draft'::"EstimateStatus", ${validUntil.toISOString()},
-        ${overheadRate}, ${note ?? null}, NOW(), NOW()
+        ${overheadRate}, ${note ?? null}, ${assignedTo}, NOW(), NOW()
       )
       RETURNING *
     `;
