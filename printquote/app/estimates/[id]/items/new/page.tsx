@@ -8,49 +8,31 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type PaperRow = {
-  id: number;
-  name: string;
-  parent_size: string;
-  width_mm: number;
-  height_mm: number;
-  ream_weight: number | null;
-  unit_price: number | null;
-  sheet_price: number | null;
+type PaperRow = { id: number; name: string; parent_size: string; width_mm: number; height_mm: number; ream_weight: number | null; unit_price: number | null; sheet_price: number | null; };
+type SizeRow = { id: number; name: string; width_mm: number; height_mm: number; };
+type SpecTemplate = {
+  id: number; name: string; category_name: string | null;
+  finish_width_mm: number | null; finish_height_mm: number | null;
+  paper_id: number | null; faces: number; cuts: number;
+  front_colors: number; back_colors: number; coater: string; color_type: string;
+  waste_rate: number; process_types: string[]; default_quantities: string;
 };
 
 const PROCESSINGS = [
-  { key: 'cutting',    label: '断裁' },
-  { key: 'pp',         label: 'PP加工' },
-  { key: 'press',      label: 'プレス（ニス引き）' },
-  { key: 'emboss',     label: 'エンボス' },
-  { key: 'foil',       label: '箔押し' },
-  { key: 'lamination', label: '合紙' },
-  { key: 'corrugated', label: '片段合紙' },
-  { key: 'thomson',    label: 'トムソン抜き' },
-  { key: 'packing',    label: '梱包' },
+  { key: 'cutting', label: '断裁' }, { key: 'pp', label: 'PP加工' },
+  { key: 'press', label: 'プレス（ニス引き）' }, { key: 'emboss', label: 'エンボス' },
+  { key: 'foil', label: '箔押し' }, { key: 'lamination', label: '合紙' },
+  { key: 'corrugated', label: '片段合紙' }, { key: 'thomson', label: 'トムソン抜き' },
+  { key: 'packing', label: '梱包' },
 ];
 
 type Form = {
-  itemName: string;
-  finishWidthMm: string;
-  finishHeightMm: string;
-  paperId: string;
-  faces: string;
-  cuts: string;
-  frontColors: string;
-  backColors: string;
-  coater: string;
-  colorType: string;
-  wasteRate: string;
-  hasMold: boolean;
-  moldComplexity: string;
-  quantities: string;
-  note: string;
+  itemName: string; finishWidthMm: string; finishHeightMm: string; paperId: string;
+  faces: string; cuts: string; frontColors: string; backColors: string;
+  coater: string; colorType: string; wasteRate: string; hasMold: boolean;
+  moldComplexity: string; quantities: string; note: string;
 };
 
 export default function NewItemPage() {
@@ -59,41 +41,53 @@ export default function NewItemPage() {
   const estimateId = params?.id as string;
 
   const [papers, setPapers] = useState<PaperRow[]>([]);
+  const [sizes, setSizes] = useState<SizeRow[]>([]);
+  const [templates, setTemplates] = useState<SpecTemplate[]>([]);
   const [selectedPaper, setSelectedPaper] = useState<PaperRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [processTypes, setProcessTypes] = useState<string[]>(['cutting']);
   const [form, setForm] = useState<Form>({
-    itemName: '',
-    finishWidthMm: '',
-    finishHeightMm: '',
-    paperId: '',
-    faces: '1',
-    cuts: '1',
-    frontColors: '4',
-    backColors: '0',
-    coater: 'none',
-    colorType: 'process',
-    wasteRate: '15',
-    hasMold: false,
-    moldComplexity: '1',
-    quantities: '1000,3000,5000',
-    note: '',
+    itemName: '', finishWidthMm: '', finishHeightMm: '', paperId: '',
+    faces: '1', cuts: '1', frontColors: '4', backColors: '0',
+    coater: 'none', colorType: 'process', wasteRate: '15', hasMold: false,
+    moldComplexity: '1', quantities: '1000,3000,5000', note: '',
   });
 
   useEffect(() => {
-    fetch('/api/masters/papers')
-      .then((r) => r.json())
-      .then(setPapers)
-      .catch(() => toast.error('用紙マスタの取得に失敗しました'));
+    Promise.all([
+      fetch('/api/masters/papers').then(r => r.json()),
+      fetch('/api/masters/sizes').then(r => r.json()).catch(() => []),
+      fetch('/api/masters/spec-templates').then(r => r.json()).catch(() => []),
+    ]).then(([p, s, t]) => { setPapers(p); setSizes(s); setTemplates(t); })
+      .catch(() => toast.error('マスタの取得に失敗しました'));
   }, []);
 
-  const setF = (k: keyof Form, v: string | boolean) =>
-    setForm((prev) => ({ ...prev, [k]: v }));
-
+  const setF = (k: keyof Form, v: string | boolean) => setForm(prev => ({ ...prev, [k]: v }));
   const toggleProcess = (key: string) =>
-    setProcessTypes((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
+    setProcessTypes(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+
+  // 仕様テンプレート適用
+  const applyTemplate = (templateId: string) => {
+    const t = templates.find(t => String(t.id) === templateId);
+    if (!t) return;
+    setForm(prev => ({
+      ...prev,
+      finishWidthMm: t.finish_width_mm ? String(t.finish_width_mm) : prev.finishWidthMm,
+      finishHeightMm: t.finish_height_mm ? String(t.finish_height_mm) : prev.finishHeightMm,
+      paperId: t.paper_id ? String(t.paper_id) : prev.paperId,
+      faces: String(t.faces),
+      cuts: String(t.cuts),
+      frontColors: String(t.front_colors),
+      backColors: String(t.back_colors),
+      coater: t.coater,
+      colorType: t.color_type,
+      wasteRate: String(t.waste_rate),
+      quantities: t.default_quantities,
+    }));
+    setProcessTypes(t.process_types ?? ['cutting']);
+    if (t.paper_id) setSelectedPaper(papers.find(p => p.id === t.paper_id) ?? null);
+    toast.success(`「${t.name}」を適用しました`);
+  };
 
   const hasThomson = processTypes.includes('thomson');
 
@@ -103,58 +97,31 @@ export default function NewItemPage() {
       toast.error('必須項目を入力してください（品目名・サイズ・用紙）');
       return;
     }
-
-    const quantitiesArr = form.quantities
-      .split(',')
-      .map((s) => parseInt(s.trim(), 10))
-      .filter((n) => !isNaN(n) && n > 0);
-
-    if (quantitiesArr.length === 0) {
-      toast.error('有効な数量を1つ以上入力してください');
-      return;
-    }
-
+    const quantitiesArr = form.quantities.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0);
+    if (quantitiesArr.length === 0) { toast.error('有効な数量を1つ以上入力してください'); return; }
     setLoading(true);
     try {
-      // Step1: 明細を保存
       const itemRes = await fetch(`/api/estimates/${estimateId}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          itemName: form.itemName,
-          finishWidthMm: parseFloat(form.finishWidthMm),
-          finishHeightMm: parseFloat(form.finishHeightMm),
-          paperId: parseInt(form.paperId, 10),
-          faces: parseInt(form.faces, 10),
-          cuts: parseInt(form.cuts, 10),
-          frontColors: parseInt(form.frontColors, 10),
-          backColors: parseInt(form.backColors, 10),
-          coater: form.coater,
-          colorType: form.colorType,
-          wasteRate: parseFloat(form.wasteRate),
-          hasMold: form.hasMold,
-          moldComplexity: parseInt(form.moldComplexity, 10),
-          processTypes,
-          note: form.note || null,
+          itemName: form.itemName, finishWidthMm: parseFloat(form.finishWidthMm),
+          finishHeightMm: parseFloat(form.finishHeightMm), paperId: parseInt(form.paperId, 10),
+          faces: parseInt(form.faces, 10), cuts: parseInt(form.cuts, 10),
+          frontColors: parseInt(form.frontColors, 10), backColors: parseInt(form.backColors, 10),
+          coater: form.coater, colorType: form.colorType, wasteRate: parseFloat(form.wasteRate),
+          hasMold: form.hasMold, moldComplexity: parseInt(form.moldComplexity, 10),
+          processTypes, note: form.note || null,
         }),
       });
-      if (!itemRes.ok) {
-        const err = await itemRes.json();
-        throw new Error(err.error ?? '明細保存失敗');
-      }
+      if (!itemRes.ok) throw new Error((await itemRes.json()).error ?? '明細保存失敗');
       const savedItem = await itemRes.json();
-
-      // Step2: 計算実行
       const calcRes = await fetch(`/api/estimates/${estimateId}/calculate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemId: savedItem.id, quantities: quantitiesArr }),
       });
-      if (!calcRes.ok) {
-        const err = await calcRes.json();
-        throw new Error(err.error ?? '計算失敗');
-      }
-
+      if (!calcRes.ok) throw new Error((await calcRes.json()).error ?? '計算失敗');
       toast.success('明細と計算結果を保存しました');
       router.push(`/estimates/${estimateId}`);
     } catch (err) {
@@ -174,6 +141,29 @@ export default function NewItemPage() {
         </div>
       </div>
 
+      {/* 仕様テンプレート選択 */}
+      {templates.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-blue-800 shrink-0">仕様テンプレート：</span>
+              <Select onValueChange={applyTemplate}>
+                <SelectTrigger className="bg-white flex-1">
+                  <SelectValue placeholder="テンプレートを選ぶと仕様が自動入力されます" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map(t => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.category_name ? `【${t.category_name}】` : ''}{t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* 基本情報 */}
         <Card>
@@ -181,28 +171,36 @@ export default function NewItemPage() {
           <CardContent className="space-y-4">
             <div className="space-y-1">
               <Label>品目名 <span className="text-red-500">*</span></Label>
-              <Input
-                placeholder="例: 化粧箱 表面"
-                value={form.itemName}
-                onChange={(e) => setF('itemName', e.target.value)}
-              />
+              <Input placeholder="例: 化粧箱 表面" value={form.itemName} onChange={e => setF('itemName', e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>仕上がり幅 mm <span className="text-red-500">*</span></Label>
-                <Input
-                  type="number" min={1} placeholder="例: 100"
-                  value={form.finishWidthMm}
-                  onChange={(e) => setF('finishWidthMm', e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>仕上がり高さ mm <span className="text-red-500">*</span></Label>
-                <Input
-                  type="number" min={1} placeholder="例: 150"
-                  value={form.finishHeightMm}
-                  onChange={(e) => setF('finishHeightMm', e.target.value)}
-                />
+            <div className="space-y-1">
+              <Label>仕上がりサイズ <span className="text-red-500">*</span></Label>
+              {sizes.length > 0 && (
+                <Select onValueChange={v => {
+                  const s = sizes.find(s => String(s.id) === v);
+                  if (s) { setF('finishWidthMm', String(s.width_mm)); setF('finishHeightMm', String(s.height_mm)); }
+                }}>
+                  <SelectTrigger className="mb-2">
+                    <SelectValue placeholder="定型サイズから選択（または下に直接入力）" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sizes.map(s => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.name}（{Number(s.width_mm)}×{Number(s.height_mm)}mm）
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">幅 mm</Label>
+                  <Input type="number" min={1} placeholder="例: 210" value={form.finishWidthMm} onChange={e => setF('finishWidthMm', e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-gray-500">高さ mm</Label>
+                  <Input type="number" min={1} placeholder="例: 297" value={form.finishHeightMm} onChange={e => setF('finishHeightMm', e.target.value)} />
+                </div>
               </div>
             </div>
           </CardContent>
@@ -214,63 +212,27 @@ export default function NewItemPage() {
           <CardContent className="space-y-4">
             <div className="space-y-1">
               <Label>用紙 <span className="text-red-500">*</span></Label>
-              <Select
-                value={form.paperId}
-                onValueChange={(v) => {
-                  setF('paperId', v);
-                  setSelectedPaper(papers.find((p) => String(p.id) === v) ?? null);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="用紙を選択してください" />
-                </SelectTrigger>
+              <Select value={form.paperId} onValueChange={v => { setF('paperId', v); setSelectedPaper(papers.find(p => String(p.id) === v) ?? null); }}>
+                <SelectTrigger><SelectValue placeholder="用紙を選択してください" /></SelectTrigger>
                 <SelectContent>
-                  {papers.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.name}（{p.parent_size}）
-                    </SelectItem>
-                  ))}
+                  {papers.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}（{p.parent_size}）</SelectItem>)}
                 </SelectContent>
               </Select>
-
-              {/* 選択用紙の単価オートフィル表示 */}
               {selectedPaper && (
                 <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-100 text-sm space-y-1">
                   <p className="font-medium text-blue-800">{selectedPaper.name}</p>
                   <div className="flex flex-wrap gap-4 text-blue-700">
-                    {selectedPaper.ream_weight != null && (
-                      <span>連量: <strong>{selectedPaper.ream_weight} kg</strong></span>
-                    )}
-                    {selectedPaper.unit_price != null && (
-                      <span>㎏単価: <strong>¥{Number(selectedPaper.unit_price).toLocaleString()}/kg</strong></span>
-                    )}
-                    {selectedPaper.sheet_price != null && (
-                      <span>枚単価: <strong>¥{Number(selectedPaper.sheet_price).toLocaleString()}/枚</strong></span>
-                    )}
-                    {selectedPaper.unit_price == null && selectedPaper.sheet_price == null && (
-                      <span className="text-orange-600">⚠ 単価が未設定です。用紙マスタを確認してください。</span>
-                    )}
+                    {selectedPaper.ream_weight != null && <span>連量: <strong>{selectedPaper.ream_weight} kg</strong></span>}
+                    {selectedPaper.unit_price != null && <span>㎏単価: <strong>¥{Number(selectedPaper.unit_price).toLocaleString()}/kg</strong></span>}
+                    {selectedPaper.sheet_price != null && <span>枚単価: <strong>¥{Number(selectedPaper.sheet_price).toLocaleString()}/枚</strong></span>}
+                    {selectedPaper.unit_price == null && selectedPaper.sheet_price == null && <span className="text-orange-600">⚠ 単価が未設定です。用紙マスタを確認してください。</span>}
                   </div>
                 </div>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>面付け数</Label>
-                <Input
-                  type="number" min={1}
-                  value={form.faces}
-                  onChange={(e) => setF('faces', e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>カット数</Label>
-                <Input
-                  type="number" min={1}
-                  value={form.cuts}
-                  onChange={(e) => setF('cuts', e.target.value)}
-                />
-              </div>
+              <div className="space-y-1"><Label>面付け数</Label><Input type="number" min={1} value={form.faces} onChange={e => setF('faces', e.target.value)} /></div>
+              <div className="space-y-1"><Label>カット数</Label><Input type="number" min={1} value={form.cuts} onChange={e => setF('cuts', e.target.value)} /></div>
             </div>
           </CardContent>
         </Card>
@@ -280,53 +242,25 @@ export default function NewItemPage() {
           <CardHeader><CardTitle className="text-sm">印刷仕様</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>表色数（0〜6）</Label>
-                <Input
-                  type="number" min={0} max={6}
-                  value={form.frontColors}
-                  onChange={(e) => setF('frontColors', e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>裏色数（0〜4）</Label>
-                <Input
-                  type="number" min={0} max={4}
-                  value={form.backColors}
-                  onChange={(e) => setF('backColors', e.target.value)}
-                />
-              </div>
+              <div className="space-y-1"><Label>表色数（0〜6）</Label><Input type="number" min={0} max={6} value={form.frontColors} onChange={e => setF('frontColors', e.target.value)} /></div>
+              <div className="space-y-1"><Label>裏色数（0〜4）</Label><Input type="number" min={0} max={4} value={form.backColors} onChange={e => setF('backColors', e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label>コーター</Label>
-                <Select value={form.coater} onValueChange={(v) => setF('coater', v)}>
+                <Select value={form.coater} onValueChange={v => setF('coater', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">なし</SelectItem>
-                    <SelectItem value="single">片面</SelectItem>
-                    <SelectItem value="double">両面</SelectItem>
-                  </SelectContent>
+                  <SelectContent><SelectItem value="none">なし</SelectItem><SelectItem value="single">片面</SelectItem><SelectItem value="double">両面</SelectItem></SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
                 <Label>カラー種別</Label>
-                <Select value={form.colorType} onValueChange={(v) => setF('colorType', v)}>
+                <Select value={form.colorType} onValueChange={v => setF('colorType', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="process">プロセス印刷</SelectItem>
-                    <SelectItem value="special">特色印刷</SelectItem>
-                  </SelectContent>
+                  <SelectContent><SelectItem value="process">プロセス印刷</SelectItem><SelectItem value="special">特色印刷</SelectItem></SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1">
-                <Label>ヤレ率 %</Label>
-                <Input
-                  type="number" min={0} max={50}
-                  value={form.wasteRate}
-                  onChange={(e) => setF('wasteRate', e.target.value)}
-                />
-              </div>
+              <div className="space-y-1"><Label>ヤレ率 %</Label><Input type="number" min={0} max={50} value={form.wasteRate} onChange={e => setF('wasteRate', e.target.value)} /></div>
             </div>
           </CardContent>
         </Card>
@@ -338,39 +272,26 @@ export default function NewItemPage() {
             <div className="grid grid-cols-2 gap-3">
               {PROCESSINGS.map(({ key, label }) => (
                 <label key={key} className="flex items-center gap-2 cursor-pointer text-sm select-none">
-                  <Checkbox
-                    checked={processTypes.includes(key)}
-                    onCheckedChange={() => toggleProcess(key)}
-                  />
+                  <Checkbox checked={processTypes.includes(key)} onCheckedChange={() => toggleProcess(key)} />
                   {label}
                 </label>
               ))}
             </div>
-
-            {/* トムソン設定 */}
             {hasThomson && (
               <div className="mt-2 pt-4 border-t space-y-3">
                 <p className="text-sm font-medium text-gray-700">トムソン設定</p>
                 <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                  <Checkbox
-                    checked={form.hasMold}
-                    onCheckedChange={(v) => setF('hasMold', Boolean(v))}
-                  />
+                  <Checkbox checked={form.hasMold} onCheckedChange={v => setF('hasMold', Boolean(v))} />
                   既存の型あり（型代¥0）
                 </label>
                 {!form.hasMold && (
                   <div className="space-y-1">
                     <Label>木型の複雑度（1〜5）</Label>
-                    <Select
-                      value={form.moldComplexity}
-                      onValueChange={(v) => setF('moldComplexity', v)}
-                    >
+                    <Select value={form.moldComplexity} onValueChange={v => setF('moldComplexity', v)}>
                       <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">1 — 単純</SelectItem>
-                        <SelectItem value="2">2 — やや複雑</SelectItem>
-                        <SelectItem value="3">3 — 標準</SelectItem>
-                        <SelectItem value="4">4 — 複雑</SelectItem>
+                        <SelectItem value="1">1 — 単純</SelectItem><SelectItem value="2">2 — やや複雑</SelectItem>
+                        <SelectItem value="3">3 — 標準</SelectItem><SelectItem value="4">4 — 複雑</SelectItem>
                         <SelectItem value="5">5 — 非常に複雑</SelectItem>
                       </SelectContent>
                     </Select>
@@ -383,40 +304,22 @@ export default function NewItemPage() {
 
         {/* 数量 */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">計算数量（カンマ区切りで複数入力）</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-sm">計算数量（カンマ区切りで複数入力）</CardTitle></CardHeader>
           <CardContent>
-            <Input
-              placeholder="例: 1000, 3000, 5000"
-              value={form.quantities}
-              onChange={(e) => setF('quantities', e.target.value)}
-            />
-            <p className="text-xs text-gray-400 mt-1.5">
-              複数の数量を入力すると、詳細ページで比較表が表示されます
-            </p>
+            <Input placeholder="例: 1000, 3000, 5000" value={form.quantities} onChange={e => setF('quantities', e.target.value)} />
+            <p className="text-xs text-gray-400 mt-1.5">複数の数量を入力すると、詳細ページで比較表が表示されます</p>
           </CardContent>
         </Card>
 
         {/* 備考 */}
         <Card>
           <CardHeader><CardTitle className="text-sm">備考（任意）</CardTitle></CardHeader>
-          <CardContent>
-            <Input
-              placeholder="特記事項があれば入力"
-              value={form.note}
-              onChange={(e) => setF('note', e.target.value)}
-            />
-          </CardContent>
+          <CardContent><Input placeholder="特記事項があれば入力" value={form.note} onChange={e => setF('note', e.target.value)} /></CardContent>
         </Card>
 
         <div className="flex gap-3 pb-8">
-          <Button type="submit" disabled={loading} className="flex-1">
-            {loading ? '保存・計算中...' : '保存して計算する'}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>
-            キャンセル
-          </Button>
+          <Button type="submit" disabled={loading} className="flex-1">{loading ? '保存・計算中...' : '保存して計算する'}</Button>
+          <Button type="button" variant="outline" onClick={() => router.back()}>キャンセル</Button>
         </div>
       </form>
     </div>

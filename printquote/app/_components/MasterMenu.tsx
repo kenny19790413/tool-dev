@@ -5,6 +5,9 @@ import Link from 'next/link';
 
 const MASTER_ITEMS = [
   { href: '/masters/papers',          label: '用紙マスタ' },
+  { href: '/masters/sizes',           label: 'サイズマスタ' },
+  { href: '/masters/categories',      label: '品種マスタ' },
+  { href: '/masters/spec-templates',  label: '仕様マスタ' },
   { href: '/masters/processings',     label: '加工単価' },
   { href: '/masters/production-days', label: '工程日数' },
   { href: '/masters/holidays',        label: '祝日・休業日' },
@@ -25,7 +28,7 @@ export function MasterMenu() {
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         className="hover:text-blue-200 transition-colors flex items-center gap-1"
       >
         マスタ管理
@@ -34,8 +37,8 @@ export function MasterMenu() {
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-7 bg-white text-gray-800 rounded-lg shadow-lg border min-w-36 z-50 py-1">
-          {MASTER_ITEMS.map((item) => (
+        <div className="absolute left-0 top-7 bg-white text-gray-800 rounded-lg shadow-lg border min-w-40 z-50 py-1">
+          {MASTER_ITEMS.map(item => (
             <Link
               key={item.href}
               href={item.href}

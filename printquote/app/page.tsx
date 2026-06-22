@@ -37,33 +37,13 @@ export default async function Home() {
         <section>
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">マスタ管理</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <HomeCard
-              title="用紙マスタ"
-              desc="用紙種類・単価を管理します。"
-              href="/masters/papers"
-              label="管理する"
-              outline
-            />
-            <HomeCard
-              title="加工単価"
-              desc="各加工工程の料金を管理します。"
-              href="/masters/processings"
-              label="管理する"
-              outline
-            />
-            <HomeCard
-              title="工程日数"
-              desc="納期計算用の工程別日数を管理します。"
-              href="/masters/production-days"
-              label="管理する"
-              outline
-            />
-            <HomeCard
-              title="祝日・休業日"
-              desc="営業日計算から除外する日を管理します。"
-              href="/masters/holidays"
-              label="管理する"
-              outline
+            <HomeCard title="用紙マスタ" desc="用紙種類・単価を管理します。" href="/masters/papers" label="管理する" outline />
+            <HomeCard title="サイズマスタ" desc="定型仕上がりサイズを登録します。" href="/masters/sizes" label="管理する" outline />
+            <HomeCard title="品種マスタ" desc="チラシ・名刺など製品カテゴリを管理します。" href="/masters/categories" label="管理する" outline />
+            <HomeCard title="仕様マスタ" desc="よく使う仕様をテンプレートとして登録します。" href="/masters/spec-templates" label="管理する" outline />
+            <HomeCard title="加工単価" desc="各加工工程の料金を管理します。" href="/masters/processings" label="管理する" outline />
+            <HomeCard title="工程日数" desc="納期計算用の工程別日数を管理します。" href="/masters/production-days" label="管理する" outline />
+            <HomeCard title="祝日・休業日" desc="営業日計算から除外する日を管理します。" href="/masters/holidays" label="管理する" outline
             />
           </div>
         </section>
