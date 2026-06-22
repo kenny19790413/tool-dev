@@ -15,6 +15,7 @@ export default function Home() {
           desc="作成済みの見積もりを検索・確認します。"
           href="/estimates"
           label="一覧を開く"
+          primary
         />
         <HomeCard
           title="新規見積もり"
