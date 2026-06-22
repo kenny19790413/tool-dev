@@ -18,7 +18,9 @@ type PaperRow = {
   parent_size: string;
   width_mm: number;
   height_mm: number;
-  unit_price: number;
+  ream_weight: number | null;
+  unit_price: number | null;
+  sheet_price: number | null;
 };
 
 const PROCESSINGS = [
@@ -57,6 +59,7 @@ export default function NewItemPage() {
   const estimateId = params?.id as string;
 
   const [papers, setPapers] = useState<PaperRow[]>([]);
+  const [selectedPaper, setSelectedPaper] = useState<PaperRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [processTypes, setProcessTypes] = useState<string[]>(['cutting']);
   const [form, setForm] = useState<Form>({
@@ -211,18 +214,45 @@ export default function NewItemPage() {
           <CardContent className="space-y-4">
             <div className="space-y-1">
               <Label>用紙 <span className="text-red-500">*</span></Label>
-              <Select value={form.paperId} onValueChange={(v) => setF('paperId', v)}>
+              <Select
+                value={form.paperId}
+                onValueChange={(v) => {
+                  setF('paperId', v);
+                  setSelectedPaper(papers.find((p) => String(p.id) === v) ?? null);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="用紙を選択してください" />
                 </SelectTrigger>
                 <SelectContent>
                   {papers.map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
-                      {p.name}（{p.parent_size} / ¥{Number(p.unit_price).toLocaleString()}/連）
+                      {p.name}（{p.parent_size}）
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+
+              {/* 選択用紙の単価オートフィル表示 */}
+              {selectedPaper && (
+                <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-100 text-sm space-y-1">
+                  <p className="font-medium text-blue-800">{selectedPaper.name}</p>
+                  <div className="flex flex-wrap gap-4 text-blue-700">
+                    {selectedPaper.ream_weight != null && (
+                      <span>連量: <strong>{selectedPaper.ream_weight} kg</strong></span>
+                    )}
+                    {selectedPaper.unit_price != null && (
+                      <span>㎏単価: <strong>¥{Number(selectedPaper.unit_price).toLocaleString()}/kg</strong></span>
+                    )}
+                    {selectedPaper.sheet_price != null && (
+                      <span>枚単価: <strong>¥{Number(selectedPaper.sheet_price).toLocaleString()}/枚</strong></span>
+                    )}
+                    {selectedPaper.unit_price == null && selectedPaper.sheet_price == null && (
+                      <span className="text-orange-600">⚠ 単価が未設定です。用紙マスタを確認してください。</span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
