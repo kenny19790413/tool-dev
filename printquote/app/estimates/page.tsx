@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { getSession } from '@/lib/auth';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -18,20 +19,40 @@ const STATUS_LABEL: Record<string, { label: string; variant: 'default' | 'second
 const PRODUCT_LABEL: Record<string, string> = { thick: '厚物', thin: '薄物' };
 
 export default async function EstimatesPage() {
+  const session = await getSession();
+  const isAdmin = session?.role === 'admin';
+  const userId = session ? Number(session.sub) : null;
+
   const [estimates, [{ total }]] = await Promise.all([
-    sql`
-      SELECT
-        e.id, e.estimate_number, e.title, e.customer_name,
-        e.product_type, e.category, e.status,
-        e.valid_until, e.created_at,
-        u.name AS assigned_to_name,
-        (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
-      FROM estimates e
-      LEFT JOIN users u ON e.assigned_to = u.id
-      ORDER BY e.created_at DESC
-      LIMIT 100
-    `,
-    sql`SELECT COUNT(*) AS total FROM estimates`,
+    isAdmin
+      ? sql`
+          SELECT
+            e.id, e.estimate_number, e.title, e.customer_name,
+            e.product_type, e.category, e.status,
+            e.valid_until, e.created_at,
+            u.name AS assigned_to_name,
+            (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
+          FROM estimates e
+          LEFT JOIN users u ON e.assigned_to = u.id
+          ORDER BY e.created_at DESC
+          LIMIT 100
+        `
+      : sql`
+          SELECT
+            e.id, e.estimate_number, e.title, e.customer_name,
+            e.product_type, e.category, e.status,
+            e.valid_until, e.created_at,
+            u.name AS assigned_to_name,
+            (SELECT COUNT(*) FROM estimate_items ei WHERE ei.estimate_id = e.id) AS item_count
+          FROM estimates e
+          LEFT JOIN users u ON e.assigned_to = u.id
+          WHERE e.assigned_to = ${userId}
+          ORDER BY e.created_at DESC
+          LIMIT 100
+        `,
+    isAdmin
+      ? sql`SELECT COUNT(*) AS total FROM estimates`
+      : sql`SELECT COUNT(*) AS total FROM estimates WHERE assigned_to = ${userId}`,
   ]);
 
   return (
