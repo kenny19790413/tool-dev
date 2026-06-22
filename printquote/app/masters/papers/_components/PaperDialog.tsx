@@ -9,6 +9,8 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
+type PriceMode = 'kg' | 'sheet';
+
 interface Paper {
   id: number;
   number: number;
@@ -35,6 +37,9 @@ interface Props {
 export function PaperDialog({ paper, trigger, onDone }: Props) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [priceMode, setPriceMode] = useState<PriceMode>(
+    paper?.sheet_price != null ? 'sheet' : 'kg'
+  );
 
   const isEdit = !!paper;
 
@@ -48,8 +53,8 @@ export function PaperDialog({ paper, trigger, onDone }: Props) {
       widthMm: Number(fd.get('widthMm')),
       heightMm: Number(fd.get('heightMm')),
       reamWeight: fd.get('reamWeight') ? Number(fd.get('reamWeight')) : null,
-      unitPrice: fd.get('unitPrice') ? Number(fd.get('unitPrice')) : null,
-      sheetPrice: fd.get('sheetPrice') ? Number(fd.get('sheetPrice')) : null,
+      unitPrice: priceMode === 'kg' && fd.get('unitPrice') ? Number(fd.get('unitPrice')) : null,
+      sheetPrice: priceMode === 'sheet' && fd.get('sheetPrice') ? Number(fd.get('sheetPrice')) : null,
       lowVolPrice: fd.get('lowVolPrice') ? Number(fd.get('lowVolPrice')) : null,
       rate: Number(fd.get('rate') || 100),
       supplier: fd.get('supplier') || null,
@@ -105,24 +110,60 @@ export function PaperDialog({ paper, trigger, onDone }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>連量 kg</Label>
-              <Input name="reamWeight" type="number" step="0.01" defaultValue={paper?.ream_weight ?? ''} />
-            </div>
-            <div>
               <Label>レート %</Label>
               <Input name="rate" type="number" step="0.01" defaultValue={paper?.rate ?? 100} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>㎏単価（円/kg）</Label>
-              <Input name="unitPrice" type="number" step="0.01" defaultValue={paper?.unit_price ?? ''} />
-            </div>
-            <div>
-              <Label>枚単価（円/枚）</Label>
-              <Input name="sheetPrice" type="number" step="0.0001" defaultValue={paper?.sheet_price ?? ''} />
+          {/* 単価方式ラジオ */}
+          <div>
+            <Label>単価方式 *</Label>
+            <div className="flex gap-6 mt-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="priceMode"
+                  value="kg"
+                  checked={priceMode === 'kg'}
+                  onChange={() => setPriceMode('kg')}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm font-medium">㎏単価</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="priceMode"
+                  value="sheet"
+                  checked={priceMode === 'sheet'}
+                  onChange={() => setPriceMode('sheet')}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm font-medium">枚単価</span>
+              </label>
             </div>
           </div>
+
+          {/* 選択した方式の入力欄のみ表示 */}
+          {priceMode === 'kg' ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>㎏単価（円/kg）</Label>
+                <Input name="unitPrice" type="number" step="0.01" defaultValue={paper?.unit_price ?? ''} />
+              </div>
+              <div>
+                <Label>連量 kg</Label>
+                <Input name="reamWeight" type="number" step="0.01" defaultValue={paper?.ream_weight ?? ''} />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>枚単価（円/枚）</Label>
+                <Input name="sheetPrice" type="number" step="0.0001" defaultValue={paper?.sheet_price ?? ''} />
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>少量割増単価</Label>
