@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth';
+import { jwtVerify } from 'jose';
 
 const PUBLIC_PATHS = ['/login', '/api/auth/login'];
+
+function secret() {
+  return new TextEncoder().encode(process.env.JWT_SECRET ?? 'dev-secret');
+}
+
+async function verifyToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    return payload as { role?: string };
+  } catch {
+    return null;
+  }
+}
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 静的ファイル・公開パスはスキップ
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/fonts') ||
@@ -26,7 +38,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // マスタ管理・顧客管理の書き込みは admin のみ
   const isWriteOp = ['POST', 'PATCH', 'DELETE'].includes(req.method);
   const isAdminOnly =
     pathname.startsWith('/api/masters') || pathname.startsWith('/api/customers');
