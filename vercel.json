@@ -1,7 +1,3 @@
 {
-  "buildCommand": "cd printquote && npm install && npm run build",
-  "outputDirectory": "printquote/.next",
-  "installCommand": "cd printquote && npm install",
-  "framework": "nextjs",
-  "rootDirectory": "printquote"
+  "framework": "nextjs"
 }
