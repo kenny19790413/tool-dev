@@ -16,8 +16,9 @@ export const metadata: Metadata = {
 const navItems = [
   { href: '/estimates',           label: '見積もり一覧', adminOnly: false },
   { href: '/estimates/new',       label: '新規見積もり', adminOnly: false },
-  { href: '/masters/papers',      label: '用紙マスタ',   adminOnly: true  },
-  { href: '/masters/processings', label: '加工単価',     adminOnly: true  },
+  { href: '/masters/papers',          label: '用紙マスタ', adminOnly: true  },
+  { href: '/masters/processings',     label: '加工単価',   adminOnly: true  },
+  { href: '/masters/production-days', label: '工程日数',   adminOnly: true  },
   { href: '/customers',           label: '顧客管理',     adminOnly: false },
   { href: '/admin/users',         label: 'ユーザー管理', adminOnly: true  },
 ];

@@ -10,6 +10,8 @@ import {
 import { StatusChanger } from './_components/StatusChanger';
 import { ComparePanel } from './_components/ComparePanel';
 import { RecalcButton } from './_components/RecalcButton';
+import { DeliveryPanel } from './_components/DeliveryPanel';
+import type { ProductionDayMaster } from '@/lib/delivery';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -101,6 +103,8 @@ export default async function EstimateDetailPage({
   const { id } = await params;
 
   // 見積もり + 明細 + 数量結果を並列取得
+  const productionMasters = await sql`SELECT * FROM production_day_masters ORDER BY process_type, quantity_min` as unknown as ProductionDayMaster[];
+
   const [[estimate], items] = await Promise.all([
     sql`
       SELECT e.*, u.name AS assigned_to_name
@@ -242,6 +246,8 @@ export default async function EstimateDetailPage({
                   item={item}
                   estimateId={Number(estimate.id)}
                   overheadRate={overheadRate}
+                  createdAt={String(estimate.created_at)}
+                  productionMasters={productionMasters}
                 />
               ))}
             </div>
@@ -258,10 +264,14 @@ function ItemSection({
   item,
   estimateId,
   overheadRate,
+  createdAt,
+  productionMasters,
 }: {
   item: EstimateItem;
   estimateId: number;
   overheadRate: number;
+  createdAt: string;
+  productionMasters: ProductionDayMaster[];
 }) {
   const processingTotal = (q: QuantityRow) =>
     Number(q.cutting_cost) + Number(q.press_cost) + Number(q.pp_cost) +
@@ -361,6 +371,19 @@ function ItemSection({
 
       {/* 比較分析パネル（2つ以上の数量がある場合のみ表示） */}
       <ComparePanel quantities={item.quantities} overheadRate={overheadRate} />
+
+      {/* 納期予測 */}
+      {item.quantities.length > 0 && (
+        <div className="mt-2">
+          <p className="text-xs font-semibold text-gray-500 mb-2">📅 納期予測（目安）</p>
+          <DeliveryPanel
+            processTypes={item.process_types}
+            quantities={item.quantities.map((q) => Number(q.quantity))}
+            createdAt={createdAt}
+            masters={productionMasters}
+          />
+        </div>
+      )}
     </div>
   );
 }
