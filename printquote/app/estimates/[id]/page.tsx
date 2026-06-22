@@ -11,7 +11,7 @@ import { StatusChanger } from './_components/StatusChanger';
 import { ComparePanel } from './_components/ComparePanel';
 import { RecalcButton } from './_components/RecalcButton';
 import { DeliveryPanel } from './_components/DeliveryPanel';
-import type { ProductionDayMaster } from '@/lib/delivery';
+import type { Holiday, ProductionDayMaster } from '@/lib/delivery';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -103,7 +103,10 @@ export default async function EstimateDetailPage({
   const { id } = await params;
 
   // 見積もり + 明細 + 数量結果を並列取得
-  const productionMasters = await sql`SELECT * FROM production_day_masters ORDER BY process_type, quantity_min` as unknown as ProductionDayMaster[];
+  const [productionMasters, holidays] = await Promise.all([
+    sql`SELECT * FROM production_day_masters ORDER BY process_type, quantity_min`,
+    sql`SELECT * FROM holidays ORDER BY date`,
+  ]) as unknown as [ProductionDayMaster[], Holiday[]];
 
   const [[estimate], items] = await Promise.all([
     sql`
@@ -248,6 +251,7 @@ export default async function EstimateDetailPage({
                   overheadRate={overheadRate}
                   createdAt={String(estimate.created_at)}
                   productionMasters={productionMasters}
+                  holidays={holidays}
                 />
               ))}
             </div>
@@ -266,12 +270,14 @@ function ItemSection({
   overheadRate,
   createdAt,
   productionMasters,
+  holidays,
 }: {
   item: EstimateItem;
   estimateId: number;
   overheadRate: number;
   createdAt: string;
   productionMasters: ProductionDayMaster[];
+  holidays: Holiday[];
 }) {
   const processingTotal = (q: QuantityRow) =>
     Number(q.cutting_cost) + Number(q.press_cost) + Number(q.pp_cost) +
@@ -381,6 +387,7 @@ function ItemSection({
             quantities={item.quantities.map((q) => Number(q.quantity))}
             createdAt={createdAt}
             masters={productionMasters}
+            holidays={holidays}
           />
         </div>
       )}

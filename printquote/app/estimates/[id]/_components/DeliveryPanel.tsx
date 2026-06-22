@@ -1,13 +1,14 @@
 'use client';
 
-import { addBusinessDays, calcTotalDays, formatDate } from '@/lib/delivery';
-import type { ProductionDayMaster } from '@/lib/delivery';
+import { addBusinessDays, buildHolidaySet, calcTotalDays, formatDate } from '@/lib/delivery';
+import type { Holiday, ProductionDayMaster } from '@/lib/delivery';
 
 interface Props {
   processTypes: string[];
   quantities: number[];
   createdAt: string;
   masters: ProductionDayMaster[];
+  holidays: Holiday[];
 }
 
 const PROCESS_LABEL: Record<string, string> = {
@@ -16,16 +17,17 @@ const PROCESS_LABEL: Record<string, string> = {
   corrugated: '片段合紙', thomson: 'トムソン', binding: '製本', packing: '梱包・納品',
 };
 
-export function DeliveryPanel({ processTypes, quantities, createdAt, masters }: Props) {
+export function DeliveryPanel({ processTypes, quantities, createdAt, masters, holidays }: Props) {
   if (quantities.length === 0) return null;
 
   const startDate = new Date(createdAt);
+  const holidaySet = buildHolidaySet(holidays);
 
   return (
     <div className="space-y-3">
       {quantities.map((qty) => {
         const totalDays = calcTotalDays(masters, processTypes, qty);
-        const deliveryDate = addBusinessDays(startDate, totalDays);
+        const deliveryDate = addBusinessDays(startDate, totalDays, holidaySet);
         const allProcesses = ['print', ...processTypes];
 
         return (
@@ -56,7 +58,7 @@ export function DeliveryPanel({ processTypes, quantities, createdAt, masters }: 
         );
       })}
       <p className="text-xs text-gray-400">
-        ※ 起票日（{startDate.toLocaleDateString('ja-JP')}）から土日を除いた営業日で計算。祝日・休業日は含まず。
+        ※ 起票日（{startDate.toLocaleDateString('ja-JP')}）から土日・祝日・休業日を除いた営業日で計算。
       </p>
     </div>
   );
