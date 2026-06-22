@@ -10,7 +10,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const b = await req.json();
-    const { number, name, parentSize, widthMm, heightMm, reamWeight, unitPrice, lowVolPrice, rate, supplier, note, isActive } = b;
+    const { number, name, parentSize, widthMm, heightMm, reamWeight, unitPrice, sheetPrice, lowVolPrice, rate, supplier, note, isActive } = b;
     const [row] = await sql`
       UPDATE papers SET
         number = COALESCE(${number ?? null}, number),
@@ -19,7 +19,8 @@ export async function PATCH(
         width_mm = COALESCE(${widthMm ?? null}, width_mm),
         height_mm = COALESCE(${heightMm ?? null}, height_mm),
         ream_weight = COALESCE(${reamWeight ?? null}, ream_weight),
-        unit_price = COALESCE(${unitPrice ?? null}, unit_price),
+        unit_price = ${unitPrice ?? null},
+        sheet_price = ${sheetPrice ?? null},
         low_vol_price = COALESCE(${lowVolPrice ?? null}, low_vol_price),
         rate = COALESCE(${rate ?? null}, rate),
         supplier = COALESCE(${supplier ?? null}, supplier),

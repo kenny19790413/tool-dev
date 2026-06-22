@@ -6,7 +6,7 @@ const sql = neon(process.env.DATABASE_URL!);
 export default async function PapersPage() {
   const papers = await sql`
     SELECT id, number, name, parent_size, width_mm, height_mm,
-           ream_weight, unit_price, low_vol_price, rate, supplier, note, is_active
+           ream_weight, unit_price, sheet_price, low_vol_price, rate, supplier, note, is_active
     FROM papers
     ORDER BY number
   `;

@@ -17,7 +17,8 @@ interface Paper {
   width_mm: number;
   height_mm: number;
   ream_weight: number | null;
-  unit_price: number;
+  unit_price: number | null;
+  sheet_price: number | null;
   low_vol_price: number | null;
   rate: number;
   supplier: string | null;
@@ -47,7 +48,8 @@ export function PaperDialog({ paper, trigger, onDone }: Props) {
       widthMm: Number(fd.get('widthMm')),
       heightMm: Number(fd.get('heightMm')),
       reamWeight: fd.get('reamWeight') ? Number(fd.get('reamWeight')) : null,
-      unitPrice: Number(fd.get('unitPrice')),
+      unitPrice: fd.get('unitPrice') ? Number(fd.get('unitPrice')) : null,
+      sheetPrice: fd.get('sheetPrice') ? Number(fd.get('sheetPrice')) : null,
       lowVolPrice: fd.get('lowVolPrice') ? Number(fd.get('lowVolPrice')) : null,
       rate: Number(fd.get('rate') || 100),
       supplier: fd.get('supplier') || null,
@@ -113,9 +115,15 @@ export function PaperDialog({ paper, trigger, onDone }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>㎏単価（円/kg） *</Label>
-              <Input name="unitPrice" type="number" step="0.01" defaultValue={paper?.unit_price} required />
+              <Label>㎏単価（円/kg）</Label>
+              <Input name="unitPrice" type="number" step="0.01" defaultValue={paper?.unit_price ?? ''} />
             </div>
+            <div>
+              <Label>枚単価（円/枚）</Label>
+              <Input name="sheetPrice" type="number" step="0.0001" defaultValue={paper?.sheet_price ?? ''} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>少量割増単価</Label>
               <Input name="lowVolPrice" type="number" step="0.01" defaultValue={paper?.low_vol_price ?? ''} />
