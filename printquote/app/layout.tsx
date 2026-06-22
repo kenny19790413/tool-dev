@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Toaster } from '@/components/ui/sonner';
 import { getSession } from '@/lib/auth';
 import { UserMenu } from './_components/UserMenu';
-import { MasterMenu } from './_components/MasterMenu';
 import './globals.css';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
@@ -17,8 +16,7 @@ export const metadata: Metadata = {
 const navItems = [
   { href: '/estimates',     label: '見積もり一覧', adminOnly: false },
   { href: '/estimates/new', label: '新規見積もり', adminOnly: false },
-  { href: '/customers',     label: '顧客管理',     adminOnly: false },
-  { href: '/admin/users',   label: 'ユーザー管理', adminOnly: true  },
+  { href: '/masters',       label: 'マスタ管理',   adminOnly: false },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -47,7 +45,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         {item.label}
                       </Link>
                     ))}
-                  {session.role === 'admin' && <MasterMenu />}
                 </nav>
               )}
               {session && <UserMenu name={session.name} role={session.role} />}
