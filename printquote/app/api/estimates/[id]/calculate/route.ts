@@ -85,7 +85,8 @@ export async function POST(
       widthMm: Number(paperRow.width_mm),
       heightMm: Number(paperRow.height_mm),
       reamWeight: paperRow.ream_weight != null ? Number(paperRow.ream_weight) : 0,
-      unitPrice: Number(paperRow.unit_price),
+      unitPrice: paperRow.unit_price != null ? Number(paperRow.unit_price) : null,
+      sheetPrice: paperRow.sheet_price != null ? Number(paperRow.sheet_price) : null,
       lowVolPrice: paperRow.low_vol_price != null ? Number(paperRow.low_vol_price) : null,
       rate: Number(paperRow.rate),
     };

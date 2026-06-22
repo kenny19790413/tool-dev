@@ -28,10 +28,11 @@ export interface PaperMaster {
   parentSize: string;
   widthMm: number;
   heightMm: number;
-  reamWeight: number;          // 連量(kg)
-  unitPrice: number;           // ㎏単価（円/kg）
-  lowVolPrice: number | null;  // 旧: 少量割増単価（現在は計算で使用しない）
-  rate: number;                // 掛け率(%)
+  reamWeight: number;           // 連量(kg)
+  unitPrice: number | null;     // ㎏単価（円/kg）— nullの場合はsheetPriceを使用
+  sheetPrice: number | null;    // 枚単価（円/枚）— nullの場合はunitPriceを使用
+  lowVolPrice: number | null;   // 少量割増単価
+  rate: number;                 // 掛け率(%)
 }
 
 export interface PrintPriceMaster {
