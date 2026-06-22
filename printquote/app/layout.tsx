@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Toaster } from '@/components/ui/sonner';
 import { getSession } from '@/lib/auth';
 import { UserMenu } from './_components/UserMenu';
+import { MasterMenu } from './_components/MasterMenu';
 import './globals.css';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
@@ -14,14 +15,10 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: '/estimates',           label: '見積もり一覧', adminOnly: false },
-  { href: '/estimates/new',       label: '新規見積もり', adminOnly: false },
-  { href: '/masters/papers',          label: '用紙マスタ', adminOnly: true  },
-  { href: '/masters/processings',     label: '加工単価',   adminOnly: true  },
-  { href: '/masters/production-days', label: '工程日数',   adminOnly: true  },
-  { href: '/masters/holidays',        label: '祝日・休業日', adminOnly: true  },
-  { href: '/customers',           label: '顧客管理',     adminOnly: false },
-  { href: '/admin/users',         label: 'ユーザー管理', adminOnly: true  },
+  { href: '/estimates',     label: '見積もり一覧', adminOnly: false },
+  { href: '/estimates/new', label: '新規見積もり', adminOnly: false },
+  { href: '/customers',     label: '顧客管理',     adminOnly: false },
+  { href: '/admin/users',   label: 'ユーザー管理', adminOnly: true  },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -38,7 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </Link>
             <div className="flex items-center gap-6">
               {session && (
-                <nav className="flex gap-6 text-sm font-medium">
+                <nav className="flex gap-6 text-sm font-medium items-center">
                   {navItems
                     .filter((item) => !item.adminOnly || session.role === 'admin')
                     .map((item) => (
@@ -50,6 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         {item.label}
                       </Link>
                     ))}
+                  {session.role === 'admin' && <MasterMenu />}
                 </nav>
               )}
               {session && <UserMenu name={session.name} role={session.role} />}
