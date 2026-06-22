@@ -68,5 +68,77 @@ export async function POST() {
     )
   `;
 
+  // 祝日・休業日マスタ
+  await sql`
+    CREATE TABLE IF NOT EXISTS holidays (
+      id         SERIAL PRIMARY KEY,
+      date       DATE         NOT NULL UNIQUE,
+      name       VARCHAR(50)  NOT NULL,
+      type       VARCHAR(20)  NOT NULL DEFAULT 'public',
+      created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+  `;
+  // 2026年の主要祝日
+  await sql`
+    INSERT INTO holidays (date, name, type) VALUES
+      ('2026-01-01', '元日',             'public'),
+      ('2026-01-12', '成人の日',         'public'),
+      ('2026-02-11', '建国記念の日',     'public'),
+      ('2026-02-23', '天皇誕生日',       'public'),
+      ('2026-03-20', '春分の日',         'public'),
+      ('2026-04-29', '昭和の日',         'public'),
+      ('2026-05-03', '憲法記念日',       'public'),
+      ('2026-05-04', 'みどりの日',       'public'),
+      ('2026-05-05', 'こどもの日',       'public'),
+      ('2026-07-20', '海の日',           'public'),
+      ('2026-08-11', '山の日',           'public'),
+      ('2026-09-21', '敬老の日',         'public'),
+      ('2026-09-23', '秋分の日',         'public'),
+      ('2026-10-12', 'スポーツの日',     'public'),
+      ('2026-11-03', '文化の日',         'public'),
+      ('2026-11-23', '勤労感謝の日',     'public')
+    ON CONFLICT (date) DO NOTHING
+  `;
+
+  // 工程別生産日数マスタ
+  await sql`
+    CREATE TABLE IF NOT EXISTS production_day_masters (
+      id           SERIAL PRIMARY KEY,
+      process_type VARCHAR(30)  NOT NULL,
+      quantity_min INT          NOT NULL DEFAULT 0,
+      quantity_max INT,
+      days         INT          NOT NULL DEFAULT 1,
+      note         TEXT,
+      created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`
+    INSERT INTO production_day_masters (process_type, quantity_min, quantity_max, days) VALUES
+      ('print',      0,     999,   1),
+      ('print',      1000,  4999,  2),
+      ('print',      5000,  9999,  3),
+      ('print',      10000, NULL,  4),
+      ('cutting',    0,     4999,  1),
+      ('cutting',    5000,  NULL,  2),
+      ('pp',         0,     4999,  1),
+      ('pp',         5000,  NULL,  2),
+      ('press',      0,     4999,  1),
+      ('press',      5000,  NULL,  2),
+      ('emboss',     0,     4999,  2),
+      ('emboss',     5000,  NULL,  3),
+      ('foil',       0,     4999,  2),
+      ('foil',       5000,  NULL,  3),
+      ('lamination', 0,     4999,  1),
+      ('lamination', 5000,  NULL,  2),
+      ('corrugated', 0,     4999,  1),
+      ('corrugated', 5000,  NULL,  2),
+      ('thomson',    0,     4999,  2),
+      ('thomson',    5000,  NULL,  3),
+      ('binding',    0,     4999,  2),
+      ('binding',    5000,  NULL,  3),
+      ('packing',    0,     NULL,  1)
+    ON CONFLICT DO NOTHING
+  `;
+
   return NextResponse.json({ ok: true, message: 'テーブル作成・初期データ投入完了' });
 }
