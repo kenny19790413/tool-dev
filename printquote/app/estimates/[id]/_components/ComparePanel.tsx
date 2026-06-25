@@ -92,6 +92,15 @@ export function ComparePanel({ quantities, overheadRate }: ComparePanelProps) {
 
   const minUnitPrice = Math.min(...sorted.map((q) => Number(q.unit_price)));
 
+  // 効率準拠：生産性（部/h）が最大の数量
+  const maxThroughputQ = sorted.reduce((best, q) => {
+    const printHours = SETUP_HOURS + Number(q.passes) / PRINT_SPEED;
+    const tp = Number(q.quantity) / printHours;
+    const bestHours = SETUP_HOURS + Number(best.passes) / PRINT_SPEED;
+    const bestTp = Number(best.quantity) / bestHours;
+    return tp > bestTp ? q : best;
+  }, sorted[0]);
+
   const rows = sorted.map((q, i) => {
     const prevQ = i > 0 ? sorted[i - 1] : null;
     const marginalCost =
@@ -106,6 +115,7 @@ export function ComparePanel({ quantities, overheadRate }: ComparePanelProps) {
     const fixedRate =
       Math.round((Number(q.plate_cost) / Number(q.total)) * 1000) / 10;
     const isMin = Math.abs(Number(q.unit_price) - minUnitPrice) < 0.1;
+    const isMaxThroughput = q.id === maxThroughputQ.id;
 
     return {
       label: `${Number(q.quantity).toLocaleString()}部`,
@@ -124,6 +134,7 @@ export function ComparePanel({ quantities, overheadRate }: ComparePanelProps) {
       printHours: Math.round(printHours * 10) / 10,
       throughput: Math.round(Number(q.quantity) / printHours),
       isMin,
+      isMaxThroughput,
     };
   });
 
@@ -134,6 +145,50 @@ export function ComparePanel({ quantities, overheadRate }: ComparePanelProps) {
       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
         比較分析
       </p>
+
+      {/* 推奨サマリー */}
+      {(() => {
+        const costIdeal = rows.find((r) => r.isMin)!;
+        const effIdeal  = rows.find((r) => r.isMaxThroughput)!;
+        const isSame    = costIdeal.quantity === effIdeal.quantity;
+        return (
+          <div className={`grid gap-3 ${isSame ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+            {/* 金額準拠 */}
+            <div className="flex items-start gap-3 rounded-xl border-2 border-green-200 bg-green-50 px-4 py-3">
+              <span className="text-2xl leading-none">💰</span>
+              <div>
+                <p className="text-xs font-bold text-green-700 mb-0.5">金額準拠の理想</p>
+                <p className="text-lg font-bold text-green-800">
+                  {costIdeal.label}
+                </p>
+                <p className="text-xs text-green-600 mt-0.5">
+                  単価 ¥{costIdeal.unitPrice.toFixed(1)} / 合計 ¥{fmt(costIdeal.total)}
+                </p>
+                <p className="text-xs text-green-500 mt-0.5">顧客にとって最もお得な発注数量</p>
+              </div>
+            </div>
+            {/* 効率準拠（金額と同じなら非表示） */}
+            {!isSame && (
+              <div className="flex items-start gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 px-4 py-3">
+                <span className="text-2xl leading-none">⚡</span>
+                <div>
+                  <p className="text-xs font-bold text-blue-700 mb-0.5">効率準拠の理想</p>
+                  <p className="text-lg font-bold text-blue-800">
+                    {effIdeal.label}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-0.5">
+                    生産性 {effIdeal.throughput.toLocaleString()}部/h / 印刷時間 {fmtTime(effIdeal.printHours)}
+                  </p>
+                  <p className="text-xs text-blue-500 mt-0.5">工場の稼働効率が最も高い数量</p>
+                </div>
+              </div>
+            )}
+            {isSame && (
+              <p className="text-xs text-gray-400 -mt-1">※ 金額・効率ともに同じ数量が最適です</p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* グラフ2列 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -221,14 +276,26 @@ export function ComparePanel({ quantities, overheadRate }: ComparePanelProps) {
                 <tr
                   key={i}
                   className={`border-b last:border-0 ${
-                    row.isMin ? 'bg-green-50' : ''
+                    row.isMin && row.isMaxThroughput ? 'bg-green-50' :
+                    row.isMin ? 'bg-green-50' :
+                    row.isMaxThroughput ? 'bg-blue-50' : ''
                   }`}
                 >
                   <td className="px-4 py-3 font-medium">
                     {row.label}
                     {row.isMin && (
                       <span className="ml-2 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-normal">
-                        最安
+                        💰最安
+                      </span>
+                    )}
+                    {row.isMaxThroughput && !row.isMin && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-normal">
+                        ⚡高効率
+                      </span>
+                    )}
+                    {row.isMaxThroughput && row.isMin && (
+                      <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-normal">
+                        ⚡高効率
                       </span>
                     )}
                   </td>
