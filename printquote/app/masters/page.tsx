@@ -10,6 +10,7 @@ const MASTERS = [
   { href: '/masters/processings',     label: '加工単価',      desc: '各加工工程の料金を管理します。',      icon: '⚙️' },
   { href: '/masters/production-days', label: '工程日数',      desc: '納期計算用の工程別日数を管理します。', icon: '📅' },
   { href: '/masters/holidays',        label: '祝日・休業日',  desc: '営業日計算から除外する日を管理します。', icon: '🗓' },
+  { href: '/masters/die-molds',       label: '型台マスタ',    desc: 'トムソン抜き型・箔押し型を管理します。', icon: '🔲' },
 ];
 
 export default async function MastersPage() {

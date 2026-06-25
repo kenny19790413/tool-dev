@@ -14,9 +14,10 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: '/estimates',     label: '見積もり一覧', adminOnly: false },
-  { href: '/estimates/new', label: '新規見積もり', adminOnly: false },
-  { href: '/masters',       label: 'マスタ管理',   adminOnly: false },
+  { href: '/estimates',          label: '見積もり一覧', adminOnly: false },
+  { href: '/estimates/new',      label: '新規見積もり', adminOnly: false },
+  { href: '/masters',            label: 'マスタ管理',   adminOnly: false },
+  { href: '/masters/die-molds',  label: '型台マスタ',   adminOnly: true  },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
+import { getSession } from '@/lib/auth';
+import { saveHistory } from '@/lib/history';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -67,7 +69,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await getSession();
     const { id } = await params;
+    const estimateId = Number(id);
     const body = await req.json();
     const { title, customerName, status, note, validUntil } = body;
 
@@ -79,9 +83,21 @@ export async function PATCH(
         note          = COALESCE(${note ?? null}, note),
         valid_until   = COALESCE(${validUntil ?? null}, valid_until),
         updated_at    = NOW()
-      WHERE id = ${Number(id)}
+      WHERE id = ${estimateId}
       RETURNING *
     `;
+
+    // ステータス変更時はスナップショットを保存
+    if (status) {
+      const STATUS_LABEL: Record<string, string> = {
+        draft: '下書き', issued: '発行済み', approved: '承認済み',
+        rejected: '却下', expired: '期限切れ',
+      };
+      const changedById = session ? Number(session.sub) : null;
+      const label = STATUS_LABEL[status] ?? status;
+      await saveHistory(estimateId, changedById, `ステータスを「${label}」に変更`);
+    }
+
     return NextResponse.json(updated);
   } catch (e) {
     console.error(e);

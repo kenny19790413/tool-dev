@@ -8,9 +8,11 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { StatusChanger } from './_components/StatusChanger';
+import { AssigneeChanger } from './_components/AssigneeChanger';
 import { ComparePanel } from './_components/ComparePanel';
 import { RecalcButton } from './_components/RecalcButton';
 import { DeliveryPanel } from './_components/DeliveryPanel';
+import { getSession } from '@/lib/auth';
 import type { Holiday, ProductionDayMaster } from '@/lib/delivery';
 
 const sql = neon(process.env.DATABASE_URL!);
@@ -102,11 +104,16 @@ export default async function EstimateDetailPage({
 }) {
   const { id } = await params;
 
+  // セッション取得（admin判定用）
+  const session = await getSession();
+  const isAdmin = session?.role === 'admin';
+
   // 見積もり + 明細 + 数量結果を並列取得
-  const [productionMasters, holidays] = await Promise.all([
+  const [productionMasters, holidays, users] = await Promise.all([
     sql`SELECT * FROM production_day_masters ORDER BY process_type, quantity_min`,
     sql`SELECT * FROM holidays ORDER BY date`,
-  ]) as unknown as [ProductionDayMaster[], Holiday[]];
+    sql`SELECT id, name FROM users WHERE is_active = true ORDER BY name`,
+  ]) as unknown as [ProductionDayMaster[], Holiday[], { id: number; name: string }[]];
 
   const [[estimate], items] = await Promise.all([
     sql`
@@ -176,6 +183,9 @@ export default async function EstimateDetailPage({
           <a href={`/estimates/${id}/pdf`} target="_blank" rel="noopener noreferrer">
             <Button variant="outline">📄 PDF出力</Button>
           </a>
+          <Link href={`/estimates/${id}/history`}>
+            <Button variant="outline">📋 履歴</Button>
+          </Link>
           <Link href="/estimates">
             <Button variant="outline">← 一覧</Button>
           </Link>
@@ -200,6 +210,18 @@ export default async function EstimateDetailPage({
             <div>
               <dt className="text-gray-500 mb-0.5">営業経費率</dt>
               <dd className="font-medium">{overheadRate}%</dd>
+            </div>
+            <div className="col-span-2 md:col-span-1">
+              <dt className="text-gray-500 mb-0.5">担当者</dt>
+              <dd>
+                <AssigneeChanger
+                  estimateId={Number(estimate.id)}
+                  currentAssigneeId={estimate.assigned_to ? Number(estimate.assigned_to) : null}
+                  currentAssigneeName={estimate.assigned_to_name ? String(estimate.assigned_to_name) : null}
+                  users={users}
+                  isAdmin={isAdmin}
+                />
+              </dd>
             </div>
             {estimate.valid_until && (
               <div>
