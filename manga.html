@@ -10,24 +10,63 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
+:root{
+  --a1:#553c9a;--a2:#b94bd8;
+  --bg:#f5f0ff;--br:#e9e0ff;--cbg:#f8f5ff;--card:#fff;
+  --txt:#2d2d3a;--txt2:#4a4a6a;--muted:#718096;
+  --sha-1:rgba(85,60,154,.1);--sha-08:rgba(85,60,154,.08);
+  --sha-2:rgba(85,60,154,.2);--sha-5:rgba(85,60,154,.5);
+  --sha-6:rgba(85,60,154,.6);--sha-95:rgba(85,60,154,.95);
+  --sha-97:rgba(85,60,154,.97);
+  --fs:1rem;
+}
+body.dark-mode{
+  --bg:#1a1a2e;--br:#2d2d5a;--cbg:#16213e;--card:#1e1e3d;
+  --txt:#e2e8f0;--txt2:#b0bec5;--muted:#94a3b8;
+  --sha-1:rgba(0,0,0,.2);--sha-08:rgba(0,0,0,.15);
+  --sha-2:rgba(0,0,0,.3);--sha-5:rgba(0,0,0,.4);
+  --sha-6:rgba(0,0,0,.5);--sha-95:rgba(0,0,0,.95);
+  --sha-97:rgba(0,0,0,.97);
+}
+body.dark-mode .card,body.dark-mode .graph-wrap,body.dark-mode .cal-wrap{background:var(--card);color:var(--txt)}
+body.dark-mode table{color:var(--txt)}
+body.dark-mode tbody tr:hover{background:rgba(255,255,255,.05)}
+body.dark-mode .modal{background:#1e1e3d;color:var(--txt)}
+body.dark-mode input,body.dark-mode select,body.dark-mode textarea{background:#16213e;color:var(--txt);border-color:var(--br)}
+body.dark-mode .series-item{background:var(--cbg)}
+body.dark-mode .book-result-item{background:var(--cbg);border-color:var(--br);color:var(--txt)}
+body.dark-mode .login-box{background:#1e1e3d;color:var(--txt)}
+body.dark-mode .nav-tabs{background:var(--card);border-bottom-color:var(--br)}
+body.dark-mode .btn-cancel{background:var(--cbg);color:var(--txt);border-color:var(--br)}
+body.dark-mode .summary-card{background:var(--card)}
+body.dark-mode .graph-stat{background:var(--cbg)}
+body.dark-mode .cal-day{background:var(--cbg)}
+body.dark-mode .cal-day.other-month{background:rgba(255,255,255,.03)}
+body.dark-mode thead th{background:var(--cbg);color:var(--muted)}
+body.dark-mode tbody tr{border-bottom-color:var(--br)}
+body.dark-mode .sort-btn{background:var(--card);color:var(--muted);border-color:var(--br)}
+body.dark-mode .genre-chip{background:var(--card);color:var(--muted);border-color:var(--br)}
+body.font-sm{--fs:.875rem}
+body.font-lg{--fs:1.125rem}
+body{font-size:var(--fs)}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic Pro','Meiryo',sans-serif;background:#f5f0ff;color:#2d2d3a;min-height:100vh}
+body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic Pro','Meiryo',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
 
 /* ─── ログイン ─── */
-.login-overlay{position:fixed;inset:0;z-index:9999;background:rgba(85,60,154,.95);display:flex;align-items:center;justify-content:center}
+.login-overlay{position:fixed;inset:0;z-index:9999;background:var(--sha-95);display:flex;align-items:center;justify-content:center}
 .login-overlay.hidden{display:none!important}
 .login-box{background:#fff;border-radius:20px;padding:40px 32px;text-align:center;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .login-box .logo{font-size:48px;margin-bottom:12px}
 .login-box h2{font-size:22px;font-weight:700;margin-bottom:6px}
 .login-box p{font-size:13px;color:#718096;margin-bottom:28px}
 .login-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;font-size:15px;font-weight:600;color:#2d3748;cursor:pointer;transition:all .2s;font-family:inherit}
-.login-btn:hover{background:#f7fafc;border-color:#553c9a}
+.login-btn:hover{background:#f7fafc;border-color:var(--a1)}
 .auth-status{font-size:12px;color:#e53e3e;margin-top:12px;min-height:18px}
-.auth-loading{position:fixed;inset:0;z-index:10000;background:rgba(85,60,154,.97);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:600}
+.auth-loading{position:fixed;inset:0;z-index:10000;background:var(--sha-97);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:600}
 .auth-loading.hidden{display:none!important}
 
 /* ─── ヘッダー ─── */
-.header{background:linear-gradient(135deg,#553c9a 0%,#b94bd8 100%);color:#fff;padding:20px;text-align:center}
+.header{background:linear-gradient(135deg,var(--a1) 0%,var(--a2) 100%);color:#fff;padding:20px;text-align:center}
 .header h1{font-size:24px;font-weight:700;margin-bottom:4px}
 .header .subtitle{font-size:13px;opacity:.8}
 .header-user{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:0 20px 12px;flex-wrap:wrap}
@@ -40,44 +79,44 @@ body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic Pro','Meiryo',sans
 .month-nav .current-month{font-size:20px;font-weight:700;min-width:140px;text-align:center}
 
 /* ─── ナビタブ ─── */
-.nav-tabs{display:flex;background:#fff;border-bottom:2px solid #e9e0ff;overflow-x:auto;scrollbar-width:none;position:sticky;top:0;z-index:300}
+.nav-tabs{display:flex;background:#fff;border-bottom:2px solid var(--br);overflow-x:auto;scrollbar-width:none;position:sticky;top:0;z-index:300}
 .nav-tabs::-webkit-scrollbar{display:none}
 .nav-tab{flex:1;min-width:70px;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:600;color:#718096;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-2px}
-.nav-tab.active{color:#553c9a;border-bottom-color:#553c9a}
-.nav-tab:hover:not(.active){background:#f8f5ff;color:#553c9a}
+.nav-tab.active{color:var(--a1);border-bottom-color:var(--a1)}
+.nav-tab:hover:not(.active){background:var(--cbg);color:var(--a1)}
 
 /* ─── コンテナ ─── */
 .container{max-width:900px;margin:0 auto;padding:16px 16px 100px}
 
 /* ─── サマリーカード ─── */
 .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
-.summary-card{background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:0 2px 8px rgba(85,60,154,.1)}
+.summary-card{background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:0 2px 8px var(--sha-1)}
 .summary-card .label{font-size:12px;color:#718096;margin-bottom:6px}
 .summary-card .amount{font-size:22px;font-weight:700}
-.summary-card.total .amount{color:#553c9a}
+.summary-card.total .amount{color:var(--a1)}
 .summary-card.bought .amount{color:#38a169}
 .summary-card.unbought .amount{color:#e53e3e}
 @media(max-width:480px){.summary-card .amount{font-size:16px}.summary-card .label{font-size:11px}}
 
 /* ─── メインカード ─── */
-.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(85,60,154,.1);margin-bottom:20px}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px var(--sha-1);margin-bottom:20px}
 .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px;flex-wrap:wrap}
 .card-header h2{font-size:15px;font-weight:700;color:#4a4a6a;flex:1;min-width:160px}
 .sort-controls{display:flex;align-items:center;gap:5px;flex-wrap:nowrap}
-.sort-btn{padding:4px 9px;border-radius:20px;border:1.5px solid #e9e0ff;background:#fff;font-size:11px;color:#718096;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap}
-.sort-btn.active{background:#553c9a;border-color:#553c9a;color:#fff}
-.sort-btn:hover:not(.active){border-color:#553c9a;color:#553c9a}
+.sort-btn{padding:4px 9px;border-radius:20px;border:1.5px solid var(--br);background:#fff;font-size:11px;color:#718096;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap}
+.sort-btn.active{background:var(--a1);border-color:var(--a1);color:#fff}
+.sort-btn:hover:not(.active){border-color:var(--a1);color:var(--a1)}
 
 /* ─── テーブル ─── */
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;min-width:580px}
-thead th{padding:10px 12px;font-size:12px;font-weight:700;color:#718096;background:#f8f5ff;border-bottom:2px solid #e9e0ff;text-align:left;white-space:nowrap}
+thead th{padding:10px 12px;font-size:12px;font-weight:700;color:#718096;background:var(--cbg);border-bottom:2px solid var(--br);text-align:left;white-space:nowrap}
 tbody tr{border-bottom:1px solid #f0ebff;transition:background .15s}
 tbody tr:last-child{border-bottom:none}
 tbody tr:hover{background:#fdf9ff}
 tbody tr.status-read{opacity:.5}
 tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
-.td-date{white-space:nowrap;color:#553c9a;font-weight:600}
+.td-date{white-space:nowrap;color:var(--a1);font-weight:600}
 .td-title{font-weight:700}
 .td-title-inner{display:flex;flex-direction:column;gap:3px}
 .td-memo{font-size:11px;color:#718096;word-break:break-all}
@@ -91,12 +130,12 @@ tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
 .status-btn.none{color:#718096}
 .status-btn.unread{background:#fff7ed;border-color:#f6ad55;color:#c05621}
 .status-btn.read{background:#38a169;border-color:#38a169;color:#fff}
-.status-btn:hover{border-color:#553c9a}
+.status-btn:hover{border-color:var(--a1)}
 
 /* ─── アクションボタン ─── */
 .btn-icon{background:none;border:none;color:#cbd5e0;cursor:pointer;font-size:15px;padding:3px 5px;transition:color .2s;line-height:1}
 .btn-icon:hover{color:#e53e3e}
-.btn-icon.edit:hover{color:#553c9a}
+.btn-icon.edit:hover{color:var(--a1)}
 .btn-icon.next-vol:hover{color:#38a169}
 .btn-icon.gcal:hover{color:#1a73e8}
 .empty-state{text-align:center;padding:48px 20px;color:#a0aec0}
@@ -125,61 +164,61 @@ tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
 /* ─── ジャンルフィルター ─── */
 .genre-filter-wrap{padding:8px 20px 0;max-width:900px;margin:0 auto;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
 .genre-filter-wrap::-webkit-scrollbar{display:none}
-.genre-chip{padding:5px 12px;border-radius:20px;border:1.5px solid #e9e0ff;background:#fff;font-size:12px;color:#718096;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:inherit;flex-shrink:0}
-.genre-chip.active{background:#553c9a;border-color:#553c9a;color:#fff}
-.genre-chip:hover:not(.active){border-color:#553c9a;color:#553c9a}
+.genre-chip{padding:5px 12px;border-radius:20px;border:1.5px solid var(--br);background:#fff;font-size:12px;color:#718096;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:inherit;flex-shrink:0}
+.genre-chip.active{background:var(--a1);border-color:var(--a1);color:#fff}
+.genre-chip:hover:not(.active){border-color:var(--a1);color:var(--a1)}
 
 /* ─── グラフビュー ─── */
-.graph-wrap{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(85,60,154,.1);margin-bottom:20px}
+.graph-wrap{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px var(--sha-1);margin-bottom:20px}
 .graph-title{font-size:15px;font-weight:700;color:#4a4a6a;margin-bottom:16px}
-.graph-bars{display:flex;align-items:flex-end;gap:8px;height:200px;padding-bottom:4px;border-bottom:2px solid #e9e0ff;position:relative}
+.graph-bars{display:flex;align-items:flex-end;gap:8px;height:200px;padding-bottom:4px;border-bottom:2px solid var(--br);position:relative}
 .graph-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;position:relative}
 .graph-bar{width:100%;border-radius:6px 6px 0 0;transition:height .4s;min-height:2px;position:relative}
-.graph-bar.this-month{background:linear-gradient(180deg,#b94bd8,#553c9a)}
+.graph-bar.this-month{background:linear-gradient(180deg,var(--a2),var(--a1))}
 .graph-bar.past{background:#c4b5fd}
-.graph-bar-val{font-size:9px;color:#553c9a;font-weight:700;text-align:center;white-space:nowrap}
+.graph-bar-val{font-size:9px;color:var(--a1);font-weight:700;text-align:center;white-space:nowrap}
 .graph-bar-label{font-size:10px;color:#718096;white-space:nowrap}
 .graph-budget-line{position:absolute;left:0;right:0;border-top:2px dashed #e53e3e;pointer-events:none}
 .graph-budget-text{position:absolute;right:0;font-size:10px;color:#e53e3e;font-weight:700;transform:translateY(-100%);padding-right:4px}
 .graph-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
-.graph-stat{background:#f8f5ff;border-radius:10px;padding:12px;text-align:center}
+.graph-stat{background:var(--cbg);border-radius:10px;padding:12px;text-align:center}
 .graph-stat .gs-label{font-size:11px;color:#718096;margin-bottom:4px}
-.graph-stat .gs-val{font-size:18px;font-weight:700;color:#553c9a}
+.graph-stat .gs-val{font-size:18px;font-weight:700;color:var(--a1)}
 @media(max-width:480px){.graph-stat .gs-val{font-size:15px}}
 
 /* ─── カレンダービュー ─── */
-.cal-wrap{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(85,60,154,.1);margin-bottom:20px}
+.cal-wrap{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px var(--sha-1);margin-bottom:20px}
 .cal-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px}
-.cal-nav button{background:#f8f5ff;border:1.5px solid #e9e0ff;color:#553c9a;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer}
+.cal-nav button{background:var(--cbg);border:1.5px solid var(--br);color:var(--a1);width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer}
 .cal-nav .cal-month-label{font-size:16px;font-weight:700;color:#4a4a6a;min-width:120px;text-align:center}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .cal-dow{text-align:center;font-size:11px;font-weight:700;color:#718096;padding:4px 0}
-.cal-day{min-height:64px;border-radius:8px;padding:4px;background:#f8f5ff;cursor:default;position:relative}
+.cal-day{min-height:64px;border-radius:8px;padding:4px;background:var(--cbg);cursor:default;position:relative}
 .cal-day.other-month{background:#fafafa;opacity:.5}
-.cal-day.today{background:#ede9fe;border:2px solid #553c9a}
+.cal-day.today{background:#ede9fe;border:2px solid var(--a1)}
 .cal-day-num{font-size:12px;font-weight:700;color:#4a4a6a;margin-bottom:3px}
-.cal-day.today .cal-day-num{color:#553c9a}
-.cal-release{font-size:9px;background:#553c9a;color:#fff;border-radius:3px;padding:1px 4px;margin-bottom:2px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.cal-day.today .cal-day-num{color:var(--a1)}
+.cal-release{font-size:9px;background:var(--a1);color:#fff;border-radius:3px;padding:1px 4px;margin-bottom:2px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
 .cal-release.purchased{background:#38a169}
 @media(max-width:480px){.cal-day{min-height:48px}.cal-release{font-size:8px}}
 
 /* ─── 履歴ビュー ─── */
-.history-month-header{font-size:13px;font-weight:700;color:#553c9a;padding:14px 0 6px;border-bottom:2px solid #e9e0ff;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+.history-month-header{font-size:13px;font-weight:700;color:var(--a1);padding:14px 0 6px;border-bottom:2px solid var(--br);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
 .history-month-total{font-size:12px;color:#718096;font-weight:600}
 
 /* ─── 検索バー ─── */
 .search-wrap{padding:12px 20px 0;max-width:900px;margin:0 auto}
 .search-box{position:relative;display:flex;align-items:center}
-.search-box input{width:100%;padding:10px 40px;border:1.5px solid #e9e0ff;border-radius:24px;font-size:14px;color:#2d2d3a;background:#fff;outline:none;font-family:inherit;box-shadow:0 2px 8px rgba(85,60,154,.08);transition:border-color .2s,box-shadow .2s}
-.search-box input:focus{border-color:#553c9a;box-shadow:0 2px 12px rgba(85,60,154,.2)}
+.search-box input{width:100%;padding:10px 40px;border:1.5px solid var(--br);border-radius:24px;font-size:14px;color:#2d2d3a;background:#fff;outline:none;font-family:inherit;box-shadow:0 2px 8px var(--sha-08);transition:border-color .2s,box-shadow .2s}
+.search-box input:focus{border-color:var(--a1);box-shadow:0 2px 12px var(--sha-2)}
 .search-icon{position:absolute;left:14px;font-size:16px;pointer-events:none;opacity:.5}
 .search-clear{position:absolute;right:12px;background:none;border:none;color:#a0aec0;font-size:18px;cursor:pointer;padding:4px;display:none;line-height:1}
 .search-clear.show{display:block}
-.search-hint{font-size:12px;color:#553c9a;font-weight:600;margin-top:6px;padding-left:14px;min-height:18px}
+.search-hint{font-size:12px;color:var(--a1);font-weight:600;margin-top:6px;padding-left:14px;min-height:18px}
 
 /* ─── FAB ─── */
-.fab{position:fixed;right:24px;bottom:28px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#553c9a,#b94bd8);color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(85,60,154,.5);display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s;z-index:100}
-.fab:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(85,60,154,.6)}
+.fab{position:fixed;right:24px;bottom:28px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 20px var(--sha-5);display:flex;align-items:center;justify-content:center;transition:transform .2s,box-shadow .2s;z-index:100}
+.fab:hover{transform:scale(1.1);box-shadow:0 6px 28px var(--sha-6)}
 
 /* ─── モーダル共通 ─── */
 .modal-overlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px}
@@ -190,10 +229,10 @@ tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 label{display:block;font-size:12px;color:#718096;margin-bottom:4px}
 input,select,textarea{width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#2d2d3a;transition:border-color .2s;outline:none;font-family:inherit}
-input:focus,select:focus,textarea:focus{border-color:#553c9a}
+input:focus,select:focus,textarea:focus{border-color:var(--a1)}
 textarea{resize:vertical;min-height:60px}
 .modal-actions{display:flex;gap:10px;margin-top:20px}
-.btn-save{flex:1;padding:11px;background:linear-gradient(135deg,#553c9a,#b94bd8);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s;font-family:inherit}
+.btn-save{flex:1;padding:11px;background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s;font-family:inherit}
 .btn-save:hover{opacity:.9}
 .btn-cancel{flex:1;padding:11px;background:#f7fafc;color:#4a5568;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
 .btn-cancel:hover{background:#edf2f7}
@@ -201,37 +240,37 @@ textarea{resize:vertical;min-height:60px}
 
 /* ─── 作品管理モーダル ─── */
 .series-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
-.series-item{background:#f8f5ff;border-radius:8px;padding:10px 14px}
+.series-item{background:var(--cbg);border-radius:8px;padding:10px 14px}
 .series-item-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .series-item-info{flex:1;min-width:0}
 .series-item-title{font-size:13px;font-weight:700}
 .series-item-sub{font-size:11px;color:#718096;margin-top:2px}
-.series-edit-form{margin-top:10px;padding-top:10px;border-top:1px solid #e9e0ff;display:none}
+.series-edit-form{margin-top:10px;padding-top:10px;border-top:1px solid var(--br);display:none}
 .series-empty{text-align:center;padding:20px;color:#a0aec0;font-size:13px}
 
 /* ─── バーコードモーダル ─── */
 .barcode-video-wrap{position:relative;width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3}
 #barcodeVideo{width:100%;height:100%;object-fit:cover;display:block}
 .barcode-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.barcode-frame{width:60%;height:40%;border:3px solid #b94bd8;border-radius:8px;box-shadow:0 0 0 2000px rgba(0,0,0,.4)}
+.barcode-frame{width:60%;height:40%;border:3px solid var(--a2);border-radius:8px;box-shadow:0 0 0 2000px rgba(0,0,0,.4)}
 #barcodeStatus{text-align:center;font-size:13px;color:#4a5568;margin-top:10px;min-height:20px}
 
 /* ─── 書籍検索モーダル ─── */
 .book-search-input-wrap{display:flex;gap:8px;margin-bottom:12px}
 .book-search-input-wrap input{flex:1}
-.btn-search-go{padding:9px 16px;background:linear-gradient(135deg,#553c9a,#b94bd8);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity .2s}
+.btn-search-go{padding:9px 16px;background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:opacity .2s}
 .btn-search-go:hover{opacity:.85}
 .book-results{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}
-.book-result-item{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:8px;border:1.5px solid #e9e0ff;background:#fdf9ff;cursor:pointer;transition:all .15s}
-.book-result-item:hover{background:#e9d8fd;border-color:#553c9a}
-.book-result-thumb{width:40px;height:56px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#e9e0ff}
-.book-result-thumb-placeholder{width:40px;height:56px;border-radius:4px;flex-shrink:0;background:#e9e0ff;display:flex;align-items:center;justify-content:center;font-size:20px}
+.book-result-item{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:8px;border:1.5px solid var(--br);background:#fdf9ff;cursor:pointer;transition:all .15s}
+.book-result-item:hover{background:#e9d8fd;border-color:var(--a1)}
+.book-result-thumb{width:40px;height:56px;object-fit:cover;border-radius:4px;flex-shrink:0;background:var(--br)}
+.book-result-thumb-placeholder{width:40px;height:56px;border-radius:4px;flex-shrink:0;background:var(--br);display:flex;align-items:center;justify-content:center;font-size:20px}
 .book-result-info{flex:1;min-width:0}
 .book-result-title{font-size:13px;font-weight:700;color:#2d2d3a;line-height:1.4}
 .book-result-sub{font-size:11px;color:#718096;margin-top:3px}
 .book-search-status{text-align:center;padding:20px;color:#a0aec0;font-size:13px}
 .book-search-btn-wrap{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
-.btn-open-book-search{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#f8f5ff;color:#553c9a;border:1.5px solid #c4b5fd;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-open-book-search{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--cbg);color:var(--a1);border:1.5px solid #c4b5fd;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
 .btn-open-book-search:hover{background:#ede9fe}
 
 /* ─── 予算警告 ─── */
@@ -239,22 +278,22 @@ textarea{resize:vertical;min-height:60px}
 .budget-warning.show{display:block}
 
 /* ─── 発売日検索 ─── */
-.btn-search-release{padding:8px 10px;background:#f8f5ff;border:1.5px solid #c4b5fd;border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s;flex-shrink:0}
-.btn-search-release:hover{background:#ede9fe;border-color:#553c9a}
+.btn-search-release{padding:8px 10px;background:var(--cbg);border:1.5px solid #c4b5fd;border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s;flex-shrink:0}
+.btn-search-release:hover{background:#ede9fe;border-color:var(--a1)}
 .release-date-results{margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
-.release-date-item{padding:7px 10px;border-radius:6px;border:1.5px solid #e9e0ff;background:#fdf9ff;cursor:pointer;font-size:12px;transition:all .15s}
-.release-date-item:hover{background:#e9d8fd;border-color:#553c9a}
-.rdi-date{color:#553c9a;font-weight:700}
+.release-date-item{padding:7px 10px;border-radius:6px;border:1.5px solid var(--br);background:#fdf9ff;cursor:pointer;font-size:12px;transition:all .15s}
+.release-date-item:hover{background:#e9d8fd;border-color:var(--a1)}
+.rdi-date{color:var(--a1);font-weight:700}
 .rdi-title{color:#718096;font-size:11px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ─── 発売日未定カード ─── */
 .pending-card{border:2px dashed #c4b5fd}
 .pending-card .card-header h2{color:#7c3aed}
 .pending-card .card-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.btn-check-pending{background:linear-gradient(135deg,#7c3aed,#553c9a);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;white-space:nowrap}
+.btn-check-pending{background:linear-gradient(135deg,#7c3aed,var(--a1));color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;white-space:nowrap}
 .btn-check-pending:disabled{opacity:.6;cursor:not-allowed}
 /* ─── 発売日チェック促進バナー ─── */
-.pending-reminder-banner{display:none;align-items:center;gap:10px;background:#fdf4ff;border:1px solid #d6bcfa;border-radius:10px;padding:10px 14px;margin:8px 16px;font-size:13px;color:#553c9a}
+.pending-reminder-banner{display:none;align-items:center;gap:10px;background:#fdf4ff;border:1px solid #d6bcfa;border-radius:10px;padding:10px 14px;margin:8px 16px;font-size:13px;color:var(--a1)}
 .pending-reminder-banner button{border:none;cursor:pointer;border-radius:6px;padding:4px 10px;font-size:12px}
 .pending-reminder-banner .btn-remind-check{background:#7c3aed;color:#fff}
 .pending-reminder-banner .btn-remind-close{background:none;color:#a0aec0;font-size:16px;padding:0 4px}
@@ -271,6 +310,14 @@ textarea{resize:vertical;min-height:60px}
 .btn-icon.public-on{color:#3182ce}
 .btn-icon.public-off{color:#cbd5e0}
 .btn-icon.public-off:hover{color:#3182ce}
+
+/* ─── テーマカスタマイズ ─── */
+.theme-color-btn{width:36px;height:36px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:all .2s;flex-shrink:0}
+.theme-color-btn.active{border-color:var(--txt);box-shadow:0 0 0 2px var(--card),0 0 0 4px var(--txt)}
+.theme-color-btn:hover{transform:scale(1.15)}
+.font-size-btn{flex:1;padding:6px;border-radius:8px;border:1.5px solid var(--br);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.font-size-btn.active{background:var(--a1);border-color:var(--a1);color:#fff}
+.font-size-btn:hover:not(.active){border-color:var(--a1);color:var(--a1)}
 </style>
 </head>
 <body>
@@ -357,12 +404,7 @@ textarea{resize:vertical;min-height:60px}
           </select>
         </div>
       </div>
-      <div class="form-row" style="margin-top:10px">
-        <div class="form-group" style="margin:0">
-          <label>通常価格（円）</label>
-          <input type="number" id="newSeriesPrice" placeholder="例: 550">
-        </div>
-      </div>
+      <input type="hidden" id="newSeriesPrice">
       <hr class="divider">
     </div>
     <!-- 巻数・発売日・価格（常時表示） -->
@@ -402,7 +444,7 @@ textarea{resize:vertical;min-height:60px}
     <div id="apiRefetchStatus" style="display:none;font-size:12px;color:#718096;margin-bottom:8px;text-align:center"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddModal()">キャンセル</button>
-      <button id="btnApiRefetch" style="display:none;font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid #9b59b6;background:#f5f0ff;color:#6b46c1;cursor:pointer" onclick="refetchBookInfo()">🔄 APIで再取得</button>
+      <button id="btnApiRefetch" style="display:none;font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer" onclick="refetchBookInfo()">🔄 APIで再取得</button>
       <button class="btn-save" onclick="saveVolume()">保存する</button>
     </div>
   </div>
@@ -463,24 +505,60 @@ textarea{resize:vertical;min-height:60px}
 
 <!-- 設定モーダル -->
 <div id="settingsModal" class="modal-overlay hidden">
-  <div class="modal" style="max-width:360px">
+  <div class="modal" style="max-width:380px">
     <h3>⚙️ 設定</h3>
     <div class="form-group">
       <label>月の漫画購入予算（円）</label>
       <input type="number" id="budgetInput" placeholder="例: 3000（0で無制限）">
-      <div style="font-size:11px;color:#718096;margin-top:4px">設定すると予算超過時に警告が表示されます</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">設定すると予算超過時に警告が表示されます</div>
     </div>
     <hr class="divider">
     <div class="form-group">
       <label>Amazon アソシエイトタグ</label>
       <input type="text" id="amazonTagInput" placeholder="例: yourname-22" autocomplete="off">
-      <div style="font-size:11px;color:#718096;margin-top:4px">
-        <a href="https://affiliate.amazon.co.jp/" target="_blank" rel="noopener" style="color:#553c9a">Amazon アソシエイト</a>に登録後のタグID（なければ空欄でOK・リンクは機能します）
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        <a href="https://affiliate.amazon.co.jp/" target="_blank" rel="noopener" style="color:var(--a1)">Amazon アソシエイト</a>に登録後のタグID（なければ空欄でOK・リンクは機能します）
       </div>
     </div>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeSettingsModal()">キャンセル</button>
+      <button class="btn-cancel" onclick="closeSettingsModal()">閉じる</button>
       <button class="btn-save" onclick="saveSettings()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- テーマモーダル -->
+<div id="themeModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px">
+    <h3>🎨 テーマ設定</h3>
+    <div class="form-group">
+      <label style="font-weight:700;font-size:13px;color:var(--txt2);margin-bottom:10px;display:block">🎨 テーマカラー</label>
+      <div id="themeColorPicker" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="theme-color-btn" data-c1="#553c9a" data-c2="#b94bd8" data-bg="#f5f0ff" data-br="#e9e0ff" data-cbg="#f8f5ff" style="background:linear-gradient(135deg,#553c9a,#b94bd8)" title="パープル（デフォルト）"></button>
+        <button class="theme-color-btn" data-c1="#2563eb" data-c2="#3b82f6" data-bg="#eff6ff" data-br="#dbeafe" data-cbg="#f0f7ff" style="background:linear-gradient(135deg,#2563eb,#3b82f6)" title="ブルー"></button>
+        <button class="theme-color-btn" data-c1="#059669" data-c2="#34d399" data-bg="#f0fdf4" data-br="#bbf7d0" data-cbg="#f0fdf6" style="background:linear-gradient(135deg,#059669,#34d399)" title="グリーン"></button>
+        <button class="theme-color-btn" data-c1="#db2777" data-c2="#f472b6" data-bg="#fdf2f8" data-br="#fbcfe8" data-cbg="#fdf4fb" style="background:linear-gradient(135deg,#db2777,#f472b6)" title="ピンク"></button>
+        <button class="theme-color-btn" data-c1="#0891b2" data-c2="#22d3ee" data-bg="#f0f9ff" data-br="#bae6fd" data-cbg="#f0f9ff" style="background:linear-gradient(135deg,#0891b2,#22d3ee)" title="ティール"></button>
+        <button class="theme-color-btn" data-c1="#d97706" data-c2="#fbbf24" data-bg="#fffbeb" data-br="#fde68a" data-cbg="#fffef0" style="background:linear-gradient(135deg,#d97706,#fbbf24)" title="オレンジ"></button>
+      </div>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;justify-content:space-between">
+      <label style="margin:0;font-size:13px;color:var(--txt2)">🌙 ダークモード</label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0">
+        <input type="checkbox" id="darkModeToggle" onchange="onDarkModeToggle()" style="width:auto;accent-color:var(--a1)">
+        <span style="font-size:12px;color:var(--muted)" id="darkModeLabel">OFF</span>
+      </label>
+    </div>
+    <div class="form-group">
+      <label style="font-size:13px;color:var(--txt2);margin-bottom:8px;display:block">🔠 文字サイズ</label>
+      <div style="display:flex;gap:8px">
+        <button class="font-size-btn" data-size="sm" onclick="setFontSize('sm')">小</button>
+        <button class="font-size-btn" data-size="md" onclick="setFontSize('md')">中</button>
+        <button class="font-size-btn" data-size="lg" onclick="setFontSize('lg')">大</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-save" onclick="closeThemeModal()">閉じる</button>
     </div>
   </div>
 </div>
@@ -513,7 +591,8 @@ textarea{resize:vertical;min-height:60px}
     <span id="userName" style="font-size:12px"></span>
     <button id="notifBtn" onclick="toggleNotification()">🔔 通知</button>
     <button onclick="openSeriesModal()">📚 作品管理</button>
-    <button onclick="openSettingsModal()">⚙️ 予算設定</button>
+    <button onclick="openSettingsModal()">⚙️ 予算</button>
+    <button onclick="openThemeModal()">🎨 テーマ</button>
     <button onclick="signOut()">サインアウト</button>
   </div>
   <h1>📚 漫画発売リスト</h1>
@@ -728,6 +807,84 @@ function checkNotifications(uid) {
   localStorage.setItem(key,JSON.stringify(notified));
 }
 
+// ── 外観設定（localStorage） ──
+const APPEARANCE_KEY='mg_appearance';
+function loadAppearance(){
+  try{
+    const s=JSON.parse(localStorage.getItem(APPEARANCE_KEY)||'{}');
+    if(s.themeColor) applyThemeColor(s.themeColor,false);
+    if(s.darkMode) document.body.classList.add('dark-mode');
+    if(s.fontSize) applyFontSize(s.fontSize,false);
+    syncAppearanceUI(s);
+  }catch(e){}
+}
+function saveAppearance(patch){
+  try{
+    const s=JSON.parse(localStorage.getItem(APPEARANCE_KEY)||'{}');
+    Object.assign(s,patch);
+    localStorage.setItem(APPEARANCE_KEY,JSON.stringify(s));
+  }catch(e){}
+}
+function hexToRgb(hex){
+  const h=hex.replace('#','');
+  const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  return `${r},${g},${b}`;
+}
+function applyThemeColor(t,save=true){
+  const r=document.documentElement.style;
+  r.setProperty('--a1',t.c1);
+  r.setProperty('--a2',t.c2);
+  r.setProperty('--bg',t.bg);
+  r.setProperty('--br',t.br);
+  r.setProperty('--cbg',t.cbg);
+  // 影色をテーマカラーに合わせて更新
+  const rgb=hexToRgb(t.c1);
+  r.setProperty('--sha-1',`rgba(${rgb},.1)`);
+  r.setProperty('--sha-08',`rgba(${rgb},.08)`);
+  r.setProperty('--sha-2',`rgba(${rgb},.2)`);
+  r.setProperty('--sha-5',`rgba(${rgb},.5)`);
+  r.setProperty('--sha-6',`rgba(${rgb},.6)`);
+  r.setProperty('--sha-95',`rgba(${rgb},.95)`);
+  r.setProperty('--sha-97',`rgba(${rgb},.97)`);
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content=t.c1;
+  if(save) saveAppearance({themeColor:t});
+  document.querySelectorAll('.theme-color-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.c1===t.c1);
+  });
+}
+function applyFontSize(size,save=true){
+  document.body.classList.remove('font-sm','font-lg');
+  if(size==='sm') document.body.classList.add('font-sm');
+  if(size==='lg') document.body.classList.add('font-lg');
+  if(save) saveAppearance({fontSize:size});
+  document.querySelectorAll('.font-size-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.size===size||(size==='md'&&b.dataset.size==='md'));
+  });
+}
+function onDarkModeToggle(){
+  const on=document.getElementById('darkModeToggle').checked;
+  document.body.classList.toggle('dark-mode',on);
+  document.getElementById('darkModeLabel').textContent=on?'ON':'OFF';
+  saveAppearance({darkMode:on});
+}
+function setFontSize(size){ applyFontSize(size); }
+function syncAppearanceUI(s){
+  if(s.themeColor){
+    document.querySelectorAll('.theme-color-btn').forEach(b=>{
+      b.classList.toggle('active',b.dataset.c1===s.themeColor.c1);
+    });
+  }
+  const isDark=s.darkMode||false;
+  const tog=document.getElementById('darkModeToggle');
+  const lbl=document.getElementById('darkModeLabel');
+  if(tog){tog.checked=isDark;if(lbl)lbl.textContent=isDark?'ON':'OFF';}
+  const fs=s.fontSize||'md';
+  document.querySelectorAll('.font-size-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.size===fs);
+  });
+}
+
 // ── 設定 ──
 function openSettingsModal() {
   document.getElementById('budgetInput').value=userSettings.budget||'';
@@ -735,6 +892,14 @@ function openSettingsModal() {
   document.getElementById('settingsModal').classList.remove('hidden');
 }
 function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
+function openThemeModal() {
+  try{
+    const s=JSON.parse(localStorage.getItem(APPEARANCE_KEY)||'{}');
+    syncAppearanceUI(s);
+  }catch(e){}
+  document.getElementById('themeModal').classList.remove('hidden');
+}
+function closeThemeModal() { document.getElementById('themeModal').classList.add('hidden'); }
 async function saveSettings() {
   if(!currentUser||!dbSettingsRef)return;
   const budget=parseInt(document.getElementById('budgetInput').value)||0;
@@ -1299,7 +1464,7 @@ function getSearchVolumes() {
 }
 function highlight(text,query) {
   if(!query)return escHtml(text);
-  return escHtml(text).replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark style="background:#e9d8fd;color:#553c9a;border-radius:3px;padding:0 2px">${m}</mark>`);
+  return escHtml(text).replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark style="background:#e9d8fd;color:var(--a1);border-radius:3px;padding:0 2px">${m}</mark>`);
 }
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -1375,21 +1540,24 @@ function onSeriesSearchInput(){
 
 async function searchBooksInline(q){
   const sec=document.getElementById('seriesApiSection'); if(!sec)return;
-  sec.innerHTML='<div style="padding:8px 14px;font-size:12px;color:#718096;border-top:1px solid #e9e0ff">🔍 書籍を検索中…</div>';
+  sec.innerHTML='<div style="padding:8px 14px;font-size:12px;color:#718096;border-top:1px solid var(--br)">🔍 書籍を検索中…</div>';
   const qEnc=encodeURIComponent(q);
+  const gbEnc=encodeURIComponent(q+' 漫画');
   const settled=await Promise.allSettled([
     fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=20').then(r=>r.json()),
-    Promise.resolve({Items:[]}),
+    fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
     fetch('https://itunes.apple.com/search?term='+qEnc+'&country=jp&media=ebook&limit=20').then(r=>r.json()),
+    fetch('https://www.googleapis.com/books/v1/volumes?q='+gbEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
     ...(AMAZON_PA_WORKER_URL?[fetch(AMAZON_PA_WORKER_URL+'/search?keywords='+qEnc).then(r=>r.json())]:[] ),
   ]);
   const hanmotoItems=settled[0].status==='fulfilled'?(settled[0].value.books||[]).map(normHanmoto):[];
-  const rakutenItems=settled[1].status==='fulfilled'?((settled[1].value.Items||[]).map(i=>i.Item).map(normRakuten)):[];
+  const gbItems1=settled[1].status==='fulfilled'?(settled[1].value.items||[]).map(normGbooks):[];
   const itunesItems=settled[2].status==='fulfilled'?(settled[2].value.results||[]).map(normItunes).filter(it=>it.price>0||it.releaseDate):[];
-  const amazonItems=AMAZON_PA_WORKER_URL&&settled[3]&&settled[3].status==='fulfilled'?((settled[3].value.SearchResult&&settled[3].value.SearchResult.Items)||[]).map(normAmazonPA):[];
+  const gbItems2=settled[3].status==='fulfilled'?(settled[3].value.items||[]).map(normGbooks):[];
+  const amazonItems=AMAZON_PA_WORKER_URL&&settled[4]&&settled[4].status==='fulfilled'?((settled[4].value.SearchResult&&settled[4].value.SearchResult.Items)||[]).map(normAmazonPA):[];
   const normKey=t=>t.replace(/[\s　\-－・【】「」]/g,'').toLowerCase();
   const seen={};const merged=[];
-  [...amazonItems,...rakutenItems,...hanmotoItems,...itunesItems].forEach(item=>{
+  [...amazonItems,...hanmotoItems,...gbItems1,...gbItems2,...itunesItems].forEach(item=>{
     const key=normKey(item.title).substring(0,25);
     if(!seen[key]){seen[key]=true;merged.push(item);}
   });
@@ -1400,14 +1568,14 @@ async function searchBooksInline(q){
     if(sa!==sb)return sa-sb;
     return (b.price>0?1:0)-(a.price>0?1:0); // 価格ありを優先
   });
-  window._inlineResults=merged.slice(0,12);
+  window._inlineResults=merged.slice(0,20);
   const sec2=document.getElementById('seriesApiSection'); if(!sec2)return;
   if(!window._inlineResults.length){
-    sec2.innerHTML='<div style="padding:8px 14px;font-size:12px;color:#a0aec0;border-top:1px solid #e9e0ff">書籍が見つかりませんでした</div>';
+    sec2.innerHTML='<div style="padding:8px 14px;font-size:12px;color:#a0aec0;border-top:1px solid var(--br)">書籍が見つかりませんでした</div>';
     return;
   }
   const st2='padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0ebff;display:flex;gap:8px;align-items:flex-start';
-  let h='<div style="padding:5px 14px;font-size:11px;color:#9b59b6;background:#faf5ff;font-weight:600;border-top:2px solid #e9e0ff">── 書籍データベース ──</div>';
+  let h='<div style="padding:5px 14px;font-size:11px;color:#9b59b6;background:#faf5ff;font-weight:600;border-top:2px solid var(--br)">── 書籍データベース ──</div>';
   window._inlineResults.forEach((item,i)=>{
     const badge=item._src==='amazon'
       ?'<span style="font-size:9px;background:#fff8e1;color:#e07b00;border-radius:3px;padding:1px 4px">Amazon</span>'
@@ -1415,8 +1583,10 @@ async function searchBooksInline(q){
       ?'<span style="font-size:9px;background:#ffe9e9;color:#bf0000;border-radius:3px;padding:1px 4px">楽天</span>'
       :item._src==='hanmoto'
       ?'<span style="font-size:9px;background:#fff3e0;color:#e65100;border-radius:3px;padding:1px 4px">版元</span>'
+      :item._src==='gbooks'
+      ?'<span style="font-size:9px;background:#e8f5e9;color:#1b5e20;border-radius:3px;padding:1px 4px">Google</span>'
       :'<span style="font-size:9px;background:#e3f2fd;color:#1565c0;border-radius:3px;padding:1px 4px">iTunes</span>';
-    const priceStr=item.price>0?` <span style="font-size:10px;color:#553c9a;font-weight:700">¥${item.price.toLocaleString()}</span>`:'';
+    const priceStr=item.price>0?` <span style="font-size:10px;color:var(--a1);font-weight:700">¥${item.price.toLocaleString()}</span>`:'';
     const sub=[item.author,item.publisher,item.releaseDate?item.releaseDate.substring(0,7):''].filter(Boolean).join(' · ');
     h+=`<div style="${st2}" onmousedown="selectBookInline(${i})"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap"><span style="font-weight:600">${escHtml(item.cleanTitle)}${item.volume?' '+item.volume+'巻':''}</span>${badge}${priceStr}</div>${sub?`<div style="font-size:11px;color:#718096;margin-top:2px">${escHtml(sub)}</div>`:''}</div></div>`;
   });
@@ -1453,7 +1623,6 @@ function selectBookInline(idx){
     document.getElementById('newSeriesLabel').value=item.label||'';
     document.getElementById('newSeriesMagazine').value=item.magazine||'';
     document.getElementById('newSeriesCoverUrl').value=item.thumb||'';
-    if(item.price>0)document.getElementById('newSeriesPrice').value=item.price;
   }
   document.getElementById('editRakutenUrl').value=item.rakutenUrl||'';
   document.getElementById('editAsin').value=item.asin||'';
@@ -1465,7 +1634,6 @@ function selectBookInline(idx){
   // 価格：price フィールドに常にセット（最優先）
   if(item.price>0){
     document.getElementById('price').value=item.price;
-    document.getElementById('newSeriesPrice').value=item.price;
   }
   // 出版社：publisher（非表示時でも値を保持）と newSeriesPublisher（表示）両方にセット
   if(item.publisher){
@@ -1630,20 +1798,12 @@ async function searchReleaseDate() {
   const qEnc=encodeURIComponent(q);
   const results=[];
 
-  // 楽天ブックス＋OpenBD 並列実行
-  const [rRes,oRes]=await Promise.allSettled([
-    Promise.resolve({Items:[]}),
-    fetch('https://api.openbd.jp/v1/search?title='+qEnc+'&limit=20').then(r=>r.json())
+  // OpenBD + Google Books + 版元ドットコム 並列実行
+  const [oRes,gbRes,hRes]=await Promise.allSettled([
+    fetch('https://api.openbd.jp/v1/search?title='+qEnc+'&limit=20').then(r=>r.json()),
+    fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
+    fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=20').then(r=>r.json()),
   ]);
-
-  // 楽天ブックス（タイトルフィルタあり）
-  if(rRes.status==='fulfilled'){
-    (rRes.value.Items||[]).map(i=>normRakuten(i.Item)).filter(it=>matchesTitle(it.cleanTitle)).forEach(it=>{
-      if(!it.releaseDate)return;
-      const d=new Date(it.releaseDate); if(isNaN(d))return;
-      results.push({date:it.releaseDate,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),bookTitle:it.title,volume:it.volume,publisher:it.publisher,author:it.author,price:it.price||0,_src:'rakuten'});
-    });
-  }
 
   // OpenBD（タイトルフィルタあり）
   if(oRes.status==='fulfilled'&&Array.isArray(oRes.value)){
@@ -1652,7 +1812,25 @@ async function searchReleaseDate() {
       const norm=`${pd.slice(0,4)}-${pd.slice(4,6)}-${pd.slice(6,8)}`;
       const d=new Date(norm); if(isNaN(d))return;
       const vol=normalizeVolume(item.volume)||extractVolumeFromTitle(item.title||'');
-      results.push({date:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),bookTitle:item.title||'',volume:vol,publisher:item.publisher||'',author:item.author||'',_src:'openbd'});
+      results.push({date:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),bookTitle:item.title||'',volume:vol,publisher:item.publisher||'',author:item.author||'',price:0,_src:'openbd'});
+    });
+  }
+
+  // Google Books（タイトルフィルタあり・価格付き）
+  if(gbRes.status==='fulfilled'){
+    (gbRes.value.items||[]).map(normGbooks).filter(it=>matchesTitle(it.cleanTitle)).forEach(it=>{
+      if(!it.releaseDate)return;
+      const d=new Date(it.releaseDate); if(isNaN(d))return;
+      results.push({date:it.releaseDate,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),bookTitle:it.title,volume:it.volume,publisher:it.publisher,author:it.author,price:it.price||0,_src:'gbooks'});
+    });
+  }
+
+  // 版元ドットコム（タイトルフィルタあり・価格付き）
+  if(hRes.status==='fulfilled'){
+    (hRes.value.books||[]).map(normHanmoto).filter(it=>matchesTitle(it.cleanTitle)).forEach(it=>{
+      if(!it.releaseDate)return;
+      const d=new Date(it.releaseDate); if(isNaN(d))return;
+      results.push({date:it.releaseDate,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),bookTitle:it.title,volume:it.volume,publisher:it.publisher,author:it.author,price:it.price||0,_src:'hanmoto'});
     });
   }
 
@@ -1678,11 +1856,15 @@ async function searchReleaseDate() {
   if(unique.length===0){el.innerHTML='<div style="font-size:12px;color:#a0aec0;padding:4px">見つかりませんでした（手動で入力してください）</div>';return;}
   el.innerHTML='';
   unique.forEach(r=>{
-    const volLabel=r.volume?` <span style="color:#553c9a;font-weight:700">第${r.volume}巻</span>`:'';
+    const volLabel=r.volume?` <span style="color:var(--a1);font-weight:700">第${r.volume}巻</span>`:'';
     const srcBadge=r._src==='rakuten'
       ?'<span style="font-size:9px;background:#ffe9e9;color:#bf0000;border-radius:3px;padding:1px 4px;margin-left:4px">楽天</span>'
       :r._src==='openbd'
-      ?'<span style="font-size:9px;background:#e8f5e9;color:#2e7d32;border-radius:3px;padding:1px 4px;margin-left:4px">OpenBD</span>':'';
+      ?'<span style="font-size:9px;background:#e8f5e9;color:#2e7d32;border-radius:3px;padding:1px 4px;margin-left:4px">OpenBD</span>'
+      :r._src==='gbooks'
+      ?'<span style="font-size:9px;background:#e8f5e9;color:#1b5e20;border-radius:3px;padding:1px 4px;margin-left:4px">Google</span>'
+      :r._src==='hanmoto'
+      ?'<span style="font-size:9px;background:#fff3e0;color:#e65100;border-radius:3px;padding:1px 4px;margin-left:4px">版元</span>':'';
     const div=document.createElement('div'); div.className='release-date-item';
     div.innerHTML=`<div class="rdi-date">${r.label}${volLabel}${srcBadge}</div><div class="rdi-title">${escHtml(r.bookTitle)}</div>`;
     div.addEventListener('click',()=>{
@@ -1690,7 +1872,7 @@ async function searchReleaseDate() {
       if(r.volume) document.getElementById('volumeNum').value=r.volume;
       if(r.publisher){document.getElementById('publisher').value=r.publisher;document.getElementById('newSeriesPublisher').value=r.publisher;}
       if(r.author) document.getElementById('newSeriesAuthor').value=r.author;
-      if(r.price>0){document.getElementById('price').value=r.price;document.getElementById('newSeriesPrice').value=r.price;}
+      if(r.price>0){document.getElementById('price').value=r.price;}
       el.innerHTML='';
     });
     el.appendChild(div);
@@ -1715,7 +1897,7 @@ async function refetchBookInfo() {
   // フォームフィールドを更新
   const updated=[];
   if(best.releaseDate){document.getElementById('releaseDate').value=best.releaseDate;updated.push('発売日');}
-  if(best.price>0){document.getElementById('price').value=best.price;document.getElementById('newSeriesPrice').value=best.price;updated.push('価格¥'+best.price);}
+  if(best.price>0){document.getElementById('price').value=best.price;updated.push('価格¥'+best.price);}
   if(best.publisher){document.getElementById('publisher').value=best.publisher;document.getElementById('newSeriesPublisher').value=best.publisher;updated.push('出版社');}
   if(best.author){document.getElementById('volumeAuthor').value=best.author;document.getElementById('newSeriesAuthor').value=best.author;updated.push('作者');}
   if(best.rakutenUrl){document.getElementById('editRakutenUrl').value=best.rakutenUrl;updated.push('楽天URL');}
@@ -1867,7 +2049,7 @@ async function saveVolume() {
     }
     const newAuthor=document.getElementById('newSeriesAuthor').value.trim();
     const newPub=document.getElementById('newSeriesPublisher').value.trim();
-    const newPrice=parseFloat(document.getElementById('newSeriesPrice').value)||0;
+    const newPrice=price;
     const newGenre=document.getElementById('newSeriesGenre').value;
     const newCompleted=document.getElementById('newSeriesCompleted').value==='1';
     const newRef=dbSeriesRef.push();
@@ -2242,7 +2424,6 @@ function selectBook(item) {
   document.getElementById('newSeriesPublisher').value=item.publisher;
   document.getElementById('newSeriesLabel').value=item.label;
   document.getElementById('newSeriesMagazine').value=item.magazine;
-  if(item.price>0)document.getElementById('newSeriesPrice').value=item.price;
   document.getElementById('newSeriesCoverUrl').value=item.thumb||'';
   document.getElementById('newSeriesFields').style.display='';
   if(item.volume)document.getElementById('volumeNum').value=item.volume;
@@ -2330,7 +2511,20 @@ async function lookupISBN(isbn) {
 }
 
 // ── 初期化 ──
-function init() { initAuth(); updateNotifBtn(); }
+function init() {
+  loadAppearance();
+  // テーマカラーボタンのクリックイベント
+  document.querySelectorAll('.theme-color-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      applyThemeColor({
+        c1:btn.dataset.c1, c2:btn.dataset.c2,
+        bg:btn.dataset.bg, br:btn.dataset.br, cbg:btn.dataset.cbg
+      });
+    });
+  });
+  initAuth();
+  updateNotifBtn();
+}
 init();
 </script>
 </body>
