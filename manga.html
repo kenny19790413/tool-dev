@@ -2745,7 +2745,7 @@ async function applyPriceFixResults() {
   if (Object.keys(seriesUpd).length) await dbSeriesRef.update(seriesUpd);
   showSaved();
   closePriceFixModal();
-  renderApp();
+  render();
 }
 
 function closePriceFixModal() {
