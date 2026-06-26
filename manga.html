@@ -2577,8 +2577,34 @@ async function checkAllPricesPublishers() {
   if (btn) { btn.disabled = true; btn.textContent = '🔄 検索中...'; }
 
   const results = [];
-  const withISBN = targets.filter(v => v.isbn);
-  const withoutISBN = targets.filter(v => !v.isbn);
+
+  // ── ステップ0: シリーズ内の既存データから補完（API不要・高精度）──
+  const stillMissing = [];
+  for (const v of targets) {
+    const series = seriesList[v.seriesId] || {};
+    // 同シリーズの他の巻から価格・出版社を探す
+    const siblings = Object.values(volumesList).filter(
+      o => o.seriesId === v.seriesId && o !== v
+    );
+    const sibPrice = siblings.find(o => (o.price || 0) > 0)?.price || 0;
+    const sibPub   = siblings.find(o => o.publisher)?.publisher || '';
+
+    const newPrice = (v.price || 0) === 0 ? (series.price || sibPrice || 0) : (v.price || 0);
+    const newPub   = !v.publisher ? (series.publisher || sibPub || '') : (v.publisher || '');
+    const priceChg = newPrice > 0 && (v.price || 0) !== newPrice;
+    const pubChg   = !!newPub && (v.publisher || '') !== newPub;
+
+    if (priceChg || pubChg) {
+      const seriesTitle = v.title || series.title || '';
+      results.push({ id: v.id, seriesId: v.seriesId, title: seriesTitle, volume: v.volume,
+        oldPrice: v.price || 0, newPrice, oldPub: v.publisher || '', newPub, priceChg, pubChg });
+    } else {
+      stillMissing.push(v); // シリーズデータでも補完できなかった → API検索へ
+    }
+  }
+
+  const withISBN    = stillMissing.filter(v => v.isbn);
+  const withoutISBN = stillMissing.filter(v => !v.isbn);
 
   // ISBNバッチ取得（100件ずつ）
   for (let i = 0; i < withISBN.length; i += 100) {
