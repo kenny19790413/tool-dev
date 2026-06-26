@@ -2584,29 +2584,29 @@ async function searchSeriesPublisher(seriesId) {
 
   const publishers = new Map();
 
+  // OpenBD（日本の書籍データベース・publisher フィールドが正確）
   try {
-    const gbRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&langRestrict=ja&maxResults=10&printType=books`);
-    if (gbRes.ok) {
-      const gbData = await gbRes.json();
-      for (const item of (gbData.items || [])) {
-        const pub = item.volumeInfo?.publisher;
-        if (pub && pub.length < 30) publishers.set(pub, 'Google');
+    const obdItems = await fetch(`https://api.openbd.jp/v1/search?title=${encodeURIComponent(title)}&limit=20`).then(r => r.json());
+    if (Array.isArray(obdItems)) {
+      const nk = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
+      for (const item of obdItems) {
+        if (!nk(item.title || '').includes(nk(title))) continue;
+        const pub = (item.publisher || '').trim();
+        if (pub && pub.length < 30 && !publishers.has(pub)) publishers.set(pub, 'OpenBD');
       }
     }
   } catch(e) {}
 
-  try {
-    const itRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(title)}&country=JP&media=ebook&limit=10&lang=ja_JP`);
-    if (itRes.ok) {
-      const itData = await itRes.json();
-      for (const item of (itData.results || [])) {
-        const pub = item.artistName;
-        if (pub && pub.length < 30 && !pub.includes('作') && !pub.includes('著')) {
-          if (!publishers.has(pub)) publishers.set(pub, 'iTunes');
-        }
+  // Google Books（補足）
+  if (publishers.size === 0) {
+    try {
+      const gbData = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&langRestrict=ja&maxResults=10&printType=books`).then(r => r.json());
+      for (const item of (gbData.items || [])) {
+        const pub = (item.volumeInfo?.publisher || '').trim();
+        if (pub && pub.length < 30 && !publishers.has(pub)) publishers.set(pub, 'Google');
       }
-    }
-  } catch(e) {}
+    } catch(e) {}
+  }
 
   btn.disabled = false;
   btn.textContent = '🔍';
@@ -2661,10 +2661,10 @@ async function checkAllPricesPublishers() {
     const siblings = Object.values(volumesList).filter(
       o => o.seriesId === v.seriesId && o !== v
     );
-    const sibPrice = siblings.find(o => (o.price || 0) > 0)?.price || 0;
-    const sibPub   = siblings.find(o => o.publisher)?.publisher || '';
+    // 兄弟巻の価格は巻によって異なる可能性があるため流用しない（シリーズデフォルト価格のみ使用）
+    const sibPub = siblings.find(o => o.publisher)?.publisher || '';
 
-    const newPrice = (v.price || 0) === 0 ? (series.price || sibPrice || 0) : (v.price || 0);
+    const newPrice = (v.price || 0) === 0 ? (series.price || 0) : (v.price || 0);
     const newPub   = !v.publisher ? (series.publisher || sibPub || '') : (v.publisher || '');
     const priceChg = newPrice > 0 && (v.price || 0) !== newPrice;
     const pubChg   = !!newPub && (v.publisher || '') !== newPub;
@@ -2720,27 +2720,46 @@ async function checkAllPricesPublishers() {
 
     let newPrice = 0, newPub = '';
 
-    // iTunes（価格専用・漫画に強い）- 429対策で間隔を開ける
+    // OpenBD タイトル検索（価格・出版社ともに取得。price は本体価格(税抜)→×1.1で税込換算）
     try {
-      await new Promise(r => setTimeout(r, 600));
-      const qi = encodeURIComponent(seriesTitle + (volStr ? ' ' + volStr + '巻' : ''));
-      const it = await fetch(`https://itunes.apple.com/search?term=${qi}&country=jp&media=ebook&limit=15`).then(r => r.json());
-      for (const item of (it.results || [])) {
-        const t = item.trackName || '';
-        if (!nk(t).includes(nk(seriesTitle))) continue;
-        const vol = extractVolumeFromTitle(t);
-        // 巻数が指定されている場合は厳密一致のみ採用（不一致・未取得はスキップ）
-        if (volStr && vol !== volStr) continue;
-        // ¥100以下は試し読み価格の可能性が高いのでスキップ
-        if (item.currency === 'JPY' && item.price > 100) {
-          // iTunes APIは税抜価格を返すため×1.1で税込に換算
-          newPrice = Math.round(item.price * 1.1);
-          break;
+      const obdItems = await fetch(`https://api.openbd.jp/v1/search?title=${encodeURIComponent(seriesTitle)}&limit=10`).then(r => r.json());
+      if (Array.isArray(obdItems)) {
+        for (const item of obdItems) {
+          if (!nk(item.title || '').includes(nk(seriesTitle))) continue;
+          const vol = normalizeVolume(item.volume || '') || extractVolumeFromTitle(item.title || '');
+          if (volStr && vol && vol !== volStr) continue;
+          if (!newPub && item.publisher) newPub = item.publisher;
+          if (!newPrice) {
+            const raw = parseInt(item.price || '0') || 0;
+            if (raw > 0) newPrice = Math.round(raw * 1.1);
+          }
+          if (newPrice && newPub) break;
         }
       }
     } catch (e) { }
 
-    // Google Books（出版社専用）
+    // iTunes（価格補完・OpenBDで取得できなかった場合のみ）
+    if (!newPrice) {
+      try {
+        await new Promise(r => setTimeout(r, 600));
+        const qi = encodeURIComponent(seriesTitle + (volStr ? ' ' + volStr + '巻' : ''));
+        const it = await fetch(`https://itunes.apple.com/search?term=${qi}&country=jp&media=ebook&limit=15`).then(r => r.json());
+        for (const item of (it.results || [])) {
+          const t = item.trackName || '';
+          if (!nk(t).includes(nk(seriesTitle))) continue;
+          const vol = extractVolumeFromTitle(t);
+          if (volStr && vol !== volStr) continue;
+          // ¥100以下は試し読み価格のためスキップ
+          if (item.currency === 'JPY' && item.price > 100) {
+            // iTunes JP は本体価格(税抜)を返すため×1.1で税込換算
+            newPrice = Math.round(item.price * 1.1);
+            break;
+          }
+        }
+      } catch (e) { }
+    }
+
+    // Google Books（出版社補完・OpenBDで取得できなかった場合のみ）
     if (!newPub) {
       try {
         const q3 = encodeURIComponent(seriesTitle + ' 漫画');
@@ -2752,20 +2771,6 @@ async function checkAllPricesPublishers() {
           if (!nk(rawTitle).includes(nk(seriesTitle))) continue;
           newPub = info.publisher;
           break;
-        }
-      } catch (e) { }
-    }
-
-    // OpenBDフォールバック（出版社補完）
-    if (!newPub) {
-      try {
-        const q = encodeURIComponent(seriesTitle);
-        const items = await fetch(`https://api.openbd.jp/v1/search?title=${q}&limit=5`).then(r => r.json());
-        if (Array.isArray(items)) {
-          for (const item of items) {
-            if (!nk(item.title || '').includes(nk(seriesTitle))) continue;
-            if (item.publisher) { newPub = item.publisher; break; }
-          }
         }
       } catch (e) { }
     }
