@@ -607,7 +607,7 @@ textarea{resize:vertical;min-height:60px}
     <span id="userName" style="font-size:12px"></span>
     <button id="notifBtn" onclick="toggleNotification()">🔔 通知</button>
     <button onclick="openSeriesModal()">📚 作品管理</button>
-    <button id="btnPriceFix" onclick="checkAllPricesPublishers()">💰 価格修正</button>
+
     <button onclick="openSettingsModal()">⚙️ 予算</button>
     <button onclick="openThemeModal()">🎨 テーマ</button>
     <button onclick="signOut()">サインアウト</button>
@@ -2108,9 +2108,12 @@ async function saveVolume() {
   }
 
   const data={seriesId:resolvedSeriesId,title:resolvedTitle,volume:volumeNum,releaseDate,publisher,author,price,memo,rakutenUrl,asin,isbn,status:editId?(volumesList[editId]?.status||'none'):'none',purchased:false};
-  if(editId){await dbVolumesRef.child(editId).set({...data,status:volumesList[editId]?.status||'none',purchased:volumesList[editId]?.purchased||false});}
-  else{await dbVolumesRef.push(data);}
+  let savedRef;
+  if(editId){await dbVolumesRef.child(editId).set({...data,status:volumesList[editId]?.status||'none',purchased:volumesList[editId]?.purchased||false}); savedRef=dbVolumesRef.child(editId);}
+  else{savedRef=dbVolumesRef.push(); await savedRef.set(data);}
   showSaved(); closeAddModal();
+  // 価格0 or 出版社未入力の場合、バックグラウンドで自動補完
+  if(price===0||!publisher) silentFillPricePublisher(savedRef.key, resolvedSeriesId, resolvedTitle, volumeNum, isbn, price, publisher);
   if(releaseDate){const d=new Date(releaseDate);if(!isNaN(d)){currentYear=d.getFullYear();currentMonth=d.getMonth()+1;}}
 }
 
@@ -2564,6 +2567,65 @@ async function lookupISBN(isbn) {
       alert(`ISBN: ${isbn}\n\n書籍情報が見つかりませんでした。\n手動で入力してください。`);
     }
   } catch(e){alert('通信エラーが発生しました');}
+}
+
+// ── 保存時サイレント自動補完（価格0 or 出版社未入力の場合） ──
+async function silentFillPricePublisher(volId, seriesId, seriesTitle, volumeNum, isbn, currentPrice, currentPub) {
+  if (!volId) return;
+  const nk = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
+  const volStr = String(volumeNum || '');
+  let newPrice = 0, newPub = '';
+
+  // ISBNあり → OpenBD一発取得（最も正確）
+  if (isbn) {
+    try {
+      const data = await fetch(`https://api.openbd.jp/v1/get?isbn=${isbn}`).then(r => r.json());
+      const s = Array.isArray(data) && data[0] && data[0].summary;
+      if (s) {
+        if (!currentPub && s.publisher) newPub = s.publisher;
+        if (currentPrice === 0) {
+          const raw = parseInt(s.price || '0') || 0;
+          if (raw > 0) newPrice = Math.round(raw * 1.1);
+        }
+      }
+    } catch(e) {}
+  }
+
+  // ISBNなし or まだ不足 → OpenBD タイトル検索
+  if ((currentPrice === 0 && !newPrice) || (!currentPub && !newPub)) {
+    try {
+      const items = await fetch(`https://api.openbd.jp/v1/search?title=${encodeURIComponent(seriesTitle)}&limit=10`).then(r => r.json());
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (!nk(item.title || '').includes(nk(seriesTitle))) continue;
+          const vol = normalizeVolume(item.volume || '') || extractVolumeFromTitle(item.title || '');
+          if (volStr && vol && vol !== volStr) continue;
+          if (!newPub && !currentPub && item.publisher) newPub = item.publisher;
+          if (!newPrice && currentPrice === 0) {
+            const raw = parseInt(item.price || '0') || 0;
+            if (raw > 0) newPrice = Math.round(raw * 1.1);
+          }
+          if ((!currentPub ? newPub : true) && (!( currentPrice === 0) || newPrice)) break;
+        }
+      }
+    } catch(e) {}
+  }
+
+  // 更新が必要なフィールドだけ書き込む
+  const upd = {};
+  if (newPrice > 0 && currentPrice === 0) upd.price = newPrice;
+  if (newPub && !currentPub) upd.publisher = newPub;
+  if (Object.keys(upd).length === 0) return;
+
+  try {
+    await dbVolumesRef.child(volId).update(upd);
+    // シリーズ側も未設定なら更新
+    const seriesUpd = {};
+    const s = seriesList[seriesId] || {};
+    if (upd.price && !(s.price > 0)) seriesUpd.price = upd.price;
+    if (upd.publisher && !s.publisher) seriesUpd.publisher = upd.publisher;
+    if (Object.keys(seriesUpd).length > 0) await dbSeriesRef.child(seriesId).update(seriesUpd);
+  } catch(e) {}
 }
 
 // ── シリーズ編集フォーム 出版社サジェスト ──
