@@ -2622,14 +2622,16 @@ async function checkAllPricesPublishers() {
     // iTunes（価格専用・漫画に強い）- 429対策で間隔を開ける
     try {
       await new Promise(r => setTimeout(r, 600));
-      const qi = encodeURIComponent(seriesTitle + (volStr ? ' ' + volStr : ''));
-      const it = await fetch(`https://itunes.apple.com/search?term=${qi}&country=jp&media=ebook&limit=10`).then(r => r.json());
+      const qi = encodeURIComponent(seriesTitle + (volStr ? ' ' + volStr + '巻' : ''));
+      const it = await fetch(`https://itunes.apple.com/search?term=${qi}&country=jp&media=ebook&limit=15`).then(r => r.json());
       for (const item of (it.results || [])) {
         const t = item.trackName || '';
         if (!nk(t).includes(nk(seriesTitle))) continue;
         const vol = extractVolumeFromTitle(t);
-        if (volStr && vol && vol !== volStr) continue;
-        if (item.currency === 'JPY' && item.price > 0) { newPrice = Math.round(item.price); break; }
+        // 巻数が指定されている場合は厳密一致のみ採用（不一致・未取得はスキップ）
+        if (volStr && vol !== volStr) continue;
+        // ¥100以下は試し読み価格の可能性が高いのでスキップ
+        if (item.currency === 'JPY' && item.price > 100) { newPrice = item.price; break; }
       }
     } catch (e) { }
 
