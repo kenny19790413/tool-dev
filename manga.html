@@ -563,6 +563,22 @@ textarea{resize:vertical;min-height:60px}
   </div>
 </div>
 
+<!-- 価格・出版社一括修正モーダル -->
+<div id="priceFixModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:500px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 id="priceFixCount" style="margin:0">💰 価格・出版社を修正</h3>
+      <button onclick="closePriceFixModal()" style="font-size:20px;line-height:1;background:none;border:none;color:#a0aec0;cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    <div style="font-size:12px;color:#718096;margin-bottom:12px">チェックを入れた項目を修正します。チェックを外すとスキップします。</div>
+    <div id="priceFixBody" style="max-height:400px;overflow-y:auto;margin-bottom:16px"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closePriceFixModal()">キャンセル</button>
+      <button class="btn-save" onclick="applyPriceFixResults()">✅ 修正する</button>
+    </div>
+  </div>
+</div>
+
 <!-- 発売日チェック結果モーダル -->
 <div id="pendingCheckModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:480px">
@@ -591,6 +607,7 @@ textarea{resize:vertical;min-height:60px}
     <span id="userName" style="font-size:12px"></span>
     <button id="notifBtn" onclick="toggleNotification()">🔔 通知</button>
     <button onclick="openSeriesModal()">📚 作品管理</button>
+    <button id="btnPriceFix" onclick="checkAllPricesPublishers()">💰 価格修正</button>
     <button onclick="openSettingsModal()">⚙️ 予算</button>
     <button onclick="openThemeModal()">🎨 テーマ</button>
     <button onclick="signOut()">サインアウト</button>
@@ -1078,26 +1095,25 @@ async function checkAllPendingDates() {
     const matchV = vol => !volStr||String(vol)===volStr;
     let hit = false;
 
-    // Google Books（逐次・レート制限対策）
+    // OpenBD 優先（日本語書籍データ・発売予定含む・高速）
     try{
-      await new Promise(r=>setTimeout(r,1000));
-      const q = seriesTitle+(volStr?' '+volStr+'巻':'');
-      const gb = await fetch('https://www.googleapis.com/books/v1/volumes?q='+encodeURIComponent(q)+'&langRestrict=ja&maxResults=15').then(r=>r.json());
-      for(const item of (gb.items||[])){
-        const info=item.volumeInfo||{};
-        if(!matchT(info.title||'')) continue;
-        const vol=extractVolumeFromTitle(info.title||'');
-        if(!matchV(vol)) continue;
-        const pub=info.publishedDate||''; if(!pub||pub.length<6) continue;
-        const norm=pub.length===7?pub+'-01':pub.length===4?pub+'-01-01':pub.substring(0,10);
-        const d=new Date(norm); if(isNaN(d)||!isFutureOrRecent(d)) continue;
-        found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'Google'});
-        hit=true; break;
+      const obdItems = await fetch('https://api.openbd.jp/v1/search?title='+encodeURIComponent(seriesTitle)+'&limit=15').then(r=>r.json());
+      if(Array.isArray(obdItems)){
+        for(const item of obdItems){
+          if(!matchT(item.title)) continue;
+          const vol=normalizeVolume(item.volume||'')||extractVolumeFromTitle(item.title||'');
+          if(!matchV(vol)) continue;
+          const pd=item.pubdate||''; if(pd.length<8) continue;
+          const norm=`${pd.slice(0,4)}-${pd.slice(4,6)}-${pd.slice(6,8)}`;
+          const d=new Date(norm); if(isNaN(d)||!isFutureOrRecent(d)) continue;
+          found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'OpenBD'});
+          hit=true; break;
+        }
       }
     }catch(e){}
     if(hit) continue;
 
-    // iTunes フォールバック
+    // iTunes フォールバック（デジタル版・電子書籍）
     try{
       const q2 = seriesTitle+(volStr?' '+volStr:'');
       const it = await fetch('https://itunes.apple.com/search?term='+encodeURIComponent(q2)+'&country=JP&media=ebook&limit=10').then(r=>r.json());
@@ -1113,20 +1129,21 @@ async function checkAllPendingDates() {
     }catch(e){}
     if(hit) continue;
 
-    // OpenBD フォールバック
+    // Google Books（最終手段・レート制限対策）
     try{
-      const items = await fetch('https://api.openbd.jp/v1/search?title='+encodeURIComponent(seriesTitle)+'&limit=15').then(r=>r.json());
-      if(Array.isArray(items)){
-        for(const item of items){
-          if(!matchT(item.title)) continue;
-          const vol=normalizeVolume(item.volume||'')||extractVolumeFromTitle(item.title||'');
-          if(!matchV(vol)) continue;
-          const pd=item.pubdate||''; if(pd.length<8) continue;
-          const norm=`${pd.slice(0,4)}-${pd.slice(4,6)}-${pd.slice(6,8)}`;
-          const d=new Date(norm); if(isNaN(d)||!isFutureOrRecent(d)) continue;
-          found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'OpenBD'});
-          break;
-        }
+      await new Promise(r=>setTimeout(r,500));
+      const q = seriesTitle+(volStr?' '+volStr+'巻':'');
+      const gb = await fetch('https://www.googleapis.com/books/v1/volumes?q='+encodeURIComponent(q)+'&langRestrict=ja&maxResults=15').then(r=>r.json());
+      for(const item of (gb.items||[])){
+        const info=item.volumeInfo||{};
+        if(!matchT(info.title||'')) continue;
+        const vol=extractVolumeFromTitle(info.title||'');
+        if(!matchV(vol)) continue;
+        const pub=info.publishedDate||''; if(!pub||pub.length<6) continue;
+        const norm=pub.length===7?pub+'-01':pub.length===4?pub+'-01-01':pub.substring(0,10);
+        const d=new Date(norm); if(isNaN(d)||!isFutureOrRecent(d)) continue;
+        found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'Google'});
+        hit=true; break;
       }
     }catch(e){}
   }
@@ -1548,16 +1565,18 @@ async function searchBooksInline(q){
     fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
     fetch('https://itunes.apple.com/search?term='+qEnc+'&country=jp&media=ebook&limit=20').then(r=>r.json()),
     fetch('https://www.googleapis.com/books/v1/volumes?q='+gbEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
+    fetch('https://api.openbd.jp/v1/search?title='+qEnc+'&limit=20').then(r=>r.json()),
     ...(AMAZON_PA_WORKER_URL?[fetch(AMAZON_PA_WORKER_URL+'/search?keywords='+qEnc).then(r=>r.json())]:[] ),
   ]);
   const hanmotoItems=settled[0].status==='fulfilled'?(settled[0].value.books||[]).map(normHanmoto):[];
   const gbItems1=settled[1].status==='fulfilled'?(settled[1].value.items||[]).map(normGbooks):[];
   const itunesItems=settled[2].status==='fulfilled'?(settled[2].value.results||[]).map(normItunes).filter(it=>it.price>0||it.releaseDate):[];
   const gbItems2=settled[3].status==='fulfilled'?(settled[3].value.items||[]).map(normGbooks):[];
-  const amazonItems=AMAZON_PA_WORKER_URL&&settled[4]&&settled[4].status==='fulfilled'?((settled[4].value.SearchResult&&settled[4].value.SearchResult.Items)||[]).map(normAmazonPA):[];
+  const openBDItems=settled[4].status==='fulfilled'&&Array.isArray(settled[4].value)?settled[4].value.map(normOpenBD):[];
+  const amazonItems=AMAZON_PA_WORKER_URL&&settled[5]&&settled[5].status==='fulfilled'?((settled[5].value.SearchResult&&settled[5].value.SearchResult.Items)||[]).map(normAmazonPA):[];
   const normKey=t=>t.replace(/[\s　\-－・【】「」]/g,'').toLowerCase();
   const seen={};const merged=[];
-  [...amazonItems,...hanmotoItems,...gbItems1,...gbItems2,...itunesItems].forEach(item=>{
+  [...amazonItems,...hanmotoItems,...openBDItems,...gbItems1,...gbItems2,...itunesItems].forEach(item=>{
     const key=normKey(item.title).substring(0,25);
     if(!seen[key]){seen[key]=true;merged.push(item);}
   });
@@ -1566,7 +1585,10 @@ async function searchBooksInline(q){
     const sa=normKey(a.cleanTitle).startsWith(ql)?0:1;
     const sb=normKey(b.cleanTitle).startsWith(ql)?0:1;
     if(sa!==sb)return sa-sb;
-    return (b.price>0?1:0)-(a.price>0?1:0); // 価格ありを優先
+    // 価格・出版社ともにある→最優先
+    const da=(a.price>0?2:0)+(a.publisher?1:0);
+    const db=(b.price>0?2:0)+(b.publisher?1:0);
+    return db-da;
   });
   window._inlineResults=merged.slice(0,20);
   const sec2=document.getElementById('seriesApiSection'); if(!sec2)return;
@@ -1583,6 +1605,8 @@ async function searchBooksInline(q){
       ?'<span style="font-size:9px;background:#ffe9e9;color:#bf0000;border-radius:3px;padding:1px 4px">楽天</span>'
       :item._src==='hanmoto'
       ?'<span style="font-size:9px;background:#fff3e0;color:#e65100;border-radius:3px;padding:1px 4px">版元</span>'
+      :item._src==='openbd'
+      ?'<span style="font-size:9px;background:#e8f0ff;color:#1a237e;border-radius:3px;padding:1px 4px">OpenBD</span>'
       :item._src==='gbooks'
       ?'<span style="font-size:9px;background:#e8f5e9;color:#1b5e20;border-radius:3px;padding:1px 4px">Google</span>'
       :'<span style="font-size:9px;background:#e3f2fd;color:#1565c0;border-radius:3px;padding:1px 4px">iTunes</span>';
@@ -1608,7 +1632,22 @@ function parseNdl(xmlText){
 }
 
 function selectBookInline(idx){
-  const item=(window._inlineResults||[])[idx]; if(!item)return;
+  let item=(window._inlineResults||[])[idx]; if(!item)return;
+  // クロスソース補完: GBooks等で price/publisher が欠損の場合、版元/OpenBD から補完
+  if(!item.publisher || item.price===0) {
+    const enhanced=Object.assign({},item);
+    for(const other of (window._inlineResults||[])) {
+      if(other===item) continue;
+      if(enhanced.volume && other.volume && enhanced.volume!==other.volume) continue;
+      if(other._src==='hanmoto'||other._src==='openbd') {
+        if(!enhanced.publisher && other.publisher) enhanced.publisher=other.publisher;
+        if(!enhanced.price && other.price>0) enhanced.price=other.price;
+        if(!enhanced.releaseDate && other.releaseDate) enhanced.releaseDate=other.releaseDate;
+      }
+      if(enhanced.publisher && enhanced.price>0) break;
+    }
+    item=enhanced;
+  }
   const normKey=t=>t.replace(/[\s　\-－・【】「」]/g,'').toLowerCase();
   const match=Object.entries(seriesList).find(([,s])=>normKey(s.title)===normKey(item.cleanTitle));
   document.getElementById('seriesSearchInput').value=item.cleanTitle;
@@ -2322,6 +2361,18 @@ function normHanmoto(item) {
   var author=normalizeAuthor(item.author||'');
   return {_src:'hanmoto',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,author:author,publisher:item.publisher||'',label:item.labelname||'',magazine:'',price:item.price||0,releaseDate:rd,thumb:thumb,isbn:item.isbn||'',rakutenUrl:''};
 }
+function normOpenBD(item) {
+  var rawTitle=item.title||'';
+  var ev=extractVolume(rawTitle);
+  var pd=item.pubdate||'';
+  var rd='';
+  if(pd.length===8) rd=pd.substring(0,4)+'-'+pd.substring(4,6)+'-'+pd.substring(6,8);
+  else if(pd.length===6) rd=pd.substring(0,4)+'-'+pd.substring(4,6)+'-01';
+  var thumb=item.cover?item.cover.replace('http://','https://'):'';
+  return {_src:'openbd',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,
+    author:normalizeAuthor(item.author||''),publisher:item.publisher||'',label:'',magazine:'',
+    price:parseInt(item.price)||0,releaseDate:rd,thumb:thumb,isbn:item.isbn||'',rakutenUrl:''};
+}
 
 function normRakuten(item) {
   var rawTitle=item.title||'';
@@ -2508,6 +2559,175 @@ async function lookupISBN(isbn) {
       alert(`ISBN: ${isbn}\n\n書籍情報が見つかりませんでした。\n手動で入力してください。`);
     }
   } catch(e){alert('通信エラーが発生しました');}
+}
+
+// ── 価格・出版社一括修正 ──
+let _priceFixResults = [];
+
+async function checkAllPricesPublishers() {
+  const allVols = Object.entries(volumesList).map(([id, v]) => ({ id, ...v }));
+  const targets = allVols.filter(v => (v.price || 0) === 0 || !v.publisher);
+
+  if (!targets.length) {
+    alert('価格・出版社の両方が登録済みの作品しかありません。');
+    return;
+  }
+
+  const btn = document.getElementById('btnPriceFix');
+  if (btn) { btn.disabled = true; btn.textContent = '🔄 検索中...'; }
+
+  const results = [];
+  const withISBN = targets.filter(v => v.isbn);
+  const withoutISBN = targets.filter(v => !v.isbn);
+
+  // ISBNバッチ取得（100件ずつ）
+  for (let i = 0; i < withISBN.length; i += 100) {
+    const batch = withISBN.slice(i, i + 100);
+    const isbnStr = batch.map(v => v.isbn).join(',');
+    if (btn) btn.textContent = `🔄 ISBN検索中 ${Math.min(i + 100, withISBN.length)}/${withISBN.length}件…`;
+    try {
+      const data = await fetch(`https://api.openbd.jp/v1/get?isbn=${isbnStr}`).then(r => r.json());
+      if (!Array.isArray(data)) continue;
+      data.forEach((d, idx) => {
+        if (idx >= batch.length || !d || !d.summary) return;
+        const v = batch[idx];
+        const s = d.summary;
+        const newPub = s.publisher || '';
+        const rawPrice = parseInt(s.price || '0') || 0;
+        // OpenBD summary.price は本体価格（税抜）→ 税込換算
+        const newPrice = rawPrice > 0 ? Math.round(rawPrice * 1.1) : 0;
+        const priceChg = newPrice > 0 && (v.price || 0) !== newPrice;
+        const pubChg = !!newPub && (v.publisher || '') !== newPub;
+        if (!priceChg && !pubChg) return;
+        const seriesTitle = v.title || (seriesList[v.seriesId] && seriesList[v.seriesId].title) || '';
+        results.push({ id: v.id, seriesId: v.seriesId, title: seriesTitle, volume: v.volume,
+          oldPrice: v.price || 0, newPrice: priceChg ? newPrice : (v.price || 0),
+          oldPub: v.publisher || '', newPub: pubChg ? newPub : (v.publisher || ''),
+          priceChg, pubChg });
+      });
+    } catch (e) { console.warn('OpenBD batch error', e); }
+  }
+
+  // ISBNなし → タイトル検索（逐次）
+  const nk = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
+  for (let i = 0; i < withoutISBN.length; i++) {
+    const v = withoutISBN[i];
+    const seriesTitle = v.title || (seriesList[v.seriesId] && seriesList[v.seriesId].title) || '';
+    if (!seriesTitle) continue;
+    const volStr = String(v.volume || '');
+    if (btn) btn.textContent = `🔄 タイトル検索 ${i + 1}/${withoutISBN.length}件…`;
+
+    let newPrice = 0, newPub = '';
+    try {
+      await new Promise(r => setTimeout(r, 200));
+      const q = encodeURIComponent(seriesTitle + (volStr ? ' ' + volStr : ''));
+      const items = await fetch(`https://api.openbd.jp/v1/search?title=${q}&limit=5`).then(r => r.json());
+      if (Array.isArray(items)) {
+        for (const item of items) {
+          if (!nk(item.title || '').includes(nk(seriesTitle))) continue;
+          const vol = normalizeVolume(item.volume || '') || extractVolumeFromTitle(item.title || '');
+          if (volStr && vol !== volStr) continue;
+          newPrice = parseInt(item.price || '0') || 0;
+          newPub = item.publisher || '';
+          break;
+        }
+      }
+    } catch (e) { }
+
+    // HanMotoフォールバック
+    if (!newPrice && !newPub) {
+      try {
+        const q2 = encodeURIComponent(seriesTitle + (volStr ? ' ' + volStr : ''));
+        const ht = await fetch(`https://api.hanmoto.com/books/v1/?title=${q2}&limit=5`).then(r => r.json());
+        for (const item of ((ht && ht.books) || [])) {
+          const vol = extractVolumeFromTitle(item.title || '');
+          if (volStr && vol !== volStr) continue;
+          newPrice = item.price || 0;
+          newPub = item.publisher || '';
+          break;
+        }
+      } catch (e) { }
+    }
+
+    // Google Booksフォールバック（OpenBD・版元で見つからない漫画向け）
+    if (!newPrice && !newPub) {
+      try {
+        const q3 = encodeURIComponent(seriesTitle + (volStr ? ' ' + volStr + '巻' : '') + ' 漫画');
+        const gb = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${q3}&country=JP&langRestrict=ja&maxResults=10`).then(r => r.json());
+        for (const item of (gb.items || [])) {
+          const info = item.volumeInfo || {};
+          const rawTitle = info.title || '';
+          if (!nk(rawTitle).includes(nk(seriesTitle))) continue;
+          const vol = normalizeVolume(info.subtitle || '') || extractVolumeFromTitle(rawTitle);
+          if (volStr && vol && vol !== volStr) continue;
+          const saleInfo = item.saleInfo || {};
+          const rp = saleInfo.retailPrice || saleInfo.listPrice;
+          if (!newPub && info.publisher) newPub = info.publisher;
+          if (!newPrice && rp && rp.amount > 0) newPrice = Math.round(rp.amount);
+          if (newPub || newPrice) break;
+        }
+      } catch (e) { }
+    }
+
+    const priceChg = newPrice > 0 && (v.price || 0) !== newPrice;
+    const pubChg = !!newPub && (v.publisher || '') !== newPub;
+    if (!priceChg && !pubChg) continue;
+    results.push({ id: v.id, seriesId: v.seriesId, title: seriesTitle, volume: v.volume,
+      oldPrice: v.price || 0, newPrice: priceChg ? newPrice : (v.price || 0),
+      oldPub: v.publisher || '', newPub: pubChg ? newPub : (v.publisher || ''),
+      priceChg, pubChg });
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '💰 価格修正'; }
+
+  if (!results.length) {
+    alert('更新が必要なデータは見つかりませんでした');
+    return;
+  }
+  _priceFixResults = results;
+  showPriceFixModal();
+}
+
+function showPriceFixModal() {
+  document.getElementById('priceFixCount').textContent = `💰 ${_priceFixResults.length}件の修正候補`;
+  document.getElementById('priceFixBody').innerHTML = _priceFixResults.map((r, i) => `
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--br);cursor:pointer">
+      <input type="checkbox" id="pfc_${i}" checked style="width:16px;height:16px;accent-color:var(--a1);flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.title)}${r.volume ? ' ' + r.volume + '巻' : ''}</div>
+        ${r.priceChg ? `<div style="font-size:12px;color:#718096;margin-top:3px">💰 ¥${r.oldPrice || '未設定'} → <span style="color:var(--a1);font-weight:700">¥${r.newPrice}</span></div>` : ''}
+        ${r.pubChg ? `<div style="font-size:12px;color:#718096;margin-top:2px">🏢 ${escHtml(r.oldPub || '未設定')} → <span style="color:var(--a1);font-weight:700">${escHtml(r.newPub)}</span></div>` : ''}
+      </div>
+    </label>`).join('');
+  document.getElementById('priceFixModal').classList.remove('hidden');
+}
+
+async function applyPriceFixResults() {
+  if (!currentUser || !dbVolumesRef) return;
+  const volUpd = {}, seriesUpd = {};
+
+  _priceFixResults.forEach((r, i) => {
+    const cb = document.getElementById('pfc_' + i);
+    if (!cb || !cb.checked) return;
+    if (r.priceChg) volUpd[r.id + '/price'] = r.newPrice;
+    if (r.pubChg)   volUpd[r.id + '/publisher'] = r.newPub;
+    const s = seriesList[r.seriesId];
+    if (s && r.seriesId) {
+      if (r.priceChg && !(s.price > 0)) seriesUpd[r.seriesId + '/price'] = r.newPrice;
+      if (r.pubChg && !s.publisher)     seriesUpd[r.seriesId + '/publisher'] = r.newPub;
+    }
+  });
+
+  if (!Object.keys(volUpd).length) { closePriceFixModal(); return; }
+  await dbVolumesRef.update(volUpd);
+  if (Object.keys(seriesUpd).length) await dbSeriesRef.update(seriesUpd);
+  showSaved();
+  closePriceFixModal();
+  renderApp();
+}
+
+function closePriceFixModal() {
+  document.getElementById('priceFixModal').classList.add('hidden');
 }
 
 // ── 初期化 ──
