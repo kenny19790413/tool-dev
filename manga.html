@@ -2178,8 +2178,13 @@ function renderSeriesList() {
         <div class="form-group" style="margin-top:10px"><label>作者名</label>
           <input type="text" id="sea_${id}" value="${escHtml(s.author||'')}" placeholder="例: 吾峠呼世晴">
         </div>
-        <div class="form-group" style="margin-top:10px"><label>出版社</label>
-          <input type="text" id="sep_${id}" value="${escHtml(s.publisher||'')}" placeholder="例: 集英社">
+        <div class="form-group" style="margin-top:10px">
+          <label>出版社</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="text" id="sep_${id}" value="${escHtml(s.publisher||'')}" placeholder="例: 集英社" style="flex:1">
+            <button type="button" onclick="searchSeriesPublisher('${id}')" title="出版社を自動検索" style="white-space:nowrap;padding:6px 10px;border-radius:8px;border:1px solid var(--a1);background:var(--cbg);color:var(--a1);cursor:pointer;font-size:13px">🔍</button>
+          </div>
+          <div id="sep_suggest_${id}" style="display:none;margin-top:4px;border:1px solid var(--br);border-radius:8px;overflow:hidden;font-size:12px"></div>
         </div>
         <div class="form-row" style="margin-top:10px">
           <div class="form-group" style="margin:0"><label>レーベル</label>
@@ -2559,6 +2564,76 @@ async function lookupISBN(isbn) {
       alert(`ISBN: ${isbn}\n\n書籍情報が見つかりませんでした。\n手動で入力してください。`);
     }
   } catch(e){alert('通信エラーが発生しました');}
+}
+
+// ── シリーズ編集フォーム 出版社サジェスト ──
+async function searchSeriesPublisher(seriesId) {
+  const btn = event.target;
+  const input = document.getElementById(`sep_${seriesId}`);
+  const suggestBox = document.getElementById(`sep_suggest_${seriesId}`);
+  if (!input || !suggestBox) return;
+
+  const series = seriesList[seriesId] || {};
+  const title = series.title || '';
+  if (!title) { alert('シリーズ名が見つかりません'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  suggestBox.style.display = 'none';
+  suggestBox.innerHTML = '';
+
+  const publishers = new Map();
+
+  try {
+    const gbRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}&langRestrict=ja&maxResults=10&printType=books`);
+    if (gbRes.ok) {
+      const gbData = await gbRes.json();
+      for (const item of (gbData.items || [])) {
+        const pub = item.volumeInfo?.publisher;
+        if (pub && pub.length < 30) publishers.set(pub, 'Google');
+      }
+    }
+  } catch(e) {}
+
+  try {
+    const itRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(title)}&country=JP&media=ebook&limit=10&lang=ja_JP`);
+    if (itRes.ok) {
+      const itData = await itRes.json();
+      for (const item of (itData.results || [])) {
+        const pub = item.artistName;
+        if (pub && pub.length < 30 && !pub.includes('作') && !pub.includes('著')) {
+          if (!publishers.has(pub)) publishers.set(pub, 'iTunes');
+        }
+      }
+    }
+  } catch(e) {}
+
+  btn.disabled = false;
+  btn.textContent = '🔍';
+
+  if (publishers.size === 0) {
+    suggestBox.innerHTML = '<div style="padding:8px 12px;color:#888;font-size:12px">出版社が見つかりませんでした</div>';
+    suggestBox.style.display = 'block';
+    return;
+  }
+
+  const items = [...publishers.entries()];
+  suggestBox.innerHTML = items.map(([pub, src]) =>
+    `<div onclick="selectSeriesPublisher('${seriesId}', this.dataset.pub)" data-pub="${escHtml(pub)}"
+      style="padding:8px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--br)"
+      onmouseover="this.style.background='#e8f0fe'" onmouseout="this.style.background=''">
+      <span style="font-size:13px">${escHtml(pub)}</span>
+      <span style="font-size:10px;color:#888">${src}</span>
+    </div>`
+  ).join('');
+  suggestBox.style.display = 'block';
+}
+
+function selectSeriesPublisher(seriesId, pub) {
+  const input = document.getElementById(`sep_${seriesId}`);
+  const box = document.getElementById(`sep_suggest_${seriesId}`);
+  if (input) input.value = pub;
+  if (box) box.style.display = 'none';
 }
 
 // ── 価格・出版社一括修正 ──
