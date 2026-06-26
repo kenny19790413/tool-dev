@@ -2657,7 +2657,11 @@ async function checkAllPricesPublishers() {
         // 巻数が指定されている場合は厳密一致のみ採用（不一致・未取得はスキップ）
         if (volStr && vol !== volStr) continue;
         // ¥100以下は試し読み価格の可能性が高いのでスキップ
-        if (item.currency === 'JPY' && item.price > 100) { newPrice = item.price; break; }
+        if (item.currency === 'JPY' && item.price > 100) {
+          // iTunes APIは税抜価格を返すため×1.1で税込に換算
+          newPrice = Math.round(item.price * 1.1);
+          break;
+        }
       }
     } catch (e) { }
 
