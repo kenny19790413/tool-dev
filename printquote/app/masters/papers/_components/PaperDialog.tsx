@@ -11,6 +11,9 @@ import { toast } from 'sonner';
 
 type PriceMode = 'kg' | 'sheet';
 
+// 四六全判→菊全判の連量換算係数
+const KIKU_RATIO = (636 * 939) / (788 * 1091);
+
 interface Paper {
   id: number;
   number: number;
@@ -40,6 +43,11 @@ export function PaperDialog({ paper, trigger, onDone }: Props) {
   const [priceMode, setPriceMode] = useState<PriceMode>(
     paper?.sheet_price != null ? 'sheet' : 'kg'
   );
+  const [reamWeight, setReamWeight] = useState<string>(
+    paper?.ream_weight != null ? String(paper.ream_weight) : ''
+  );
+
+  const kikuWeight = reamWeight ? (parseFloat(reamWeight) * KIKU_RATIO).toFixed(1) : null;
 
   const isEdit = !!paper;
 
@@ -91,7 +99,7 @@ export function PaperDialog({ paper, trigger, onDone }: Props) {
             </div>
             <div>
               <Label>親判サイズ</Label>
-              <Input name="parentSize" defaultValue={paper?.parent_size ?? 'A全'} />
+              <Input name="parentSize" defaultValue={paper?.parent_size ?? '四六全判'} />
             </div>
           </div>
           <div>
@@ -101,11 +109,11 @@ export function PaperDialog({ paper, trigger, onDone }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>幅 mm *</Label>
-              <Input name="widthMm" type="number" step="0.1" defaultValue={paper?.width_mm} required />
+              <Input name="widthMm" type="number" step="0.1" defaultValue={paper?.width_mm ?? 788} required />
             </div>
             <div>
               <Label>高さ mm *</Label>
-              <Input name="heightMm" type="number" step="0.1" defaultValue={paper?.height_mm} required />
+              <Input name="heightMm" type="number" step="0.1" defaultValue={paper?.height_mm ?? 1091} required />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -145,15 +153,29 @@ export function PaperDialog({ paper, trigger, onDone }: Props) {
 
           {/* 選択した方式の入力欄のみ表示 */}
           {priceMode === 'kg' ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>㎏単価（円/kg）</Label>
-                <Input name="unitPrice" type="number" step="0.01" defaultValue={paper?.unit_price ?? ''} />
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>㎏単価（円/kg）</Label>
+                  <Input name="unitPrice" type="number" step="0.01" defaultValue={paper?.unit_price ?? ''} />
+                </div>
+                <div>
+                  <Label>連量 kg（四六全判基準）</Label>
+                  <Input
+                    name="reamWeight"
+                    type="number"
+                    step="0.01"
+                    value={reamWeight}
+                    onChange={e => setReamWeight(e.target.value)}
+                  />
+                </div>
               </div>
-              <div>
-                <Label>連量 kg</Label>
-                <Input name="reamWeight" type="number" step="0.01" defaultValue={paper?.ream_weight ?? ''} />
-              </div>
+              {kikuWeight && (
+                <p className="text-xs text-gray-500 bg-gray-50 rounded px-3 py-1.5">
+                  菊全判換算：<span className="font-semibold text-gray-700">{kikuWeight} kg</span>
+                  <span className="ml-2 text-gray-400">（四六全判 × 0.695）</span>
+                </p>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">

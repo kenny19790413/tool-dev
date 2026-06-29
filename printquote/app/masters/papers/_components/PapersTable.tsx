@@ -65,7 +65,7 @@ export function PapersTable({ initial }: Props) {
               <TableHead>親判</TableHead>
               <TableHead className="text-right">幅mm</TableHead>
               <TableHead className="text-right">高mm</TableHead>
-              <TableHead className="text-right">連量</TableHead>
+              <TableHead className="text-right">連量(四六全)</TableHead>
               <TableHead className="text-right">㎏単価</TableHead>
               <TableHead className="text-right">少量単価</TableHead>
               <TableHead className="w-16 text-center">状態</TableHead>
