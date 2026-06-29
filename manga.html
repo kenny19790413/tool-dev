@@ -608,6 +608,7 @@ textarea{resize:vertical;min-height:60px}
     <button id="notifBtn" onclick="toggleNotification()">🔔 通知</button>
     <button onclick="openSeriesModal()">📚 作品管理</button>
     <button onclick="bulkRefetchBooks()">🔄 一括更新</button>
+    <button onclick="resetWrongReleaseDates()" style="background:rgba(255,100,100,.3)" title="一括更新で誤入力された発売日をリセット">🗑️ 発売日リセット</button>
     <button onclick="openSettingsModal()">⚙️ 予算</button>
     <button onclick="openThemeModal()">🎨 テーマ</button>
     <button onclick="signOut()">サインアウト</button>
@@ -2601,15 +2602,13 @@ async function bulkRefetchBooks() {
         }
       }
 
-      // ISBNなし or OpenBDでデータ取れず → 全API検索
+      // ISBNなし or OpenBDでデータ取れず → 全API検索（価格・出版社・作者のみ更新）
       const best = await fetchBestBookCandidate(seriesTitle, v.volume);
       if (best) {
         const saves = {};
         if (!v.price && best.price > 0) saves.price = best.price;
         if (!v.publisher && best.publisher) saves.publisher = best.publisher;
         if (!v.author && best.author) saves.author = best.author;
-        if (!v.releaseDate && best.releaseDate) saves.releaseDate = best.releaseDate;
-        if (!v.isbn && best.isbn) saves.isbn = best.isbn;
         if (Object.keys(saves).length > 0) {
           await dbVolumesRef.child(v.id).update(saves);
           updated++;
@@ -2622,6 +2621,29 @@ async function bulkRefetchBooks() {
   }
 
   banner.textContent = `✅ ${updated} 件を更新しました（全 ${targets.length} 件処理完了）`;
+  setTimeout(() => { banner.style.display = 'none'; }, 4000);
+}
+
+// ── 誤入力発売日リセット（現在表示月の巻で -01 固定のもの） ──
+async function resetWrongReleaseDates() {
+  const yr = String(currentYear), mo = String(currentMonth).padStart(2,'0');
+  const prefix = `${yr}-${mo}-`;
+  const targets = Object.entries(volumesList)
+    .filter(([,v]) => v.releaseDate && v.releaseDate.startsWith(prefix) && v.releaseDate.endsWith('-01') && v.releaseDate !== `${yr}-${mo}-01`)
+    .map(([id,v]) => ({id, ...v}));
+  // 月初固定（YYYY-MM-01）かつ今月表示のもの
+  const fixedTargets = Object.entries(volumesList)
+    .filter(([,v]) => v.releaseDate === `${yr}-${mo}-01`)
+    .map(([id,v]) => ({id, ...v}));
+  const all = [...targets, ...fixedTargets];
+  if (all.length === 0) { alert('リセット対象の発売日がありません'); return; }
+  const titles = all.slice(0,10).map(v=>`・${v.title||''} 第${v.volume||'?'}巻 (${v.releaseDate})`).join('\n');
+  if (!confirm(`以下 ${all.length} 件の発売日をリセットしますか？\n（価格・出版社・作者は保持されます）\n\n${titles}${all.length>10?`\n…他${all.length-10}件`:''}`)) return;
+  const banner = document.getElementById('bulkRefetchBanner');
+  banner.style.display = '';
+  banner.textContent = '🗑️ 発売日をリセット中…';
+  for (const v of all) await dbVolumesRef.child(v.id).update({ releaseDate: null });
+  banner.textContent = `✅ ${all.length} 件の発売日をリセットしました`;
   setTimeout(() => { banner.style.display = 'none'; }, 4000);
 }
 
