@@ -444,7 +444,7 @@ textarea{resize:vertical;min-height:60px}
     <div id="apiRefetchStatus" style="display:none;font-size:12px;color:#718096;margin-bottom:8px;text-align:center"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddModal()">キャンセル</button>
-      <button id="btnApiRefetch" style="display:none;font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer" onclick="refetchBookInfo()">🔄 APIで再取得</button>
+      <button id="btnApiRefetch" style="font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer" onclick="refetchBookInfo()">🔄 自動入力</button>
       <button class="btn-save" onclick="saveVolume()">保存する</button>
     </div>
   </div>
@@ -1724,7 +1724,7 @@ function openAddModal() {
   document.getElementById('editRakutenUrl').value='';
   document.getElementById('editAsin').value='';
   document.getElementById('editIsbn').value='';
-  document.getElementById('btnApiRefetch').style.display='none';
+  document.getElementById('btnApiRefetch').style.display='';
   document.getElementById('apiRefetchStatus').style.display='none';
   document.getElementById('newSeriesGenre').value=''; document.getElementById('newSeriesCompleted').value='';
   document.getElementById('budgetWarning').classList.remove('show');
@@ -1775,6 +1775,9 @@ function openNextVolumeModal(id) {
   document.getElementById('editAsin').value='';
   document.getElementById('editIsbn').value='';
   document.getElementById('budgetWarning').classList.remove('show');
+  document.getElementById('btnApiRefetch').style.display='';
+  document.getElementById('apiRefetchStatus').style.display='none';
+  document.getElementById('apiRefetchStatus').textContent='';
   const numVol=parseInt(v.volume,10);
   document.getElementById('volumeNum').value=isNaN(numVol)?'':(numVol+1).toString();
   document.getElementById('releaseDate').value='';
@@ -1913,7 +1916,7 @@ async function refetchBookInfo() {
   statusEl.style.display=''; statusEl.textContent='';
 
   const best=await fetchBestBookCandidate(seriesTitle, volNum);
-  if(!best){statusEl.textContent='❌ 書籍情報が見つかりませんでした';btn.disabled=false;btn.textContent='🔄 APIで再取得';return;}
+  if(!best){statusEl.textContent='❌ 書籍情報が見つかりませんでした';btn.disabled=false;btn.textContent='🔄 自動入力';return;}
 
   // フォームフィールドを更新
   const updated=[];
@@ -1940,8 +1943,8 @@ async function refetchBookInfo() {
     showSaved();
   }
 
-  statusEl.textContent=updated.length?'✅ 保存しました: '+updated.join('・'):'ℹ️ 更新できる項目がありませんでした';
-  btn.disabled=false; btn.textContent='🔄 APIで再取得';
+  statusEl.textContent=updated.length?'✅ 取得しました: '+updated.join('・'):'ℹ️ 更新できる項目がありませんでした';
+  btn.disabled=false; btn.textContent='🔄 自動入力';
 }
 
 // ── 書籍APIで最良候補を取得 ──
@@ -1968,22 +1971,22 @@ async function fetchBestBookCandidate(seriesTitle, volNum) {
       ||cs[0];
   };
 
-  // 1st pass: 楽天(title+keyword)・版元・GoogleBooks 並列
+  // 1st pass: 版元・GoogleBooks・NDL・iTunes 並列
   const qEnc=encodeURIComponent(seriesTitle);
-  const [rTRes,rKRes,hmRes,gbRes]=await Promise.allSettled([
-    Promise.resolve({Items:[]}),
-    Promise.resolve({Items:[]}),
+  const qItunes=encodeURIComponent(volNum?`${seriesTitle} ${volNum}巻`:seriesTitle);
+  const [hmRes,gbRes,ndlRes,itRes]=await Promise.allSettled([
     fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=30').then(r=>r.json()),
     fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
+    fetch('https://iss.ndl.go.jp/api/opensearch?title='+qEnc+'&cnt=20').then(r=>r.text()),
+    fetch('https://itunes.apple.com/search?term='+qItunes+'&country=JP&media=ebook&limit=20').then(r=>r.json()),
   ]);
-  const rT=rTRes.status==='fulfilled'?((rTRes.value.Items||[]).map(i=>i.Item).map(normRakuten)):[];
-  const rK=rKRes.status==='fulfilled'?((rKRes.value.Items||[]).map(i=>i.Item).map(normRakuten)):[];
-  const seenR=new Set();
-  const rakutenAll=[...rT,...rK].filter(it=>{const k=it.isbn||it.title;if(seenR.has(k))return false;seenR.add(k);return true;});
+  const ndlItems=ndlRes.status==='fulfilled'&&typeof ndlRes.value==='string'?parseNdl(ndlRes.value):[];
+  const itunesItems=itRes.status==='fulfilled'?(itRes.value.results||[]).map(normItunes).filter(it=>it.price>0||it.releaseDate):[];
   const allItems=[
-    ...rakutenAll,
     ...(hmRes.status==='fulfilled'?(hmRes.value.books||[]).map(normHanmoto):[]),
     ...(gbRes.status==='fulfilled'?(gbRes.value.items||[]).map(normGbooks):[]),
+    ...ndlItems,
+    ...itunesItems,
   ];
   const best1=pickBest(allItems);
   if(best1) return best1;
@@ -1993,8 +1996,14 @@ async function fetchBestBookCandidate(seriesTitle, volNum) {
   if(shortTitle.length>=2&&shortTitle!==seriesTitle){
     try{
       const q2=encodeURIComponent(shortTitle);
-      const r2=await Promise.resolve({Items:[]});
-      const items2=(r2.Items||[]).map(i=>i.Item).map(normRakuten);
+      const [ndlRes2,gbRes2]=await Promise.allSettled([
+        fetch('https://iss.ndl.go.jp/api/opensearch?title='+q2+'&cnt=10').then(r=>r.text()),
+        fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+q2+'&country=JP&langRestrict=ja&maxResults=10').then(r=>r.json()),
+      ]);
+      const items2=[
+        ...(ndlRes2.status==='fulfilled'&&typeof ndlRes2.value==='string'?parseNdl(ndlRes2.value):[]),
+        ...(gbRes2.status==='fulfilled'?(gbRes2.value.items||[]).map(normGbooks):[]),
+      ];
       const best2=pickBest(items2);
       if(best2) return best2;
     }catch(e){}
@@ -2220,8 +2229,9 @@ function openNextVolumeFromSeries(id) {
   document.getElementById('editRakutenUrl').value='';
   document.getElementById('editAsin').value='';
   document.getElementById('editIsbn').value='';
-  document.getElementById('btnApiRefetch').style.display='none';
+  document.getElementById('btnApiRefetch').style.display='';
   document.getElementById('apiRefetchStatus').style.display='none';
+  document.getElementById('apiRefetchStatus').textContent='';
   document.getElementById('budgetWarning').classList.remove('show');
   document.getElementById('addModal').classList.remove('hidden');
 }
