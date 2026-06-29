@@ -607,7 +607,7 @@ textarea{resize:vertical;min-height:60px}
     <span id="userName" style="font-size:12px"></span>
     <button id="notifBtn" onclick="toggleNotification()">🔔 通知</button>
     <button onclick="openSeriesModal()">📚 作品管理</button>
-
+    <button onclick="bulkRefetchBooks()">🔄 一括更新</button>
     <button onclick="openSettingsModal()">⚙️ 予算</button>
     <button onclick="openThemeModal()">🎨 テーマ</button>
     <button onclick="signOut()">サインアウト</button>
@@ -621,6 +621,9 @@ textarea{resize:vertical;min-height:60px}
     <button id="goTodayBtn" onclick="goToCurrentMonth()" title="今月に戻る" style="margin-left:8px;width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(135deg,#9b59b6,#6b46c1);color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(107,70,193,.35);flex-shrink:0">⌂</button>
   </div>
 </div>
+
+<!-- 一括更新バナー -->
+<div id="bulkRefetchBanner" style="display:none;background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-weight:600;position:sticky;top:0;z-index:200"></div>
 
 <!-- ナビタブ -->
 <div class="nav-tabs">
@@ -2562,6 +2565,66 @@ async function lookupISBN(isbn) {
 }
 
 // ── 保存時サイレント自動補完（価格0 or 出版社未入力の場合） ──
+// ── ヘッダー一括更新 ──
+async function bulkRefetchBooks() {
+  const targets = Object.entries(volumesList)
+    .filter(([,v]) => !v.price || !v.publisher || !v.author)
+    .map(([id,v]) => ({id, ...v}));
+
+  if (targets.length === 0) { alert('更新対象がありません（全て入力済みです）'); return; }
+  if (!confirm(`価格・出版社・作者が未入力の ${targets.length} 件を一括自動入力しますか？\n（数が多い場合は数分かかります）`)) return;
+
+  const banner = document.getElementById('bulkRefetchBanner');
+  banner.style.display = '';
+  let done = 0, updated = 0;
+
+  for (const v of targets) {
+    const seriesTitle = v.title || (seriesList[v.seriesId] && seriesList[v.seriesId].title) || '';
+    banner.textContent = `🔄 自動入力中… ${done + 1} / ${targets.length} 件`;
+    if (!seriesTitle) { done++; continue; }
+
+    try {
+      // ISBNがある場合は OpenBD /v1/get で高速取得
+      if (v.isbn && (!v.price || !v.publisher)) {
+        const data = await fetch(`https://api.openbd.jp/v1/get?isbn=${v.isbn}`).then(r => r.json());
+        const s = Array.isArray(data) && data[0] && data[0].summary;
+        if (s) {
+          const saves = {};
+          if (!v.price && s.price) { const raw = parseInt(s.price)||0; if(raw>0) saves.price = Math.round(raw*1.1); }
+          if (!v.publisher && s.publisher) saves.publisher = s.publisher;
+          if (Object.keys(saves).length > 0) {
+            await dbVolumesRef.child(v.id).update(saves);
+            updated++;
+            done++;
+            continue;
+          }
+        }
+      }
+
+      // ISBNなし or OpenBDでデータ取れず → 全API検索
+      const best = await fetchBestBookCandidate(seriesTitle, v.volume);
+      if (best) {
+        const saves = {};
+        if (!v.price && best.price > 0) saves.price = best.price;
+        if (!v.publisher && best.publisher) saves.publisher = best.publisher;
+        if (!v.author && best.author) saves.author = best.author;
+        if (!v.releaseDate && best.releaseDate) saves.releaseDate = best.releaseDate;
+        if (!v.isbn && best.isbn) saves.isbn = best.isbn;
+        if (Object.keys(saves).length > 0) {
+          await dbVolumesRef.child(v.id).update(saves);
+          updated++;
+        }
+      }
+    } catch(e) {}
+
+    done++;
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  banner.textContent = `✅ ${updated} 件を更新しました（全 ${targets.length} 件処理完了）`;
+  setTimeout(() => { banner.style.display = 'none'; }, 4000);
+}
+
 async function silentFillPricePublisher(volId, seriesId, seriesTitle, volumeNum, isbn, currentPrice, currentPub) {
   if (!volId) return;
   const nk = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
