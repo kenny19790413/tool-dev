@@ -1095,7 +1095,7 @@ async function checkAllPendingDates() {
     const seriesTitle = v.title||(seriesList[v.seriesId]&&seriesList[v.seriesId].title)||'';
     if(!seriesTitle){ continue; }
     const volStr = String(v.volume||'');
-    const matchT = t => { const ns=normKey(seriesTitle),nt=normKey(t||''); return nt.includes(ns)||ns.includes(nt); };
+    const matchT = t => { const ns=normKey(seriesTitle),nt=normKey(t||''); return nt.includes(ns); };
     const matchV = vol => !volStr||String(vol)===volStr;
     let hit = false;
 
@@ -1109,7 +1109,7 @@ async function checkAllPendingDates() {
         if(!matchV(vol)) continue;
         const pub=(item.releaseDate||'').substring(0,10); if(!pub) continue;
         const d=new Date(pub); if(isNaN(d)||!isFutureOrRecent(d)) continue;
-        found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:pub,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'iTunes'});
+        found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:pub,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),foundTitle:item.trackName||'',_src:'iTunes'});
         hit=true; break;
       }
     }catch(e){}
@@ -1128,7 +1128,7 @@ async function checkAllPendingDates() {
         const pub=info.publishedDate||''; if(!pub||pub.length<6) continue;
         const norm=pub.length===7?pub+'-01':pub.length===4?pub+'-01-01':pub.substring(0,10);
         const d=new Date(norm); if(isNaN(d)||!isFutureOrRecent(d)) continue;
-        found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),_src:'Google'});
+        found.push({id:v.id,title:seriesTitle,volume:v.volume,newDate:norm,label:d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}),foundTitle:info.title||'',_src:'Google'});
         hit=true; break;
       }
     }catch(e){}
@@ -1140,18 +1140,34 @@ async function checkAllPendingDates() {
   renderPendingSection();
 
   if(found.length === 0){ alert('新しい発売日情報は見つかりませんでした'); return; }
+
+  // 同じシリーズ・同じ日付の巻が既存データに存在する場合は警告フラグ
+  const allVols = Object.values(volumesList);
+  found.forEach(r => {
+    const sameSeriesVols = allVols.filter(v => {
+      const sid = v.seriesId;
+      return sid && sid === (Object.entries(volumesList).find(([id])=>id===r.id)?.[1]?.seriesId||null) && v.releaseDate === r.newDate;
+    });
+    // found内の別巻で同じ日付も警告対象
+    const dupInFound = found.filter(f => f !== r && f.title === r.title && f.newDate === r.newDate);
+    if(sameSeriesVols.length > 0 || dupInFound.length > 0) r._warn = true;
+  });
+
   _pendingCheckResults = found;
   showPendingCheckModal();
 }
 
 function showPendingCheckModal() {
-  document.getElementById('pendingCheckCount').textContent = `📅 ${_pendingCheckResults.length}件で発売日が確定`;
+  const warnCount = _pendingCheckResults.filter(r=>r._warn).length;
+  document.getElementById('pendingCheckCount').textContent = `📅 ${_pendingCheckResults.length}件で発売日が確定${warnCount?` ⚠️ ${warnCount}件要確認`:''}`;
   document.getElementById('pendingCheckBody').innerHTML = _pendingCheckResults.map((r,i) => `
-    <label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f0e9ff;cursor:pointer">
-      <input type="checkbox" id="pcc_${i}" checked style="width:16px;height:16px;accent-color:#7c3aed">
+    <label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid ${r._warn?'#fed7aa':'#f0e9ff'};cursor:pointer;background:${r._warn?'#fffbeb':'transparent'}">
+      <input type="checkbox" id="pcc_${i}" ${r._warn?'':'checked'} style="width:16px;height:16px;accent-color:#7c3aed">
       <div style="flex:1">
         <div style="font-weight:600;font-size:14px">${escHtml(r.title)}${r.volume?' 第'+r.volume+'巻':''}</div>
-        <div style="color:#7c3aed;font-size:13px;margin-top:2px">📅 ${r.label} <span style="font-size:10px;color:#a0aec0;margin-left:4px">${r._src}</span></div>
+        <div style="color:${r._warn?'#d97706':'#7c3aed'};font-size:13px;margin-top:2px">📅 ${r.label} <span style="font-size:10px;color:#a0aec0;margin-left:4px">${r._src}</span></div>
+        ${r.foundTitle?`<div style="font-size:11px;color:#718096;margin-top:2px">検索ヒット：${escHtml(r.foundTitle)}</div>`:''}
+        ${r._warn?`<div style="font-size:11px;color:#b45309;margin-top:3px;font-weight:600">⚠️ 同シリーズに同じ発売日の巻が存在します。同日発売か誤検出か確認してください。</div>`:''}
       </div>
     </label>`).join('');
   document.getElementById('pendingCheckModal').classList.remove('hidden');
@@ -1267,7 +1283,7 @@ function volumeRow(v, isSearch, today) {
       <button class="btn-icon next-vol" onclick="openNextVolumeModal('${v.id}')" title="次巻を登録">📖+</button>
       <a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a>
       <a class="btn-icon gcal" href="${gcalUrl}" target="_blank" rel="noopener" title="Googleカレンダーに追加">📅</a>
-      
+      ${v.releaseDate&&!isPurchased(v)&&!v.dateConfirmed?`<button class="btn-icon" style="color:#38a169;font-size:10px;padding:2px 4px" onclick="confirmReleaseDate('${v.id}')" title="この発売日を確定（ボタンを消す）">✓確定</button><button class="btn-icon" style="color:#e53e3e;font-size:10px;padding:2px 4px" onclick="clearReleaseDate('${v.id}')" title="発売日を削除して未定に戻す">日付✕</button>`:''}
       <button class="btn-icon edit" onclick="openEditModal('${v.id}')" title="編集">✎</button>
       <button class="btn-icon" onclick="deleteVolume('${v.id}')" title="削除">✕</button>
     </td>
@@ -1487,6 +1503,19 @@ function cycleStatus(id) {
   const v=volumesList[id]; if(!v)return;
   const next=STATUS_CYCLE[getStatus(v)];
   dbVolumesRef.child(id).update({status:next,purchased:next!=='none'}).then(showSaved);
+}
+
+// ── 発売日確定（✓確定ボタンを非表示にする） ──
+function confirmReleaseDate(id) {
+  if(!currentUser||!dbVolumesRef)return;
+  dbVolumesRef.child(id).update({dateConfirmed:true}).then(showSaved);
+}
+
+// ── 発売日クリア（未定に戻す） ──
+function clearReleaseDate(id) {
+  const v=volumesList[id]; if(!v)return;
+  if(!confirm(`「${v.title}${v.volume?' 第'+v.volume+'巻':''}」の発売日を削除して未定リストに戻しますか？`))return;
+  dbVolumesRef.child(id).update({releaseDate:''}).then(showSaved);
 }
 
 // ── 削除 ──
@@ -1795,15 +1824,30 @@ function closeAddModal() {
 // ── 巻数抽出ユーティリティ ──
 function extractVolumeFromTitle(title) {
   const toHalf=s=>s.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  const kanjiToNum=s=>{
+    const u={'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+    if(!s)return null;
+    if(s==='十')return 10;
+    if(s.length===2&&s[0]==='十')return 10+(u[s[1]]||0);
+    if(s.length===2&&s[1]==='十')return(u[s[0]]||1)*10;
+    if(s.length===3&&s[1]==='十')return(u[s[0]]||1)*10+(u[s[2]]||0);
+    return u[s]||null;
+  };
   // 「（３７）」「(37)」形式
   const m2=title.match(/[（(]\s*([\d０-９]+)\s*[）)]/);
   if(m2) return toHalf(m2[1]);
-  // 「第37巻」「37巻」形式
+  // 「第37巻」「37巻」形式（アラビア数字）
   const m=title.match(/[第]?\s*([\d０-９]+)\s*[巻冊]/);
   if(m) return toHalf(m[1]);
+  // 「第四巻」「四巻」形式（漢数字）
+  const mk=title.match(/[第]?\s*([一二三四五六七八九十]+)\s*[巻冊]/);
+  if(mk){const n=kanjiToNum(mk[1]);if(n)return String(n);}
   // 末尾の数字「ワンパンマン 37」形式
   const m3=title.match(/[\s　]+(\d+)\s*$/);
   if(m3) return m3[1];
+  // 末尾の漢数字「贋 まがいもの 四」形式
+  const mk2=title.match(/[\s　]+([一二三四五六七八九十]+)\s*$/);
+  if(mk2){const n=kanjiToNum(mk2[1]);if(n)return String(n);}
   return '';
 }
 function normalizeVolume(vol) {
@@ -2159,6 +2203,9 @@ function renderSeriesList() {
         <button class="btn-icon" onclick="deleteSeries('${id}')" title="削除">✕</button>
       </div>
       <div class="series-edit-form" id="sef_${id}">
+        <div class="form-group" style="margin-bottom:10px"><label>タイトル</label>
+          <input type="text" id="stitle_${id}" value="${escHtml(s.title||'')}" placeholder="作品タイトル">
+        </div>
         <div class="form-row">
           <div class="form-group" style="margin:0"><label>ジャンル</label>
             <select id="seg_${id}">
@@ -2266,7 +2313,10 @@ async function saveSeriesEdit(id) {
   const label=document.getElementById(`sel_${id}`)?.value.trim()||'';
   const magazine=document.getElementById(`sem_${id}`)?.value.trim()||'';
   const coverUrl=document.getElementById(`secv_${id}`)?.value.trim()||'';
-  await dbSeriesRef.child(id).update({genre,completed,rating,author,publisher,label,magazine,coverUrl});
+  const newTitle=(document.getElementById(`stitle_${id}`)?.value||'').trim();
+  const updateData={genre,completed,rating,author,publisher,label,magazine,coverUrl};
+  if(newTitle) updateData.title=newTitle;
+  await dbSeriesRef.child(id).update(updateData);
   showSaved(); renderSeriesList();
 }
 async function setInlineRating(id,n) {
@@ -2668,6 +2718,41 @@ async function silentFillPricePublisher(volId, seriesId, seriesTitle, volumeNum,
     } catch(e) {}
   }
 
+  // ISBNなし → OpenBD タイトル検索 → NDL の順で補完
+  if (!isbn && (currentPrice === 0 || !currentPub)) {
+    const nkFn = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
+    const ns = nkFn(seriesTitle);
+    const volStr2 = String(volumeNum || '');
+    // OpenBD /v1/search
+    try {
+      const q = volStr2 ? `${seriesTitle} ${volStr2}巻` : seriesTitle;
+      const sData = await fetch(`https://api.openbd.jp/v1/search?title=${encodeURIComponent(q)}&limit=10`).then(r => r.json());
+      for (const book of (Array.isArray(sData) ? sData : [])) {
+        const s = book.summary || {};
+        if (!nkFn(s.title || '').includes(ns)) continue;
+        if (!newPub && s.publisher) newPub = s.publisher;
+        if (newPrice === 0 && currentPrice === 0) {
+          const raw = parseInt(s.price || '0') || 0;
+          if (raw > 0) newPrice = Math.round(raw * 1.1);
+        }
+        if (newPub && newPrice > 0) break;
+      }
+    } catch(e) {}
+    // NDL（出版社が取れていない場合のみ）
+    if (!newPub) {
+      try {
+        const q = volStr2 ? `${seriesTitle} ${volStr2}` : seriesTitle;
+        const ndlXml = await fetch(`https://iss.ndl.go.jp/api/opensearch?title=${encodeURIComponent(q)}&cnt=10`).then(r => r.text());
+        const ndlItems = parseNdl(ndlXml);
+        for (const item of ndlItems) {
+          const nt = nkFn(item.cleanTitle || '');
+          if (!nt.includes(ns) && !ns.includes(nt)) continue;
+          if (item.publisher) { newPub = item.publisher; break; }
+        }
+      } catch(e) {}
+    }
+  }
+
   // 更新が必要なフィールドだけ書き込む
   const upd = {};
   if (newPrice > 0 && currentPrice === 0) upd.price = newPrice;
@@ -2708,8 +2793,10 @@ async function searchSeriesPublisher(seriesId) {
     const ndlXml = await fetch(`https://iss.ndl.go.jp/api/opensearch?title=${encodeURIComponent(title)}&cnt=20`).then(r => r.text());
     const ndlItems = parseNdl(ndlXml);
     const nk = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
+    const ns2 = nk(title);
     for (const item of ndlItems) {
-      if (!nk(item.cleanTitle || '').includes(nk(title))) continue;
+      const nt2 = nk(item.cleanTitle || '');
+      if (!nt2.includes(ns2) && !ns2.includes(nt2)) continue;
       const pub = (item.publisher || '').trim();
       if (pub && pub.length < 30 && !publishers.has(pub)) publishers.set(pub, 'NDL');
     }
