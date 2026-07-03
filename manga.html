@@ -2751,6 +2751,22 @@ async function silentFillPricePublisher(volId, seriesId, seriesTitle, volumeNum,
         }
       } catch(e) {}
     }
+    // 楽天Books（出版社・価格がまだ取れていない場合）
+    if (!newPub || (newPrice === 0 && currentPrice === 0)) {
+      try {
+        const q = volStr2 ? `${seriesTitle} ${volStr2}` : seriesTitle;
+        const rkData = await fetch(`https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&title=${encodeURIComponent(q)}&booksGenreId=001001&hits=10`).then(r => r.json());
+        for (const ri of (rkData.Items || []).map(i => i.Item)) {
+          if (!nkFn(ri.title || '').includes(ns)) continue;
+          if (!newPub && ri.publisherName) newPub = ri.publisherName;
+          if (newPrice === 0 && currentPrice === 0) {
+            const rp = Number(ri.itemPrice || ri.listPrice || 0);
+            if (rp > 0) newPrice = rp;
+          }
+          if (newPub && newPrice > 0) break;
+        }
+      } catch(e) {}
+    }
   }
 
   // 更新が必要なフィールドだけ書き込む
@@ -2809,6 +2825,20 @@ async function searchSeriesPublisher(seriesId) {
       for (const item of (gbData.items || [])) {
         const pub = (item.volumeInfo?.publisher || '').trim();
         if (pub && pub.length < 30 && !publishers.has(pub)) publishers.set(pub, 'Google');
+      }
+    } catch(e) {}
+  }
+
+  // 楽天Books（NDL・Googleで取れなかった場合）
+  if (publishers.size === 0) {
+    try {
+      const nk3 = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
+      const ns3 = nk3(title);
+      const rkData = await fetch(`https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&title=${encodeURIComponent(title)}&booksGenreId=001001&hits=10`).then(r => r.json());
+      for (const ri of (rkData.Items || []).map(i => i.Item)) {
+        if (!nk3(ri.title || '').includes(ns3)) continue;
+        const pub = (ri.publisherName || '').trim();
+        if (pub && pub.length < 30 && !publishers.has(pub)) publishers.set(pub, '楽天');
       }
     } catch(e) {}
   }
@@ -2958,6 +2988,23 @@ async function checkAllPricesPublishers() {
           if (!nk(rawTitle).includes(nk(seriesTitle))) continue;
           newPub = info.publisher;
           break;
+        }
+      } catch (e) { }
+    }
+
+    // 楽天Books（出版社・価格がまだ取れていない場合）
+    if (!newPub || !newPrice) {
+      try {
+        const q4 = encodeURIComponent(volStr ? `${seriesTitle} ${volStr}` : seriesTitle);
+        const rkData = await fetch(`https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&title=${q4}&booksGenreId=001001&hits=10`).then(r => r.json());
+        for (const ri of (rkData.Items || []).map(i => i.Item)) {
+          if (!nk(ri.title || '').includes(nk(seriesTitle))) continue;
+          if (!newPub && ri.publisherName) newPub = ri.publisherName;
+          if (!newPrice) {
+            const rp = Number(ri.itemPrice || ri.listPrice || 0);
+            if (rp > 100) newPrice = rp;
+          }
+          if (newPub && newPrice) break;
         }
       } catch (e) { }
     }
