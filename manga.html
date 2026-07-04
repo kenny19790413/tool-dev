@@ -355,6 +355,9 @@ textarea{resize:vertical;min-height:60px}
         <button type="button" class="btn-open-book-search" style="white-space:nowrap" onclick="openBarcodeScanner()">📷</button>
       </div>
       <div id="seriesDropdown" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid #d6bcfa;border-radius:8px;width:100%;max-height:380px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12);top:100%;left:0"></div>
+      <div id="seriesRenameHint" style="display:none;margin-top:4px;font-size:11px;color:#718096">
+        シリーズ名を変更する場合は <button type="button" onclick="renameCurrentSeries()" style="border:none;background:none;color:#7c3aed;cursor:pointer;font-size:11px;text-decoration:underline;padding:0">シリーズ名を変更</button>
+      </div>
       <select id="seriesSelect" style="display:none">
         <option value="">──</option>
         <option value="__new__">新規</option>
@@ -1505,6 +1508,18 @@ function cycleStatus(id) {
   dbVolumesRef.child(id).update({status:next,purchased:next!=='none'}).then(showSaved);
 }
 
+// ── シリーズ名変更（巻の編集モーダルから） ──
+async function renameCurrentSeries() {
+  const seriesId = document.getElementById('seriesSelect').value;
+  if(!seriesId || !seriesList[seriesId]) return;
+  const oldTitle = seriesList[seriesId].title || '';
+  const newTitle = prompt('シリーズ名を変更します\n\n現在: ' + oldTitle + '\n\n新しいシリーズ名を入力してください:', oldTitle);
+  if(!newTitle || newTitle.trim() === '' || newTitle.trim() === oldTitle) return;
+  await dbSeriesRef.child(seriesId).update({title: newTitle.trim()});
+  document.getElementById('seriesSearchInput').value = newTitle.trim();
+  showSaved();
+}
+
 // ── 発売日確定（✓確定ボタンを非表示にする） ──
 function confirmReleaseDate(id) {
   if(!currentUser||!dbVolumesRef)return;
@@ -1724,6 +1739,7 @@ function onSeriesChange() {
   const editId=document.getElementById('editVolumeId').value;
   const pubWrap=document.getElementById('volumePublisherWrap');
   const authWrap=document.getElementById('volumeAuthorWrap');
+  document.getElementById('seriesRenameHint').style.display='none';
   if(val==='__new__'){
     nf.style.display='';
     if(pubWrap)pubWrap.style.display='none';
@@ -1732,10 +1748,13 @@ function onSeriesChange() {
     nf.style.display='none';
     if(pubWrap)pubWrap.style.display='';
     if(authWrap)authWrap.style.display='';
-    document.getElementById('publisher').value=seriesList[val].publisher||'';
-    document.getElementById('price').value=seriesList[val].price||'';
-    document.getElementById('volumeAuthor').value=seriesList[val].author||'';
-    if(!editId){document.getElementById('volumeNum').value=getNextVolumeNum(val);}
+    if(!editId){
+      document.getElementById('publisher').value=seriesList[val].publisher||'';
+      document.getElementById('price').value=seriesList[val].price||'';
+      document.getElementById('volumeAuthor').value=seriesList[val].author||'';
+      document.getElementById('volumeNum').value=getNextVolumeNum(val);
+    }
+    document.getElementById('seriesRenameHint').style.display='';
   } else {
     nf.style.display='none';
     if(pubWrap)pubWrap.style.display='';
@@ -1943,9 +1962,12 @@ async function searchReleaseDate() {
       document.getElementById('releaseDate').value=r.date;
       if(r.volume) document.getElementById('volumeNum').value=r.volume;
       if(r.publisher){document.getElementById('publisher').value=r.publisher;document.getElementById('newSeriesPublisher').value=r.publisher;}
-      if(r.author) document.getElementById('newSeriesAuthor').value=r.author;
+      if(r.author){document.getElementById('volumeAuthor').value=r.author;document.getElementById('newSeriesAuthor').value=r.author;}
       if(r.price>0){document.getElementById('price').value=r.price;}
       el.innerHTML='';
+      // 価格・作者が未取得なら自動入力も実行
+      const hasPriceAuthor=document.getElementById('price').value&&document.getElementById('volumeAuthor').value;
+      if(!hasPriceAuthor) refetchBookInfo();
     });
     el.appendChild(div);
   });
@@ -1965,6 +1987,16 @@ async function refetchBookInfo() {
 
   const best=await fetchBestBookCandidate(seriesTitle, volNum);
   if(!best){statusEl.textContent='❌ 書籍情報が見つかりませんでした';btn.disabled=false;btn.textContent='🔄 自動入力';return;}
+
+  // 出版社が取れなかった場合 Wikipedia → Open Library で補完
+  if(!best.publisher){
+    const wikiPub=await fetchPublisherFromWikipedia(seriesTitle);
+    if(wikiPub) best.publisher=wikiPub;
+    else {
+      const olPub=await fetchPublisherFromOpenLibrary(seriesTitle);
+      if(olPub) best.publisher=olPub;
+    }
+  }
 
   // フォームフィールドを更新
   const updated=[];
@@ -1995,6 +2027,74 @@ async function refetchBookInfo() {
   btn.disabled=false; btn.textContent='🔄 自動入力';
 }
 
+// ── Wikipedia（ja）で出版社を取得（CORS対応・漫画インフォボックスから抽出） ──
+async function fetchPublisherFromWikipedia(seriesTitle) {
+  const stripWiki=s=>s.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g,'$1').replace(/'{2,}/g,'').replace(/<[^>]+>/g,'').replace(/\s*\(.*?\)/g,'').trim();
+  const getContent=async(title)=>{
+    const data=await fetch(`https://ja.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=revisions&rvprop=content&format=json&origin=*&redirects=1`).then(r=>r.json());
+    const page=Object.values(data.query?.pages||{})[0];
+    if(!page||page.missing!==undefined)return '';
+    return page.revisions?.[0]?.['*']||'';
+  };
+  const extractPub=content=>{
+    // [[講談社]] 形式も含めてキャプチャするため ] を許可
+    const m=content.match(/[|｜]\s*出版社\s*=\s*([^\n|｜<{]+)/);
+    return m?stripWiki(m[1]):'';
+  };
+  // タイトルバリエーションを順番に試す
+  const candidates=[seriesTitle];
+  // サブタイトル除去（「The third secret」「〜...〜」等）
+  const baseTitle=seriesTitle.replace(/\s+(The\s+\S+.*|〜.*〜.*|\(.*\))$/,'').trim();
+  if(baseTitle!==seriesTitle)candidates.push(baseTitle);
+  // Wikipedia 検索API でも試す（あいまいマッチ）
+  for(const title of candidates){
+    for(const suffix of ['','_(漫画)','_(漫画作品)','_(小説)','_(ライトノベル)']){
+      try{const pub=extractPub(await getContent(title+suffix));if(pub)return pub;}catch(e){}
+    }
+    // Search API で曖昧タイトルを補完
+    try{
+      const s=await fetch(`https://ja.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(title)}&srnamespace=0&format=json&origin=*&srlimit=3`).then(r=>r.json());
+      for(const r of (s.query?.search||[])){
+        try{const pub=extractPub(await getContent(r.title));if(pub)return pub;}catch(e){}
+      }
+    }catch(e){}
+    // OpenSearch（サジェスト）で部分一致
+    try{
+      const os=await fetch(`https://ja.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(title)}&limit=3&namespace=0&format=json&origin=*`).then(r=>r.json());
+      for(const t of (os[1]||[])){
+        try{const pub=extractPub(await getContent(t));if(pub)return pub;}catch(e){}
+      }
+    }catch(e){}
+  }
+  return '';
+}
+
+// ── Open Library で出版社を取得（CORS対応・レート制限なし） ──
+async function fetchPublisherFromOpenLibrary(seriesTitle) {
+  try {
+    // まず日本語限定で検索、なければ言語制限なしで再検索
+    let olData=await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(seriesTitle)}&lang=jpn&fields=publisher_facet,title&limit=10`).then(r=>r.json());
+    if(!(olData.docs||[]).some(d=>(d.publisher_facet||[]).length)){
+      olData=await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(seriesTitle)}&fields=publisher_facet,title&limit=10`).then(r=>r.json());
+    }
+    const allPubs=(olData.docs||[]).flatMap(d=>d.publisher_facet||[]).filter(p=>p&&p.length>1);
+    const imprintMap={'SHONEN JUMP':'集英社','Shonen Jump':'集英社','Shueisha':'集英社',
+      'Jump Comics':'集英社','Viz Media':'','VIZ Media':'','Yen Press':'',
+      'Kodansha Comics':'講談社','Kodansha':'講談社','Kodansha USA':'講談社',
+      'Square Enix Manga':'スクウェア・エニックス','Square Enix':'スクウェア・エニックス',
+      'Seven Seas Entertainment':'','Dark Horse Comics':'','Vertical Inc':'',
+      'Tokyopop':'','Del Rey Manga':''};
+    const jpPub=allPubs.find(p=>/[぀-鿿]/.test(p));
+    if(jpPub) return jpPub;
+    for(const p of allPubs){
+      const mapped=imprintMap[p];
+      if(mapped===undefined) return p;
+      if(mapped) return mapped;
+    }
+  } catch(e){}
+  return '';
+}
+
 // ── 書籍APIで最良候補を取得 ──
 async function fetchBestBookCandidate(seriesTitle, volNum) {
   const normKey=t=>t.replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
@@ -2014,14 +2114,20 @@ async function fetchBestBookCandidate(seriesTitle, volNum) {
   const pickBest=items=>{
     const cs=items.filter(matchFilter);
     if(!cs.length) return null;
-    return cs.find(it=>String(it.volume)===volStr)
-      ||cs.find(it=>it.volume&&volStr&&normKey(String(it.volume))===normKey(volStr))
-      ||cs[0];
+    // 巻数一致のものを優先、その中でデータが充実しているものを選ぶ
+    const volMatch=cs.filter(it=>String(it.volume)===volStr||
+      (it.volume&&volStr&&normKey(String(it.volume))===normKey(volStr)));
+    const pool=volMatch.length?volMatch:cs;
+    return pool.find(it=>it.publisher&&it.price>0&&it.author)
+      ||pool.find(it=>it.publisher&&it.price>0)
+      ||pool.find(it=>it.publisher)
+      ||pool.find(it=>it.price>0)
+      ||pool[0];
   };
 
   // 1st pass: 版元・GoogleBooks・NDL・iTunes 並列
   const qEnc=encodeURIComponent(seriesTitle);
-  const qItunes=encodeURIComponent(volNum?`${seriesTitle} ${volNum}巻`:seriesTitle);
+  const qItunes=encodeURIComponent(volNum?`${seriesTitle} ${volNum}`:seriesTitle);
   const [hmRes,gbRes,ndlRes,itRes]=await Promise.allSettled([
     fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=30').then(r=>r.json()),
     fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
@@ -2249,7 +2355,7 @@ function renderSeriesList() {
         </div>
         <div class="modal-actions" style="margin-top:10px">
           <button class="btn-cancel" onclick="toggleSeriesEdit('${id}')">閉じる</button>
-          <button class="btn-save" onclick="saveSeriesEdit('${id}')">保存</button>
+          <button class="btn-save" onclick="saveSeriesEdit('${id}', this)">保存</button>
         </div>
       </div>
     </div>`;
@@ -2302,18 +2408,19 @@ function setRating(id,n) {
   }
   document.getElementById(`ser_${id}`).setAttribute('data-rating',newRating);
 }
-async function saveSeriesEdit(id) {
+async function saveSeriesEdit(id, btn) {
   if(!currentUser||!dbSeriesRef)return;
-  const genre=document.getElementById(`seg_${id}`).value;
-  const completed=document.getElementById(`sec_${id}`).value==='1';
+  const form = btn ? btn.closest('.series-edit-form') : document.getElementById('sef_'+id);
+  const genre=(form.querySelector(`#seg_${id}`)||form.querySelector('[id^="seg_"]'))?.value||'';
+  const completed=(form.querySelector(`#sec_${id}`)||form.querySelector('[id^="sec_"]'))?.value==='1';
   const ratingEl=document.getElementById(`ser_${id}`);
-  const rating=parseInt(ratingEl.getAttribute('data-rating')||ratingEl.querySelectorAll('.on').length)||0;
-  const author=document.getElementById(`sea_${id}`)?.value.trim()||'';
-  const publisher=document.getElementById(`sep_${id}`)?.value.trim()||'';
-  const label=document.getElementById(`sel_${id}`)?.value.trim()||'';
-  const magazine=document.getElementById(`sem_${id}`)?.value.trim()||'';
-  const coverUrl=document.getElementById(`secv_${id}`)?.value.trim()||'';
-  const newTitle=(document.getElementById(`stitle_${id}`)?.value||'').trim();
+  const rating=parseInt(ratingEl?.getAttribute('data-rating')||0)||0;
+  const author=(form.querySelector('[id^="sea_"]')?.value||'').trim();
+  const publisher=(form.querySelector('[id^="sep_"]')?.value||'').trim();
+  const label=(form.querySelector('[id^="sel_"]')?.value||'').trim();
+  const magazine=(form.querySelector('[id^="sem_"]')?.value||'').trim();
+  const coverUrl=(form.querySelector('[id^="secv_"]')?.value||'').trim();
+  const newTitle=(form.querySelector('[id^="stitle_"]')?.value||'').trim();
   const updateData={genre,completed,rating,author,publisher,label,magazine,coverUrl};
   if(newTitle) updateData.title=newTitle;
   await dbSeriesRef.child(id).update(updateData);
@@ -2379,7 +2486,7 @@ function normItunes(item) {
   if(item.releaseDate){var d=new Date(item.releaseDate);if(!isNaN(d))rd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   var seller=item.sellerName||'';
   var author=item.artistName||'';
-  var publisher=(seller&&seller!==author)?seller:'';
+  var publisher=seller||'';
   var label=(item.collectionName&&item.collectionName!==ev.cleanTitle)?item.collectionName:'';
   var price=item.currency==='JPY'?(item.price||0):0;
   return {_src:'itunes',title:item.trackName||'',cleanTitle:ev.cleanTitle,volume:ev.volume,author:author,publisher:publisher,label:label,magazine:'',price:price,releaseDate:rd,thumb:thumb,isbn:'',rakutenUrl:''};
@@ -2628,6 +2735,20 @@ async function bulkRefetchBooks() {
   const banner = document.getElementById('bulkRefetchBanner');
   banner.style.display = '';
   let done = 0, updated = 0;
+  const noPubTitles = new Set();
+
+  // [[講談社]] など保存済みWikiマークアップ・余分なカッコをクリーンアップ
+  const cleanPub=p=>p
+    .replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g,'$1')
+    .replace(/\[\[/g,'').replace(/\]\]/g,'')
+    .replace(/\s*[\(（][^)\）]*[\)）]/g,'')
+    .trim();
+  for(const [id,v] of Object.entries(volumesList)){
+    if(v.publisher&&(v.publisher.includes('[[')||/[\(（][^)\）]*[\)）]/.test(v.publisher))){
+      const clean=cleanPub(v.publisher);
+      if(clean!==v.publisher) await dbVolumesRef.child(id).update({publisher:clean});
+    }
+  }
 
   for (const v of targets) {
     const seriesTitle = v.title || (seriesList[v.seriesId] && seriesList[v.seriesId].title) || '';
@@ -2652,26 +2773,58 @@ async function bulkRefetchBooks() {
         }
       }
 
-      // ISBNなし or OpenBDでデータ取れず → 全API検索（価格・出版社・作者のみ更新）
-      const best = await fetchBestBookCandidate(seriesTitle, v.volume);
-      if (best) {
-        const saves = {};
-        if (!v.price && best.price > 0) saves.price = best.price;
-        if (!v.publisher && best.publisher) saves.publisher = best.publisher;
-        if (!v.author && best.author) saves.author = best.author;
-        if (Object.keys(saves).length > 0) {
-          await dbVolumesRef.child(v.id).update(saves);
-          updated++;
+      // ISBNなし or OpenBDでデータ取れず
+      const saves = {};
+      // ① シリーズに出版社・作者が既にある場合は巻にコピー（seriesIdがなければタイトルで探す）
+      const s=(v.seriesId&&seriesList[v.seriesId])||Object.values(seriesList).find(sr=>sr.title===seriesTitle)||{};
+      if(!v.publisher&&s.publisher) saves.publisher=s.publisher;
+      if(!v.author&&s.author) saves.author=s.author;
+      // ② iTunes で価格・作者を補完（price/authorのみ）
+      if(!v.price||!v.author){
+        try {
+          const normKey2=t=>t.replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
+          const ns2=normKey2(seriesTitle);
+          const volStr2=String(v.volume||'');
+          const itData=await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(seriesTitle)}&country=JP&media=ebook&limit=20`).then(r=>r.json());
+          const itItems=(itData.results||[]).map(normItunes).filter(it=>{
+            const nt=normKey2(it.cleanTitle||it.title||'');
+            return nt===ns2||nt.includes(ns2)||ns2.includes(nt);
+          });
+          const volMatch2=itItems.filter(it=>String(it.volume)===volStr2);
+          const pool2=volMatch2.length?volMatch2:itItems;
+          const best2=pool2.find(it=>it.price>0)||pool2[0];
+          if(best2){
+            if(!v.price&&!saves.price&&best2.price>0) saves.price=best2.price;
+            if(!v.author&&!saves.author&&best2.author) saves.author=best2.author;
+          }
+        } catch(e2){}
+      }
+      // ③ 出版社がまだ取れていない場合 Wikipedia → Open Library で補完
+      if(!v.publisher&&!saves.publisher){
+        const wikiPub=await fetchPublisherFromWikipedia(seriesTitle);
+        if(wikiPub) saves.publisher=wikiPub;
+        else {
+          const olPub=await fetchPublisherFromOpenLibrary(seriesTitle);
+          if(olPub) saves.publisher=olPub;
         }
       }
-    } catch(e) {}
+      if (Object.keys(saves).length > 0) {
+        await dbVolumesRef.child(v.id).update(saves);
+        updated++;
+      } else if(!v.publisher&&!saves.publisher){
+        noPubTitles.add(seriesTitle);
+      }
+    } catch(e) { console.error('bulkRefetch error:', seriesTitle, v.volume, e); }
 
     done++;
     await new Promise(r => setTimeout(r, 300));
   }
 
-  banner.textContent = `✅ ${updated} 件を更新しました（全 ${targets.length} 件処理完了）`;
-  setTimeout(() => { banner.style.display = 'none'; }, 4000);
+  let msg=`✅ ${updated} 件を更新しました（全 ${targets.length} 件処理完了）`;
+  if(noPubTitles.size>0) msg+=`\n⚠️ 出版社が取得できなかった作品（作品管理で手動入力してください）:\n${[...noPubTitles].join('、')}`;
+  banner.style.whiteSpace='pre-wrap';
+  banner.textContent=msg;
+  setTimeout(() => { banner.style.display='none'; banner.style.whiteSpace=''; }, 10000);
 }
 
 // ── 誤入力発売日リセット（現在表示月の巻で -01 固定のもの） ──
