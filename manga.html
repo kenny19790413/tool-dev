@@ -2010,20 +2010,8 @@ async function refetchBookInfo() {
     document.getElementById('newSeriesCoverUrl').value=best.thumb;
   }
 
-  // 既存巻の編集中はFirebaseに即保存
-  if(editId&&dbVolumesRef&&updated.length>0){
-    const saves={};
-    if(best.price>0) saves.price=best.price;
-    if(best.releaseDate) saves.releaseDate=best.releaseDate;
-    if(best.publisher) saves.publisher=best.publisher;
-    if(best.author) saves.author=best.author;
-    if(best.rakutenUrl) saves.rakutenUrl=best.rakutenUrl;
-    if(best.isbn) saves.isbn=best.isbn;
-    await dbVolumesRef.child(editId).update(saves);
-    showSaved();
-  }
-
-  statusEl.textContent=updated.length?'✅ 取得しました: '+updated.join('・'):'ℹ️ 更新できる項目がありませんでした';
+  // フォームに反映のみ。実売価格とズレることがあるため、保存はユーザーが内容確認後「保存する」を押した時のみ行う
+  statusEl.textContent=updated.length?'✅ 取得しました（内容を確認して保存してください）: '+updated.join('・'):'ℹ️ 更新できる項目がありませんでした';
   btn.disabled=false; btn.textContent='🔄 自動入力';
 }
 
