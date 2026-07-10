@@ -1435,7 +1435,8 @@ function getAffilLink(v) {
 
 // ── 楽天ブックス アフィリエイト ──
 const RAKUTEN_AFF_ID = '54f0afb4.96d0d3c0.54f0afb5.893704d6';
-const RAKUTEN_APP_ID = '02edcd4d-02f2-4b81-98f2-a0c88b0cfdd9';
+const RAKUTEN_APP_ID = 'a4251887-58ab-4301-94d9-6d084d75b318';
+const RAKUTEN_ACCESS_KEY = 'pk_cdSHL9ltcgmAtHsf1okyukzKmSXX6EnXNwuGieYoaka';
 function getRakutenLink(v) {
   const makeAffLink=target=>'https://hb.afl.rakuten.co.jp/hgc/'+RAKUTEN_AFF_ID+'/?pc='+encodeURIComponent(target);
   if(v.isbn) return makeAffLink('https://books.rakuten.co.jp/rb/'+v.isbn+'/');
@@ -2124,8 +2125,8 @@ async function fetchBestBookCandidate(seriesTitle, volNum, isbn) {
     return false;
   };
 
-  // OpenBDは実際の書誌データ（最も正確）なので同点なら常に優先する
-  const srcRank=it=>it._src==='openbd'?0:1;
+  // OpenBD・楽天Booksは実際の紙版書誌データ（最も正確）なので同点なら常に優先する
+  const srcRank=it=>it._src==='openbd'?0:it._src==='rakuten'?1:2;
   const pickBest=items=>{
     const cs=items.filter(matchFilter);
     if(!cs.length) return null;
@@ -2140,12 +2141,13 @@ async function fetchBestBookCandidate(seriesTitle, volNum, isbn) {
       ||pool[0];
   };
 
-  // 1st pass: OpenBD・版元・GoogleBooks・NDL・iTunes 並列
+  // 1st pass: OpenBD・楽天Books・版元・GoogleBooks・NDL・iTunes 並列
   const qEnc=encodeURIComponent(seriesTitle);
   const qItunes=encodeURIComponent(volNum?`${seriesTitle} ${volNum}`:seriesTitle);
   const qOpenBd=encodeURIComponent(volStr?`${seriesTitle} ${volStr}巻`:seriesTitle);
-  const [obRes,hmRes,gbRes,ndlRes,itRes]=await Promise.allSettled([
+  const [obRes,rkRes,hmRes,gbRes,ndlRes,itRes]=await Promise.allSettled([
     fetch('https://api.openbd.jp/v1/search?title='+qOpenBd+'&limit=20').then(r=>r.json()),
+    fetch('https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId='+RAKUTEN_APP_ID+'&accessKey='+RAKUTEN_ACCESS_KEY+'&title='+qEnc+'&hits=20').then(r=>r.json()),
     fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=30').then(r=>r.json()),
     fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
     fetch('https://iss.ndl.go.jp/api/opensearch?title='+qEnc+'&cnt=20').then(r=>r.text()),
@@ -2155,8 +2157,11 @@ async function fetchBestBookCandidate(seriesTitle, volNum, isbn) {
   const itunesItems=itRes.status==='fulfilled'?(itRes.value.results||[]).map(normItunes).filter(it=>it.price>0||it.releaseDate):[];
   const openBdItems=obRes.status==='fulfilled'&&Array.isArray(obRes.value)
     ?obRes.value.filter(b=>b&&b.summary).map(b=>normOpenBdSummary(b.summary)):[];
+  const rakutenItems=rkRes.status==='fulfilled'&&Array.isArray(rkRes.value.Items)
+    ?rkRes.value.Items.map(x=>normRakuten(x.Item)):[];
   const allItems=[
     ...openBdItems,
+    ...rakutenItems,
     ...(hmRes.status==='fulfilled'?(hmRes.value.books||[]).map(normHanmoto):[]),
     ...(gbRes.status==='fulfilled'?(gbRes.value.items||[]).map(normGbooks):[]),
     ...ndlItems,
@@ -2935,7 +2940,7 @@ async function silentFillPricePublisher(volId, seriesId, seriesTitle, volumeNum,
     if (!newPub || (newPrice === 0 && currentPrice === 0)) {
       try {
         const q = volStr2 ? `${seriesTitle} ${volStr2}` : seriesTitle;
-        const rkData = await fetch(`https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&title=${encodeURIComponent(q)}&booksGenreId=001001&hits=10`).then(r => r.json());
+        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&accessKey=${RAKUTEN_ACCESS_KEY}&title=${encodeURIComponent(q)}&booksGenreId=001001&hits=10`).then(r => r.json());
         for (const ri of (rkData.Items || []).map(i => i.Item)) {
           if (!nkFn(ri.title || '').includes(ns)) continue;
           if (!newPub && ri.publisherName) newPub = ri.publisherName;
@@ -3014,7 +3019,7 @@ async function searchSeriesPublisher(seriesId) {
     try {
       const nk3 = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
       const ns3 = nk3(title);
-      const rkData = await fetch(`https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&title=${encodeURIComponent(title)}&booksGenreId=001001&hits=10`).then(r => r.json());
+      const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&accessKey=${RAKUTEN_ACCESS_KEY}&title=${encodeURIComponent(title)}&booksGenreId=001001&hits=10`).then(r => r.json());
       for (const ri of (rkData.Items || []).map(i => i.Item)) {
         if (!nk3(ri.title || '').includes(ns3)) continue;
         const pub = (ri.publisherName || '').trim();
@@ -3176,7 +3181,7 @@ async function checkAllPricesPublishers() {
     if (!newPub || !newPrice) {
       try {
         const q4 = encodeURIComponent(volStr ? `${seriesTitle} ${volStr}` : seriesTitle);
-        const rkData = await fetch(`https://app.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&title=${q4}&booksGenreId=001001&hits=10`).then(r => r.json());
+        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&accessKey=${RAKUTEN_ACCESS_KEY}&title=${q4}&booksGenreId=001001&hits=10`).then(r => r.json());
         for (const ri of (rkData.Items || []).map(i => i.Item)) {
           if (!nk(ri.title || '').includes(nk(seriesTitle))) continue;
           if (!newPub && ri.publisherName) newPub = ri.publisherName;
