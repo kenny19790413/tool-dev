@@ -2421,9 +2421,16 @@ async function saveSeriesEdit(id, btn) {
   const magazine=(form.querySelector('[id^="sem_"]')?.value||'').trim();
   const coverUrl=(form.querySelector('[id^="secv_"]')?.value||'').trim();
   const newTitle=(form.querySelector('[id^="stitle_"]')?.value||'').trim();
+  const oldTitle=seriesList[id]?.title||'';
   const updateData={genre,completed,rating,author,publisher,label,magazine,coverUrl};
   if(newTitle) updateData.title=newTitle;
   await dbSeriesRef.child(id).update(updateData);
+  // タイトル変更時は登録済みの各巻データにもタイトルを反映（月別リスト等はvolume側のtitleを表示するため）
+  // seriesIdを持たない古い巻データは旧タイトル一致で救済し、ついでにseriesIdも補完する
+  if(newTitle&&newTitle!==oldTitle){
+    const affected=Object.entries(volumesList).filter(([,v])=>v.seriesId===id||(!v.seriesId&&oldTitle&&v.title===oldTitle));
+    await Promise.all(affected.map(([vid,v])=>dbVolumesRef.child(vid).update(v.seriesId?{title:newTitle}:{title:newTitle,seriesId:id})));
+  }
   showSaved(); renderSeriesList();
 }
 async function setInlineRating(id,n) {
