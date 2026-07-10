@@ -6,7 +6,20 @@
       "**/.git/**",
       "**/node_modules/**",
       "dejiina_agent/**",
-      "scripts/**"
+      "scripts/**",
+      "**/*.md",
+      "**/*.docx",
+      "**/*.xlsx",
+      "**/*.js",
+      "**/*.mjs",
+      "**/*.bat",
+      "printquote/**",
+      "meishi-order/**",
+      "workers/**",
+      "research/**",
+      "output/**",
+      "33_SNSハーネス/**",
+      "開発環境1/**"
     ],
     "rewrites": [
       { "source": "/kakeibo",        "destination": "/kakeibo.html" },
