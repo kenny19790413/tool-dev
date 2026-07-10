@@ -523,6 +523,17 @@ textarea{resize:vertical;min-height:60px}
         <a href="https://affiliate.amazon.co.jp/" target="_blank" rel="noopener" style="color:var(--a1)">Amazon アソシエイト</a>に登録後のタグID（なければ空欄でOK・リンクは機能します）
       </div>
     </div>
+    <hr class="divider">
+    <div class="form-group">
+      <label>楽天Books APIキー <span id="rakutenKeyStatus" style="font-weight:400"></span></label>
+      <input type="text" id="rakutenAppIdInput" placeholder="アプリID" autocomplete="off" style="margin-bottom:6px">
+      <input type="text" id="rakutenAccessKeyInput" placeholder="アクセスキー（pk_...）" autocomplete="off" style="margin-bottom:6px">
+      <input type="date" id="rakutenExpiryInput">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        価格・出版社の自動取得に使用。期限が近づくとバナーで通知します。
+        <a href="https://webservice.rakuten.co.jp/app/list" target="_blank" rel="noopener" style="color:var(--a1)">楽天ウェブサービスでアプリID・有効期限を確認/延長</a>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeSettingsModal()">閉じる</button>
       <button class="btn-save" onclick="saveSettings()">保存する</button>
@@ -595,6 +606,13 @@ textarea{resize:vertical;min-height:60px}
       <button class="btn-save" onclick="applyPendingCheckResults()">✅ 保存する</button>
     </div>
   </div>
+</div>
+
+<!-- 楽天Booksキー期限切れ警告バナー -->
+<div id="rakutenKeyExpiryBanner" class="pending-reminder-banner">
+  ⚠️ <span id="rakutenKeyExpiryMsg"></span>
+  <button class="btn-remind-check" onclick="document.getElementById('rakutenKeyExpiryBanner').style.display='none';openSettingsModal()">更新する</button>
+  <button class="btn-remind-close" onclick="snoozeRakutenKeyExpiry()" title="7日間表示しない">✕</button>
 </div>
 
 <!-- 発売日チェック促進バナー -->
@@ -754,7 +772,7 @@ function attachDatabase(user) {
   let _reminderChecked=false;
   dbVolumesRef.on('value', snap => { volumesList=snap.val()||{}; render(); checkNotifications(user.uid); if(!_reminderChecked){_reminderChecked=true;setTimeout(checkPendingDateReminder,1500);} });
   dbSettingsRef=database.ref(`users/${user.uid}/settings`);
-  dbSettingsRef.on('value', snap => { userSettings=snap.val()||{budget:0}; updateNotifBtn(); });
+  dbSettingsRef.on('value', snap => { userSettings=snap.val()||{budget:0}; updateNotifBtn(); checkRakutenKeyExpiry(); });
 }
 
 function showSaved() { const el=document.getElementById('savingIndicator'); if(!el)return; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),1500); }
@@ -913,7 +931,18 @@ function syncAppearanceUI(s){
 function openSettingsModal() {
   document.getElementById('budgetInput').value=userSettings.budget||'';
   document.getElementById('amazonTagInput').value=userSettings.amazonTag||'';
+  document.getElementById('rakutenAppIdInput').value=getRakutenAppId();
+  document.getElementById('rakutenAccessKeyInput').value=getRakutenAccessKey();
+  document.getElementById('rakutenExpiryInput').value=getRakutenExpiry();
+  updateRakutenKeyStatusLabel();
   document.getElementById('settingsModal').classList.remove('hidden');
+}
+function updateRakutenKeyStatusLabel() {
+  const el=document.getElementById('rakutenKeyStatus'); if(!el)return;
+  const days=rakutenKeyDaysLeft();
+  if(days===null){el.textContent='';return;}
+  el.textContent=days<0?`（期限切れ）`:`（あと${days}日）`;
+  el.style.color=days<0?'#e53e3e':days<=30?'#dd6b20':'var(--muted)';
 }
 function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
 function openThemeModal() {
@@ -928,8 +957,34 @@ async function saveSettings() {
   if(!currentUser||!dbSettingsRef)return;
   const budget=parseInt(document.getElementById('budgetInput').value)||0;
   const amazonTag=(document.getElementById('amazonTagInput').value||'').trim();
-  await dbSettingsRef.set({budget,amazonTag});
-  showSaved(); closeSettingsModal();
+  const rakutenAppId=(document.getElementById('rakutenAppIdInput').value||'').trim();
+  const rakutenAccessKey=(document.getElementById('rakutenAccessKeyInput').value||'').trim();
+  const rakutenExpiry=(document.getElementById('rakutenExpiryInput').value||'').trim();
+  await dbSettingsRef.set({budget,amazonTag,rakutenAppId,rakutenAccessKey,rakutenExpiry});
+  showSaved(); closeSettingsModal(); checkRakutenKeyExpiry();
+}
+
+// ── 楽天Booksキー有効期限チェック ──
+function rakutenKeyDaysLeft() {
+  const expiry=getRakutenExpiry();
+  const d=new Date(expiry+'T00:00:00');
+  if(isNaN(d))return null;
+  const today=new Date(); today.setHours(0,0,0,0);
+  return Math.floor((d-today)/(1000*60*60*24));
+}
+function checkRakutenKeyExpiry() {
+  const banner=document.getElementById('rakutenKeyExpiryBanner'); if(!banner)return;
+  const days=rakutenKeyDaysLeft();
+  if(days===null||days>30){banner.style.display='none';return;}
+  const snoozeUntil=parseInt(localStorage.getItem('rakutenKeyExpirySnooze')||'0');
+  if(Date.now()<snoozeUntil){banner.style.display='none';return;}
+  document.getElementById('rakutenKeyExpiryMsg').textContent=
+    days<0?`楽天Books APIキーの有効期限が切れています（${-days}日経過）`:`楽天Books APIキーの有効期限まであと${days}日です`;
+  banner.style.display='flex';
+}
+function snoozeRakutenKeyExpiry() {
+  localStorage.setItem('rakutenKeyExpirySnooze', String(Date.now()+7*24*60*60*1000));
+  document.getElementById('rakutenKeyExpiryBanner').style.display='none';
 }
 
 // ── 予算チェック ──
@@ -1435,8 +1490,13 @@ function getAffilLink(v) {
 
 // ── 楽天ブックス アフィリエイト ──
 const RAKUTEN_AFF_ID = '54f0afb4.96d0d3c0.54f0afb5.893704d6';
-const RAKUTEN_APP_ID = 'a4251887-58ab-4301-94d9-6d084d75b318';
-const RAKUTEN_ACCESS_KEY = 'pk_cdSHL9ltcgmAtHsf1okyukzKmSXX6EnXNwuGieYoaka';
+const RAKUTEN_APP_ID_DEFAULT = 'a4251887-58ab-4301-94d9-6d084d75b318';
+const RAKUTEN_ACCESS_KEY_DEFAULT = 'pk_cdSHL9ltcgmAtHsf1okyukzKmSXX6EnXNwuGieYoaka';
+const RAKUTEN_EXPIRY_DEFAULT = '2027-07-10';
+// 設定画面で上書きされていればそちらを優先（コード修正・再デプロイ不要でキー更新できるようにする）
+function getRakutenAppId() { return (userSettings.rakutenAppId||'').trim() || RAKUTEN_APP_ID_DEFAULT; }
+function getRakutenAccessKey() { return (userSettings.rakutenAccessKey||'').trim() || RAKUTEN_ACCESS_KEY_DEFAULT; }
+function getRakutenExpiry() { return (userSettings.rakutenExpiry||'').trim() || RAKUTEN_EXPIRY_DEFAULT; }
 function getRakutenLink(v) {
   const makeAffLink=target=>'https://hb.afl.rakuten.co.jp/hgc/'+RAKUTEN_AFF_ID+'/?pc='+encodeURIComponent(target);
   if(v.isbn) return makeAffLink('https://books.rakuten.co.jp/rb/'+v.isbn+'/');
@@ -2147,7 +2207,7 @@ async function fetchBestBookCandidate(seriesTitle, volNum, isbn) {
   const qOpenBd=encodeURIComponent(volStr?`${seriesTitle} ${volStr}巻`:seriesTitle);
   const [obRes,rkRes,hmRes,gbRes,ndlRes,itRes]=await Promise.allSettled([
     fetch('https://api.openbd.jp/v1/search?title='+qOpenBd+'&limit=20').then(r=>r.json()),
-    fetch('https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId='+RAKUTEN_APP_ID+'&accessKey='+RAKUTEN_ACCESS_KEY+'&title='+qEnc+'&hits=20').then(r=>r.json()),
+    fetch('https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId='+getRakutenAppId()+'&accessKey='+getRakutenAccessKey()+'&title='+qEnc+'&hits=20').then(r=>r.json()),
     fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=30').then(r=>r.json()),
     fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
     fetch('https://iss.ndl.go.jp/api/opensearch?title='+qEnc+'&cnt=20').then(r=>r.text()),
@@ -2940,7 +3000,7 @@ async function silentFillPricePublisher(volId, seriesId, seriesTitle, volumeNum,
     if (!newPub || (newPrice === 0 && currentPrice === 0)) {
       try {
         const q = volStr2 ? `${seriesTitle} ${volStr2}` : seriesTitle;
-        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&accessKey=${RAKUTEN_ACCESS_KEY}&title=${encodeURIComponent(q)}&booksGenreId=001001&hits=10`).then(r => r.json());
+        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(q)}&booksGenreId=001001&hits=10`).then(r => r.json());
         for (const ri of (rkData.Items || []).map(i => i.Item)) {
           if (!nkFn(ri.title || '').includes(ns)) continue;
           if (!newPub && ri.publisherName) newPub = ri.publisherName;
@@ -3019,7 +3079,7 @@ async function searchSeriesPublisher(seriesId) {
     try {
       const nk3 = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
       const ns3 = nk3(title);
-      const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&accessKey=${RAKUTEN_ACCESS_KEY}&title=${encodeURIComponent(title)}&booksGenreId=001001&hits=10`).then(r => r.json());
+      const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(title)}&booksGenreId=001001&hits=10`).then(r => r.json());
       for (const ri of (rkData.Items || []).map(i => i.Item)) {
         if (!nk3(ri.title || '').includes(ns3)) continue;
         const pub = (ri.publisherName || '').trim();
@@ -3181,7 +3241,7 @@ async function checkAllPricesPublishers() {
     if (!newPub || !newPrice) {
       try {
         const q4 = encodeURIComponent(volStr ? `${seriesTitle} ${volStr}` : seriesTitle);
-        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${RAKUTEN_APP_ID}&accessKey=${RAKUTEN_ACCESS_KEY}&title=${q4}&booksGenreId=001001&hits=10`).then(r => r.json());
+        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${q4}&booksGenreId=001001&hits=10`).then(r => r.json());
         for (const ri of (rkData.Items || []).map(i => i.Item)) {
           if (!nk(ri.title || '').includes(nk(seriesTitle))) continue;
           if (!newPub && ri.publisherName) newPub = ri.publisherName;
