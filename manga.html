@@ -1973,19 +1973,20 @@ async function searchReleaseDate() {
   });
 }
 
-// ── APIで書籍情報を再取得（編集中の場合はFirebaseにも即保存）──
+// ── APIで書籍情報を再取得（フォームに反映のみ。保存は「保存する」を押した時） ──
 async function refetchBookInfo() {
   const editId=document.getElementById('editVolumeId').value;
   const seriesId=document.getElementById('seriesSelect').value;
   const seriesTitle=(seriesList[seriesId]&&seriesList[seriesId].title)||document.getElementById('seriesSearchInput').value.trim();
   const volNum=document.getElementById('volumeNum').value.trim();
+  const isbnVal=(document.getElementById('editIsbn').value||'').trim();
   if(!seriesTitle){alert('作品名が取得できませんでした');return;}
   const statusEl=document.getElementById('apiRefetchStatus');
   const btn=document.getElementById('btnApiRefetch');
   btn.disabled=true; btn.textContent='🔄 検索中…';
   statusEl.style.display=''; statusEl.textContent='';
 
-  const best=await fetchBestBookCandidate(seriesTitle, volNum);
+  const best=await fetchBestBookCandidate(seriesTitle, volNum, isbnVal);
   if(!best){statusEl.textContent='❌ 書籍情報が見つかりませんでした';btn.disabled=false;btn.textContent='🔄 自動入力';return;}
 
   // 出版社が取れなかった場合 Wikipedia → Open Library で補完
@@ -2084,10 +2085,33 @@ async function fetchPublisherFromOpenLibrary(seriesTitle) {
 }
 
 // ── 書籍APIで最良候補を取得 ──
-async function fetchBestBookCandidate(seriesTitle, volNum) {
+function normOpenBdSummary(s) {
+  const rawTitle=s.title||'';
+  const ev=extractVolume(rawTitle);
+  const pd=s.pubdate||'';
+  let rd='';
+  if(pd.length===8) rd=pd.substring(0,4)+'-'+pd.substring(4,6)+'-'+pd.substring(6,8);
+  else if(pd.length===6) rd=pd.substring(0,4)+'-'+pd.substring(4,6)+'-01';
+  const raw=parseInt(s.price||'0')||0; // OpenBDのpriceは税抜のため税込換算
+  return {_src:'openbd',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,
+    author:normalizeAuthor(s.author||''),publisher:s.publisher||'',label:'',magazine:'',
+    price:raw>0?Math.round(raw*1.1):0,releaseDate:rd,
+    thumb:s.cover?s.cover.replace('http://','https://'):'',isbn:s.isbn||'',rakutenUrl:''};
+}
+
+async function fetchBestBookCandidate(seriesTitle, volNum, isbn) {
   const normKey=t=>t.replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
   const ns=normKey(seriesTitle);
   const volStr=String(volNum||'');
+
+  // ISBN既知の場合はOpenBDのISBN直接取得が最も正確なので最優先で返す
+  if(isbn){
+    try{
+      const data=await fetch('https://api.openbd.jp/v1/get?isbn='+isbn).then(r=>r.json());
+      const s=Array.isArray(data)&&data[0]&&data[0].summary;
+      if(s&&(s.price||s.publisher)) return normOpenBdSummary(s);
+    }catch(e){}
+  }
 
   // マッチ判定：先頭4文字一致 or 相互includes
   const matchFilter=it=>{
@@ -2099,13 +2123,15 @@ async function fetchBestBookCandidate(seriesTitle, volNum) {
     return false;
   };
 
+  // OpenBDは実際の書誌データ（最も正確）なので同点なら常に優先する
+  const srcRank=it=>it._src==='openbd'?0:1;
   const pickBest=items=>{
     const cs=items.filter(matchFilter);
     if(!cs.length) return null;
     // 巻数一致のものを優先、その中でデータが充実しているものを選ぶ
     const volMatch=cs.filter(it=>String(it.volume)===volStr||
       (it.volume&&volStr&&normKey(String(it.volume))===normKey(volStr)));
-    const pool=volMatch.length?volMatch:cs;
+    const pool=(volMatch.length?volMatch:cs).slice().sort((a,b)=>srcRank(a)-srcRank(b));
     return pool.find(it=>it.publisher&&it.price>0&&it.author)
       ||pool.find(it=>it.publisher&&it.price>0)
       ||pool.find(it=>it.publisher)
@@ -2113,10 +2139,12 @@ async function fetchBestBookCandidate(seriesTitle, volNum) {
       ||pool[0];
   };
 
-  // 1st pass: 版元・GoogleBooks・NDL・iTunes 並列
+  // 1st pass: OpenBD・版元・GoogleBooks・NDL・iTunes 並列
   const qEnc=encodeURIComponent(seriesTitle);
   const qItunes=encodeURIComponent(volNum?`${seriesTitle} ${volNum}`:seriesTitle);
-  const [hmRes,gbRes,ndlRes,itRes]=await Promise.allSettled([
+  const qOpenBd=encodeURIComponent(volStr?`${seriesTitle} ${volStr}巻`:seriesTitle);
+  const [obRes,hmRes,gbRes,ndlRes,itRes]=await Promise.allSettled([
+    fetch('https://api.openbd.jp/v1/search?title='+qOpenBd+'&limit=20').then(r=>r.json()),
     fetch('https://api.hanmoto.com/books/v1/?title='+qEnc+'&limit=30').then(r=>r.json()),
     fetch('https://www.googleapis.com/books/v1/volumes?q=intitle:'+qEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
     fetch('https://iss.ndl.go.jp/api/opensearch?title='+qEnc+'&cnt=20').then(r=>r.text()),
@@ -2124,7 +2152,10 @@ async function fetchBestBookCandidate(seriesTitle, volNum) {
   ]);
   const ndlItems=ndlRes.status==='fulfilled'&&typeof ndlRes.value==='string'?parseNdl(ndlRes.value):[];
   const itunesItems=itRes.status==='fulfilled'?(itRes.value.results||[]).map(normItunes).filter(it=>it.price>0||it.releaseDate):[];
+  const openBdItems=obRes.status==='fulfilled'&&Array.isArray(obRes.value)
+    ?obRes.value.filter(b=>b&&b.summary).map(b=>normOpenBdSummary(b.summary)):[];
   const allItems=[
+    ...openBdItems,
     ...(hmRes.status==='fulfilled'?(hmRes.value.books||[]).map(normHanmoto):[]),
     ...(gbRes.status==='fulfilled'?(gbRes.value.items||[]).map(normGbooks):[]),
     ...ndlItems,
@@ -2163,7 +2194,7 @@ async function quickUpdateVolume(id) {
   const seriesTitle=v.title||(seriesList[v.seriesId]&&seriesList[v.seriesId].title)||'';
   if(!seriesTitle){if(btn){btn.textContent='🔄';btn.disabled=false;}return;}
 
-  const best=await fetchBestBookCandidate(seriesTitle, v.volume);
+  const best=await fetchBestBookCandidate(seriesTitle, v.volume, v.isbn);
 
   if(!best){
     if(btn){btn.textContent='❌';setTimeout(()=>{btn.textContent='🔄';btn.disabled=false;},2000);}
