@@ -444,7 +444,7 @@ textarea{resize:vertical;min-height:60px}
       <textarea id="volumeMemo" placeholder="例: 図書館で借りる・Kindle版待ち など"></textarea>
     </div>
     <div class="budget-warning" id="budgetWarning"></div>
-    <div id="apiRefetchStatus" style="display:none;font-size:12px;color:#718096;margin-bottom:8px;text-align:center"></div>
+    <div id="apiRefetchStatus" style="display:none;font-size:12px;color:#718096;margin-bottom:8px;text-align:center;white-space:pre-line"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddModal()">キャンセル</button>
       <button id="btnApiRefetch" style="font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer" onclick="refetchBookInfo()">🔄 自動入力</button>
@@ -2012,7 +2012,8 @@ async function refetchBookInfo() {
   }
 
   // フォームに反映のみ。実売価格とズレることがあるため、保存はユーザーが内容確認後「保存する」を押した時のみ行う
-  statusEl.textContent=updated.length?'✅ 取得しました（内容を確認して保存してください）: '+updated.join('・'):'ℹ️ 更新できる項目がありませんでした';
+  const srcWarn=best._src==='itunes'&&best.price>0?'\n⚠️ 価格はiTunes（電子書籍版）のものです。紙版の価格と異なる場合があります':'';
+  statusEl.textContent=(updated.length?'✅ 取得しました（内容を確認して保存してください）: '+updated.join('・'):'ℹ️ 更新できる項目がありませんでした')+srcWarn;
   btn.disabled=false; btn.textContent='🔄 自動入力';
 }
 
