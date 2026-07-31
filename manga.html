@@ -1566,7 +1566,40 @@ function cycleStatus(id) {
   if(!currentUser||!dbVolumesRef)return;
   const v=volumesList[id]; if(!v)return;
   const next=STATUS_CYCLE[getStatus(v)];
-  dbVolumesRef.child(id).update({status:next,purchased:next!=='none'}).then(showSaved);
+  dbVolumesRef.child(id).update({status:next,purchased:next!=='none'}).then(()=>{
+    showSaved();
+    if(next==='read') promptNextVolumeRegistration(v);
+  });
+}
+
+// ── 読了時：次巻を発売日未定リストに登録するか確認 ──
+function promptNextVolumeRegistration(v) {
+  if(!v.seriesId||!seriesList[v.seriesId])return;
+  const seriesTitle=seriesList[v.seriesId].title;
+  const numVol=parseInt(v.volume,10);
+  const nextVolNum=isNaN(numVol)?'':(numVol+1).toString();
+  const label=nextVolNum?`第${nextVolNum}巻`:'次巻';
+  if(!confirm(`「${seriesTitle}${v.volume?' 第'+v.volume+'巻':''}」を読み終わりました。\n${label}を発売日未定リストに登録しますか？`))return;
+  if(nextVolNum){
+    const dup=Object.entries(volumesList).find(([,vv])=>vv.seriesId===v.seriesId&&vv.volume===nextVolNum);
+    if(dup){alert(`「${seriesTitle} ${label}」はすでに登録されています。`);return;}
+  }
+  const data={
+    seriesId:v.seriesId,
+    title:seriesTitle,
+    volume:nextVolNum,
+    releaseDate:'',
+    publisher:v.publisher||seriesList[v.seriesId].publisher||'',
+    author:seriesList[v.seriesId].author||v.author||'',
+    price:v.price||0,
+    memo:'',
+    rakutenUrl:'',
+    asin:'',
+    isbn:'',
+    status:'none',
+    purchased:false
+  };
+  dbVolumesRef.push().set(data).then(showSaved);
 }
 
 // ── シリーズ名変更（巻の編集モーダルから） ──
