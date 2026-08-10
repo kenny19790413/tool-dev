@@ -1,0 +1,86 @@
+// StockPortfolio Prisma Schema
+// DB: PostgreSQL (Neon)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── ENUM ────────────────────────────────────────────────────
+
+enum AssetType {
+  STOCK   // 単株
+  BOND    // 債券
+  FUND    // 投資信託
+  PRIVATE // プライベート資産（未公開株など）
+}
+
+enum Market {
+  JP // 日本株
+  US // 米国株
+}
+
+// ── MODEL ───────────────────────────────────────────────────
+
+// 保有資産（株・債券・ファンド・プライベート資産を一元管理）
+model Asset {
+  id        Int       @id @default(autoincrement())
+  type      AssetType
+  market    Market? // STOCKのみ使用（JP/US）
+  name      String // 銘柄名・資産名
+  ticker    String? // STOCKのみ使用（例: "7203", "AAPL"）
+  fundUrl   String? // FUNDのみ使用（運用会社の公式ファンドページURL、基準価額の自動取得元）
+  currency  String    @default("JPY") // 通貨（JPY/USD）。BOND/PRIVATEは評価額(Valuation)の建値通貨としても使用
+  quantity  Decimal? @db.Decimal(18, 4) // STOCK/FUNDのみ使用（保有株数 or 口数）
+  avgCost   Decimal? @db.Decimal(18, 4) // STOCK/FUNDのみ使用（平均取得単価、STOCKは1株あたり・FUNDは1万口あたり、任意入力）
+  broker    String? // 購入した証券会社（任意）
+  note      String?
+
+  // 株価/基準価額APIから取得したキャッシュ値（STOCK/FUNDのみ使用）
+  currentPrice     Decimal?  @db.Decimal(18, 4) // 現在値（STOCKは1株あたり、FUNDは1万口あたりの基準価額）
+  dividendPerShare Decimal?  @db.Decimal(18, 4) // 年間配当/株 概算（STOCKのみ、通貨建て、TTM）
+  priceUpdatedAt   DateTime?
+
+  // 年間分配金・配当の総額（BOND/FUND/PRIVATEは手動入力、資産のcurrency建て）。
+  // null=未入力、0=分配金なしと明示、正の値=年間見込み額
+  annualDistribution Decimal? @db.Decimal(18, 4)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  valuations Valuation[] // BOND/PRIVATEの手動評価額履歴
+
+  @@index([type])
+}
+
+// 非上場資産（債券・プライベート資産）の手動評価額履歴
+model Valuation {
+  id       Int      @id @default(autoincrement())
+  assetId  Int
+  asset    Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  value    Decimal  @db.Decimal(18, 2) // 評価額（資産のcurrency建て。JPY/USD）
+  valuedAt DateTime @default(now())
+  note     String?
+
+  @@index([assetId, valuedAt])
+}
+
+// 為替レート取得履歴（USDJPY等）
+model ExchangeRate {
+  id        Int      @id @default(autoincrement())
+  pair      String // 例: "USDJPY"
+  rate      Decimal  @db.Decimal(18, 6)
+  fetchedAt DateTime @default(now())
+
+  @@index([pair, fetchedAt])
+}
+
+// ログインパスワード（単一レコードのみ使用、id固定）
+model Credential {
+  id           Int      @id @default(1)
+  passwordHash String
+  updatedAt    DateTime @updatedAt
+}
