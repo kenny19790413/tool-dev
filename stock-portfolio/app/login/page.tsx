@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 function LoginForm() {
-  const router = useRouter();
   const params = useSearchParams();
   const from = params.get('from') ?? '/';
 
@@ -28,8 +27,7 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      router.replace(from);
-      router.refresh();
+      window.location.href = from;
     } catch (err) {
       setError(String(err instanceof Error ? err.message : err));
     } finally {
