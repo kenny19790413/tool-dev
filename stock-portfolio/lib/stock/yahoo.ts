@@ -143,6 +143,32 @@ export async function getDividendMonths(symbol: string): Promise<number[]> {
   }
 }
 
+export interface PricePoint {
+  date: string; // ISO日付（YYYY-MM-DD）
+  close: number;
+}
+
+// 過去の日次終値の推移（テクニカル指標や予測ではなく、実際の値動きの事実）。
+export async function getPriceHistory(symbol: string, range: '1mo' | '6mo' | '1y' = '6mo'): Promise<PricePoint[]> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    symbol
+  )}?interval=1d&range=${range}`;
+  const res = await fetch(url, { headers: BASE_HEADERS, cache: 'no-store' });
+  if (!res.ok) throw new Error(`価格推移の取得に失敗しました: ${symbol} (HTTP ${res.status})`);
+  const data = await res.json();
+  const result = data?.chart?.result?.[0];
+  const timestamps: number[] = result?.timestamp ?? [];
+  const closes: (number | null)[] = result?.indicators?.quote?.[0]?.close ?? [];
+
+  const points: PricePoint[] = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const close = closes[i];
+    if (typeof close !== 'number') continue;
+    points.push({ date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10), close });
+  }
+  return points;
+}
+
 export interface AnalystTarget {
   targetMeanPrice: number | null;
   targetHighPrice: number | null;

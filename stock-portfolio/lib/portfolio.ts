@@ -14,6 +14,13 @@ export function toNumber(v: DecimalLike): number {
 // 投資信託の基準価額は「1万口あたり」の金額で表示される慣習
 export const FUND_NAV_UNIT = 10000;
 
+// アナリスト目標株価に対する上昇/下落余地（%）。currentPrice/targetMeanPriceが揃わない場合はnull。
+// Yahoo Financeの目標株価は通常「今後12ヶ月」を想定した見通し。
+export function calcUpsidePercent(currentPrice: number, targetMeanPrice: number): number | null {
+  if (!currentPrice || !Number.isFinite(currentPrice)) return null;
+  return ((targetMeanPrice - currentPrice) / currentPrice) * 100;
+}
+
 // 現在値の自動取得に対応する資産種別（STOCK=株価、FUND=基準価額）
 export function hasAutoPrice(type: Asset['type']): boolean {
   return type === 'STOCK' || type === 'FUND';

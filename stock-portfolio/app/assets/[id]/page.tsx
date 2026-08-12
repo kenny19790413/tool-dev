@@ -4,6 +4,7 @@ import {
   calcAssetValueJpy,
   calcAssetDistributionJpy,
   calcAssetGainJpy,
+  calcUpsidePercent,
   hasDistributionInfo,
   ASSET_TYPE_LABEL,
   MARKET_LABEL,
@@ -15,6 +16,7 @@ import {
   toNumber,
   type AssetWithValuations,
 } from '@/lib/portfolio';
+import { PriceHistoryChart } from './_components/PriceHistoryChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RefreshPriceButton } from './_components/RefreshPriceButton';
@@ -166,6 +168,20 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
               <p className="text-gray-300">データなし（アナリストカバレッジがない銘柄の可能性があります）</p>
             ) : (
               <>
+                {(() => {
+                  const upside = calcUpsidePercent(toNumber(asset.currentPrice), toNumber(asset.targetMeanPrice));
+                  if (upside === null) return null;
+                  const isUp = upside >= 0;
+                  return (
+                    <p
+                      className={`text-2xl font-bold flex items-center gap-1 ${isUp ? 'text-green-600' : 'text-red-600'}`}
+                    >
+                      {isUp ? '↑' : '↓'} {isUp ? '+' : ''}
+                      {upside.toFixed(1)}%
+                      <span className="text-xs font-normal text-gray-400">（1年後の見通し）</span>
+                    </p>
+                  );
+                })()}
                 <p>
                   平均目標株価: {toNumber(asset.targetMeanPrice).toLocaleString('ja-JP')} {asset.currency}
                 </p>
@@ -195,6 +211,8 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
           </CardContent>
         </Card>
       )}
+
+      {isStock && <PriceHistoryChart assetId={asset.id} currency={asset.currency} />}
 
       {isFund && (
         <Card>
