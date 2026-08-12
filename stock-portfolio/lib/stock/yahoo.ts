@@ -143,6 +143,47 @@ export async function getDividendMonths(symbol: string): Promise<number[]> {
   }
 }
 
+export interface AnalystTarget {
+  targetMeanPrice: number | null;
+  targetHighPrice: number | null;
+  targetLowPrice: number | null;
+  recommendationKey: string | null;
+  numberOfAnalystOpinions: number | null;
+}
+
+// アナリスト目標株価（Yahoo Financeが集計する実際のアナリスト予想。AIによる推測ではない）。
+// 取得できない場合は全項目nullを返す（アナリストカバレッジがない銘柄など）。
+export async function getAnalystTarget(symbol: string): Promise<AnalystTarget> {
+  const empty: AnalystTarget = {
+    targetMeanPrice: null,
+    targetHighPrice: null,
+    targetLowPrice: null,
+    recommendationKey: null,
+    numberOfAnalystOpinions: null,
+  };
+  try {
+    const { cookie, crumb } = await ensureSession();
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(
+      symbol
+    )}?modules=financialData&crumb=${encodeURIComponent(crumb)}`;
+    const res = await fetch(url, { headers: { ...BASE_HEADERS, Cookie: cookie }, cache: 'no-store' });
+    if (!res.ok) return empty;
+    const data = await res.json();
+    const fd = data?.quoteSummary?.result?.[0]?.financialData;
+    if (!fd) return empty;
+    return {
+      targetMeanPrice: typeof fd.targetMeanPrice?.raw === 'number' ? fd.targetMeanPrice.raw : null,
+      targetHighPrice: typeof fd.targetHighPrice?.raw === 'number' ? fd.targetHighPrice.raw : null,
+      targetLowPrice: typeof fd.targetLowPrice?.raw === 'number' ? fd.targetLowPrice.raw : null,
+      recommendationKey: typeof fd.recommendationKey === 'string' ? fd.recommendationKey : null,
+      numberOfAnalystOpinions:
+        typeof fd.numberOfAnalystOpinions?.raw === 'number' ? fd.numberOfAnalystOpinions.raw : null,
+    };
+  } catch {
+    return empty;
+  }
+}
+
 // Yahoo Financeシンボルから市場を推定（日本株は ".T" サフィックス）
 export function inferMarket(symbol: string): 'JP' | 'US' {
   return symbol.trim().toUpperCase().endsWith('.T') ? 'JP' : 'US';

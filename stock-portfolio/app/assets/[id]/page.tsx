@@ -7,6 +7,7 @@ import {
   hasDistributionInfo,
   ASSET_TYPE_LABEL,
   MARKET_LABEL,
+  RECOMMENDATION_LABEL,
   FUND_NAV_UNIT,
   hasAutoPrice,
   formatJpy,
@@ -150,6 +151,46 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             </p>
             <p className="text-xs text-gray-400">
               最終更新: {asset.priceUpdatedAt ? new Date(asset.priceUpdatedAt).toLocaleString('ja-JP') : '未更新'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {isStock && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">アナリスト目標株価</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm text-gray-600">
+            {asset.targetMeanPrice === null ? (
+              <p className="text-gray-300">データなし（アナリストカバレッジがない銘柄の可能性があります）</p>
+            ) : (
+              <>
+                <p>
+                  平均目標株価: {toNumber(asset.targetMeanPrice).toLocaleString('ja-JP')} {asset.currency}
+                </p>
+                <p className="text-xs text-gray-400">
+                  レンジ: {asset.targetLowPrice !== null ? toNumber(asset.targetLowPrice).toLocaleString('ja-JP') : '-'}
+                  {' 〜 '}
+                  {asset.targetHighPrice !== null ? toNumber(asset.targetHighPrice).toLocaleString('ja-JP') : '-'}{' '}
+                  {asset.currency}
+                </p>
+                <p>
+                  推奨度:{' '}
+                  {asset.recommendationKey
+                    ? (RECOMMENDATION_LABEL[asset.recommendationKey] ?? asset.recommendationKey)
+                    : '不明'}
+                  {asset.numberOfAnalystOpinions !== null && `（アナリスト${asset.numberOfAnalystOpinions}人）`}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {asset.analystDataUpdatedAt
+                    ? `最終更新: ${new Date(asset.analystDataUpdatedAt).toLocaleString('ja-JP')}`
+                    : ''}
+                </p>
+              </>
+            )}
+            <p className="text-xs text-gray-400 pt-1 border-t mt-2">
+              ※ Yahoo Financeが集計する証券アナリストの目標株価です。将来の株価を保証するものではなく、投資判断は自己責任で行ってください。
             </p>
           </CardContent>
         </Card>

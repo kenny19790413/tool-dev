@@ -85,6 +85,18 @@ export function calcAssetGainJpy(asset: AssetWithValuations, usdJpyRate: number)
   return null;
 }
 
+// Yahoo Financeのアナリスト推奨度キー → 日本語ラベル
+export const RECOMMENDATION_LABEL: Record<string, string> = {
+  strong_buy: '強気買い',
+  buy: '買い',
+  outperform: 'やや買い',
+  hold: '中立',
+  underperform: 'やや売り',
+  sell: '売り',
+  strong_sell: '強気売り',
+  none: '不明',
+};
+
 export const ASSET_TYPE_LABEL: Record<Asset['type'], string> = {
   STOCK: '単株',
   BOND: '債券',

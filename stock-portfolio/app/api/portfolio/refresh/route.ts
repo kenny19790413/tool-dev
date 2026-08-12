@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/client';
-import { getQuote, getDividendPerShare, getDividendMonths, getUsdJpyRate } from '@/lib/stock/yahoo';
+import { getQuote, getDividendPerShare, getDividendMonths, getAnalystTarget, getUsdJpyRate } from '@/lib/stock/yahoo';
 import { fetchFundNav } from '@/lib/stock/fundNav';
 
 export async function POST() {
@@ -15,6 +15,7 @@ export async function POST() {
       const dividendPerShare = await getDividendPerShare(asset.ticker!);
       const distributionMonths =
         asset.distributionMonths.length > 0 ? undefined : await getDividendMonths(asset.ticker!);
+      const analystTarget = await getAnalystTarget(asset.ticker!);
       await prisma.asset.update({
         where: { id: asset.id },
         data: {
@@ -23,6 +24,12 @@ export async function POST() {
           dividendPerShare,
           priceUpdatedAt: new Date(),
           ...(distributionMonths !== undefined ? { distributionMonths } : {}),
+          targetMeanPrice: analystTarget.targetMeanPrice,
+          targetHighPrice: analystTarget.targetHighPrice,
+          targetLowPrice: analystTarget.targetLowPrice,
+          recommendationKey: analystTarget.recommendationKey,
+          numberOfAnalystOpinions: analystTarget.numberOfAnalystOpinions,
+          analystDataUpdatedAt: new Date(),
         },
       });
     })

@@ -51,6 +51,14 @@ model Asset {
   // 配当・分配金が実際に支払われる月（1〜12、複数可）。空配列=未設定（不明/未入力）
   distributionMonths Int[] @default([])
 
+  // アナリスト目標株価（STOCKのみ、Yahoo Financeの実際のアナリスト予想。AIによる推測ではない）
+  targetMeanPrice          Decimal?  @db.Decimal(18, 4) // 目標株価の平均
+  targetHighPrice          Decimal?  @db.Decimal(18, 4) // 目標株価の強気予想
+  targetLowPrice           Decimal?  @db.Decimal(18, 4) // 目標株価の弱気予想
+  recommendationKey        String? // "strong_buy" | "buy" | "hold" | "sell" | "strong_sell" 等
+  numberOfAnalystOpinions  Int? // 予想を出したアナリスト数
+  analystDataUpdatedAt     DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
