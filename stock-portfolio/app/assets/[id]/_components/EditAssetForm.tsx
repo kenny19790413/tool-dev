@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MonthPicker } from '@/components/month-picker';
 
 interface Props {
   assetId: number;
@@ -17,6 +18,7 @@ interface Props {
   annualDistribution?: number | null;
   distributionCurrency?: string;
   showDistributionField?: boolean;
+  distributionMonths?: number[];
 }
 
 export function EditAssetForm({
@@ -29,6 +31,7 @@ export function EditAssetForm({
   annualDistribution,
   distributionCurrency,
   showDistributionField,
+  distributionMonths,
 }: Props) {
   const router = useRouter();
   const [qty, setQty] = useState(quantity !== null ? String(quantity) : '');
@@ -38,13 +41,14 @@ export function EditAssetForm({
   const [distribution, setDistribution] = useState(
     annualDistribution !== null && annualDistribution !== undefined ? String(annualDistribution) : ''
   );
+  const [months, setMonths] = useState<number[]>(distributionMonths ?? []);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      const body: Record<string, unknown> = { note: memo, broker: brokerName };
+      const body: Record<string, unknown> = { note: memo, broker: brokerName, distributionMonths: months };
       if (showQuantityFields) {
         body.quantity = qty;
         body.avgCost = cost;
@@ -119,6 +123,15 @@ export function EditAssetForm({
           </p>
         </div>
       )}
+      <div>
+        <Label>配当・分配金が支払われる月（任意）</Label>
+        <div className="mt-1">
+          <MonthPicker value={months} onChange={setMonths} />
+        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          決算日・分配日の月を選択してください（複数選択可）。単純な「年間見込み÷12」ではなく、実際の入金予定月を確認できるようになります。
+        </p>
+      </div>
       <div>
         <Label htmlFor="broker">証券会社</Label>
         <Input

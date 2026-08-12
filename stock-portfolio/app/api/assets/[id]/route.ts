@@ -26,6 +26,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.annualDistribution !== undefined)
       data.annualDistribution =
         body.annualDistribution === '' || body.annualDistribution === null ? null : Number(body.annualDistribution);
+    if (body.distributionMonths !== undefined && Array.isArray(body.distributionMonths))
+      data.distributionMonths = body.distributionMonths
+        .map((v: unknown) => Number(v))
+        .filter((n: number) => Number.isInteger(n) && n >= 1 && n <= 12);
     if (body.note !== undefined) data.note = body.note || null;
     if (body.broker !== undefined) data.broker = body.broker || null;
     if (body.name !== undefined && String(body.name).trim()) data.name = String(body.name).trim();

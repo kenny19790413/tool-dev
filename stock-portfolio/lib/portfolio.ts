@@ -50,6 +50,28 @@ export function calcAssetDistributionJpy(asset: AssetWithValuations, usdJpyRate:
   return asset.currency === 'USD' ? amount * usdJpyRate : amount;
 }
 
+// 全資産の配当・分配金を「支払い月」ごとに集計（JPY換算）。
+// distributionMonths未設定（空配列）の資産はどの月にも計上せず、月別合計とは別に「入金月未設定の年間見込み額」として返す。
+export function calcMonthlyDistributionJpy(
+  assets: AssetWithValuations[],
+  usdJpyRate: number
+): { monthly: number[]; unscheduled: number } {
+  const monthly = Array(12).fill(0) as number[];
+  let unscheduled = 0;
+  for (const asset of assets) {
+    const annual = calcAssetDistributionJpy(asset, usdJpyRate);
+    if (annual <= 0) continue;
+    const months = asset.distributionMonths;
+    if (months.length === 0) {
+      unscheduled += annual;
+      continue;
+    }
+    const perMonth = annual / months.length;
+    for (const m of months) monthly[m - 1] += perMonth;
+  }
+  return { monthly, unscheduled };
+}
+
 // 資産1件の含み損益（JPY換算、株・投資信託でavgCost入力時のみ）
 export function calcAssetGainJpy(asset: AssetWithValuations, usdJpyRate: number): number | null {
   if (asset.avgCost === null || asset.avgCost === undefined) return null;

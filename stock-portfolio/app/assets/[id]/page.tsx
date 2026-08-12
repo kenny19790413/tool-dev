@@ -115,7 +115,11 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             ) : distribution > 0 ? (
               <>
                 <p className="text-2xl font-bold text-blue-700">{formatJpy(distribution)}</p>
-                <p className="text-xs text-gray-400 mt-1">月あたり {formatJpy(distribution / 12)}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {asset.distributionMonths.length > 0
+                    ? `入金月: ${asset.distributionMonths.map((m) => `${m}月`).join('・')}`
+                    : '入金月: 未設定'}
+                </p>
               </>
             ) : (
               <p className="text-2xl font-bold text-gray-400">分配金なし</p>
@@ -187,6 +191,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             annualDistribution={asset.annualDistribution !== null ? toNumber(asset.annualDistribution) : null}
             distributionCurrency={asset.currency}
             showDistributionField={!isStock}
+            distributionMonths={asset.distributionMonths}
           />
         </CardContent>
       </Card>

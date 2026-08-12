@@ -11,10 +11,18 @@ export async function GET() {
   return NextResponse.json({ assets });
 }
 
+function parseDistributionMonths(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n) && n >= 1 && n <= 12);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const type = body.type;
+    const distributionMonths = parseDistributionMonths(body.distributionMonths);
 
     if (type === 'STOCK') {
       const ticker = String(body.ticker ?? '').trim();
@@ -44,6 +52,7 @@ export async function POST(req: NextRequest) {
           currentPrice: quote.price,
           dividendPerShare,
           priceUpdatedAt: new Date(),
+          distributionMonths,
         },
       });
       return NextResponse.json({ asset });
@@ -78,6 +87,7 @@ export async function POST(req: NextRequest) {
             body.annualDistribution !== undefined && body.annualDistribution !== null && body.annualDistribution !== ''
               ? Number(body.annualDistribution)
               : null,
+          distributionMonths,
         },
       });
       return NextResponse.json({ asset });
@@ -103,6 +113,7 @@ export async function POST(req: NextRequest) {
             body.annualDistribution !== undefined && body.annualDistribution !== null && body.annualDistribution !== ''
               ? Number(body.annualDistribution)
               : null,
+          distributionMonths,
           valuations: { create: { value: initialValue } },
         },
         include: { valuations: true },

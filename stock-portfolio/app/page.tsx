@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/client';
 import {
   calcAssetValueJpy,
   calcAssetDistributionJpy,
+  calcMonthlyDistributionJpy,
   ASSET_TYPE_LABEL,
   formatJpy,
   type AssetWithValuations,
@@ -28,6 +29,11 @@ export default async function DashboardPage() {
 
   const totalValue = typed.reduce((sum, a) => sum + calcAssetValueJpy(a, usdJpyRate), 0);
   const totalDistribution = typed.reduce((sum, a) => sum + calcAssetDistributionJpy(a, usdJpyRate), 0);
+  const { monthly: monthlyDistribution, unscheduled: unscheduledDistribution } = calcMonthlyDistributionJpy(
+    typed,
+    usdJpyRate
+  );
+  const maxMonthly = Math.max(...monthlyDistribution, 1);
 
   const breakdown = ASSET_ORDER.map((type) => {
     const items = typed.filter((a) => a.type === type);
@@ -57,7 +63,6 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-blue-700">{formatJpy(totalDistribution)}</p>
-            <p className="text-xs text-gray-400 mt-1">月あたり {formatJpy(totalDistribution / 12)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -88,6 +93,40 @@ export default async function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {totalDistribution > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">配当・分配金の入金予定（月別）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-6 sm:grid-cols-12 gap-2">
+              {monthlyDistribution.map((amount, i) => (
+                <div key={i} className="flex flex-col items-center gap-1">
+                  <div className="w-full h-16 flex items-end bg-gray-50 rounded">
+                    {amount > 0 && (
+                      <div
+                        className="w-full bg-blue-600 rounded"
+                        style={{ height: `${Math.max((amount / maxMonthly) * 100, 6)}%` }}
+                      />
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500">{i + 1}月</span>
+                  <span className="text-[10px] text-gray-400 text-center leading-tight">
+                    {amount > 0 ? formatJpy(amount) : '-'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {unscheduledDistribution > 0 && (
+              <p className="text-xs text-gray-400 mt-3">
+                入金月が未設定の見込み額: {formatJpy(unscheduledDistribution)}
+                （各資産の詳細画面から「配当・分配金が支払われる月」を設定すると反映されます）
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <p className="text-xs text-gray-400 text-right">
         為替レート(USD/JPY):{' '}

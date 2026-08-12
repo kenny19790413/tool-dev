@@ -48,6 +48,9 @@ model Asset {
   // null=未入力、0=分配金なしと明示、正の値=年間見込み額
   annualDistribution Decimal? @db.Decimal(18, 4)
 
+  // 配当・分配金が実際に支払われる月（1〜12、複数可）。空配列=未設定（不明/未入力）
+  distributionMonths Int[] @default([])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

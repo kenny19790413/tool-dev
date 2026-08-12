@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MonthPicker } from '@/components/month-picker';
 
 type AssetTypeChoice = 'STOCK' | 'BOND' | 'FUND' | 'PRIVATE';
 
@@ -44,6 +45,7 @@ export default function NewAssetPage() {
   const [quantity, setQuantity] = useState('');
   const [avgCost, setAvgCost] = useState('');
   const [broker, setBroker] = useState('');
+  const [stockMonths, setStockMonths] = useState<number[]>([]);
 
   // 投資信託
   const [fundUrl, setFundUrl] = useState('');
@@ -53,6 +55,7 @@ export default function NewAssetPage() {
   const [fundAvgCost, setFundAvgCost] = useState('');
   const [fundBroker, setFundBroker] = useState('');
   const [fundDistribution, setFundDistribution] = useState('');
+  const [fundMonths, setFundMonths] = useState<number[]>([]);
 
   // 非株式（債券・プライベート資産）
   const [name, setName] = useState('');
@@ -60,6 +63,7 @@ export default function NewAssetPage() {
   const [otherCurrency, setOtherCurrency] = useState<'JPY' | 'USD'>('JPY');
   const [broker2, setBroker2] = useState('');
   const [distribution2, setDistribution2] = useState('');
+  const [otherMonths, setOtherMonths] = useState<number[]>([]);
   const [note, setNote] = useState('');
 
   useEffect(() => {
@@ -106,6 +110,7 @@ export default function NewAssetPage() {
           avgCost: avgCost || undefined,
           broker: broker || undefined,
           note: note || undefined,
+          distributionMonths: stockMonths,
         }),
       });
       const data = await res.json();
@@ -164,6 +169,7 @@ export default function NewAssetPage() {
           broker: fundBroker || undefined,
           annualDistribution: fundDistribution || undefined,
           note: note || undefined,
+          distributionMonths: fundMonths,
         }),
       });
       const data = await res.json();
@@ -201,6 +207,7 @@ export default function NewAssetPage() {
           broker: broker2 || undefined,
           annualDistribution: distribution2 || undefined,
           note: note || undefined,
+          distributionMonths: otherMonths,
         }),
       });
       const data = await res.json();
@@ -339,6 +346,13 @@ export default function NewAssetPage() {
               </div>
 
               <div>
+                <Label>配当が支払われる月（任意）</Label>
+                <div className="mt-1">
+                  <MonthPicker value={stockMonths} onChange={setStockMonths} />
+                </div>
+              </div>
+
+              <div>
                 <Label htmlFor="note">メモ（任意）</Label>
                 <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} className="mt-1" />
               </div>
@@ -441,6 +455,13 @@ export default function NewAssetPage() {
               </div>
 
               <div>
+                <Label>分配金が支払われる月（任意）</Label>
+                <div className="mt-1">
+                  <MonthPicker value={fundMonths} onChange={setFundMonths} />
+                </div>
+              </div>
+
+              <div>
                 <Label htmlFor="fundNote">メモ（任意）</Label>
                 <Input id="fundNote" value={note} onChange={(e) => setNote(e.target.value)} className="mt-1" />
               </div>
@@ -521,6 +542,12 @@ export default function NewAssetPage() {
                   placeholder="分配金がない場合は 0（未入力可）"
                   className="mt-1"
                 />
+              </div>
+              <div>
+                <Label>分配金・配当が支払われる月（任意）</Label>
+                <div className="mt-1">
+                  <MonthPicker value={otherMonths} onChange={setOtherMonths} />
+                </div>
               </div>
               <div>
                 <Label htmlFor="note2">メモ（任意）</Label>
