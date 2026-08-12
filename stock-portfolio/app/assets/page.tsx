@@ -153,7 +153,11 @@ export default async function AssetsPage({
                       ) : distribution > 0 ? (
                         <>
                           <div>{formatJpy(distribution)}</div>
-                          <div className="text-xs text-gray-400">月 {formatJpy(distribution / 12)}</div>
+                          {asset.distributionMonths.length > 0 && (
+                            <div className="text-xs text-gray-400">
+                              {asset.distributionMonths.map((m) => `${m}月`).join('・')}
+                            </div>
+                          )}
                         </>
                       ) : (
                         <span className="text-gray-400">分配金なし</span>

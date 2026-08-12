@@ -118,6 +118,31 @@ export async function getDividendPerShare(symbol: string): Promise<number | null
   }
 }
 
+// 配当・分配金が支払われる月（過去1年の配当履歴から推定、権利落ち日ベース）。
+// 実際の入金はこの月より後になることがある（特に日本株は権利確定から1〜3ヶ月程度）。
+// 取得できない場合は空配列を返す（配当なし銘柄・API制限時など）。
+export async function getDividendMonths(symbol: string): Promise<number[]> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+      symbol
+    )}?interval=1d&range=1y&events=div`;
+    const res = await fetch(url, { headers: BASE_HEADERS, cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const dividends = data?.chart?.result?.[0]?.events?.dividends;
+    if (!dividends || typeof dividends !== 'object') return [];
+
+    const months = new Set<number>();
+    for (const entry of Object.values(dividends) as { date?: number }[]) {
+      if (typeof entry?.date !== 'number') continue;
+      months.add(new Date(entry.date * 1000).getUTCMonth() + 1);
+    }
+    return Array.from(months).sort((a, b) => a - b);
+  } catch {
+    return [];
+  }
+}
+
 // Yahoo Financeシンボルから市場を推定（日本株は ".T" サフィックス）
 export function inferMarket(symbol: string): 'JP' | 'US' {
   return symbol.trim().toUpperCase().endsWith('.T') ? 'JP' : 'US';

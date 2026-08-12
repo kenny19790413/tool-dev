@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/client';
-import { getQuote, getDividendPerShare, inferMarket } from '@/lib/stock/yahoo';
+import { getQuote, getDividendPerShare, getDividendMonths, inferMarket } from '@/lib/stock/yahoo';
 import { fetchFundNav } from '@/lib/stock/fundNav';
 
 export async function GET() {
@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
 
       const quote = await getQuote(ticker);
       const dividendPerShare = await getDividendPerShare(ticker);
+      // ユーザーが手動で月を選択していなければ、過去の配当履歴から自動推定する
+      const resolvedMonths = distributionMonths.length > 0 ? distributionMonths : await getDividendMonths(ticker);
 
       const asset = await prisma.asset.create({
         data: {
@@ -52,7 +54,7 @@ export async function POST(req: NextRequest) {
           currentPrice: quote.price,
           dividendPerShare,
           priceUpdatedAt: new Date(),
-          distributionMonths,
+          distributionMonths: resolvedMonths,
         },
       });
       return NextResponse.json({ asset });

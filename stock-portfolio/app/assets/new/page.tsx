@@ -346,10 +346,13 @@ export default function NewAssetPage() {
               </div>
 
               <div>
-                <Label>配当が支払われる月（任意）</Label>
+                <Label>配当が支払われる月（任意・未選択なら自動取得）</Label>
                 <div className="mt-1">
                   <MonthPicker value={stockMonths} onChange={setStockMonths} />
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  選択しない場合、過去の配当実績から自動的に推定します（取得できないこともあります）。
+                </p>
               </div>
 
               <div>
