@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MonthPicker } from '@/components/month-picker';
+import { BrokerInput } from '@/components/broker-input';
 
 type AssetTypeChoice = 'STOCK' | 'BOND' | 'FUND' | 'PRIVATE';
 
@@ -336,13 +337,7 @@ export default function NewAssetPage() {
 
               <div>
                 <Label htmlFor="broker">証券会社（任意）</Label>
-                <Input
-                  id="broker"
-                  value={broker}
-                  onChange={(e) => setBroker(e.target.value)}
-                  placeholder="例: SBI証券 / 楽天証券"
-                  className="mt-1"
-                />
+                <BrokerInput id="broker" value={broker} onChange={setBroker} className="mt-1" />
               </div>
 
               <div>
@@ -433,13 +428,7 @@ export default function NewAssetPage() {
 
               <div>
                 <Label htmlFor="fundBroker">証券会社（任意）</Label>
-                <Input
-                  id="fundBroker"
-                  value={fundBroker}
-                  onChange={(e) => setFundBroker(e.target.value)}
-                  placeholder="例: SBI証券 / 楽天証券"
-                  className="mt-1"
-                />
+                <BrokerInput id="fundBroker" value={fundBroker} onChange={setFundBroker} className="mt-1" />
               </div>
 
               <div>
@@ -524,13 +513,7 @@ export default function NewAssetPage() {
               </div>
               <div>
                 <Label htmlFor="broker2">証券会社（任意）</Label>
-                <Input
-                  id="broker2"
-                  value={broker2}
-                  onChange={(e) => setBroker2(e.target.value)}
-                  placeholder="例: SBI証券 / 楽天証券"
-                  className="mt-1"
-                />
+                <BrokerInput id="broker2" value={broker2} onChange={setBroker2} className="mt-1" />
               </div>
               <div>
                 <Label htmlFor="distribution2">年間分配金・配当（任意・{otherCurrency === 'JPY' ? '円' : '米ドル'}）</Label>

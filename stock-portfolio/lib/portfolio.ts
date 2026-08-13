@@ -92,6 +92,16 @@ export function calcAssetGainJpy(asset: AssetWithValuations, usdJpyRate: number)
   return null;
 }
 
+// 資産1件の含み損益率（%）。avgCost未入力または取得コストが0の場合はnull。
+export function calcAssetGainPercent(asset: AssetWithValuations, usdJpyRate: number): number | null {
+  const gain = calcAssetGainJpy(asset, usdJpyRate);
+  if (gain === null) return null;
+  const value = calcAssetValueJpy(asset, usdJpyRate);
+  const cost = value - gain;
+  if (cost === 0) return null;
+  return (gain / cost) * 100;
+}
+
 // Yahoo Financeのアナリスト推奨度キー → 日本語ラベル
 export const RECOMMENDATION_LABEL: Record<string, string> = {
   strong_buy: '強気買い',

@@ -54,11 +54,21 @@ const RESPONSE_SCHEMA = {
   required: ['holdings'],
 };
 
-export async function parseHoldingsFromImage(base64Data: string, mimeType: string): Promise<ParsedHolding[]> {
+export interface ImageInput {
+  base64Data: string;
+  mimeType: string;
+}
+
+export async function parseHoldingsFromImages(images: ImageInput[]): Promise<ParsedHolding[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY が設定されていません');
 
   const ai = new GoogleGenAI({ apiKey });
+
+  const promptText =
+    images.length > 1
+      ? `証券会社サイトの保有資産一覧の画像です（同じ一覧の${images.length}枚の分割スクリーンショット、または関連する複数の一覧です）。すべての画像を通して表に含まれる銘柄・ファンドをすべて抽出してください。同じ銘柄が複数の画像にまたがって重複して写っている場合は1件にまとめてください。金額はカンマや円記号を除いた数値にしてください。読み取れない項目はnullにしてください。`
+      : '証券会社サイトの保有資産一覧の画像です。表に含まれる銘柄・ファンドをすべて抽出してください。金額はカンマや円記号を除いた数値にしてください。読み取れない項目はnullにしてください。';
 
   const result = await ai.models.generateContent({
     model: 'gemini-flash-latest',
@@ -66,10 +76,8 @@ export async function parseHoldingsFromImage(base64Data: string, mimeType: strin
       {
         role: 'user',
         parts: [
-          { inlineData: { data: base64Data, mimeType } },
-          {
-            text: '証券会社サイトの保有資産一覧の画像です。表に含まれる銘柄・ファンドをすべて抽出してください。金額はカンマや円記号を除いた数値にしてください。読み取れない項目はnullにしてください。',
-          },
+          ...images.map(({ base64Data, mimeType }) => ({ inlineData: { data: base64Data, mimeType } })),
+          { text: promptText },
         ],
       },
     ],

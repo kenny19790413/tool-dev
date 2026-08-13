@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MonthPicker } from '@/components/month-picker';
+import { BrokerInput } from '@/components/broker-input';
 
 interface Props {
   assetId: number;
@@ -134,13 +135,7 @@ export function EditAssetForm({
       </div>
       <div>
         <Label htmlFor="broker">証券会社</Label>
-        <Input
-          id="broker"
-          value={brokerName}
-          onChange={(e) => setBrokerName(e.target.value)}
-          placeholder="例: SBI証券 / 楽天証券"
-          className="mt-1"
-        />
+        <BrokerInput id="broker" value={brokerName} onChange={setBrokerName} className="mt-1" />
       </div>
       <div>
         <Label htmlFor="memo">メモ</Label>

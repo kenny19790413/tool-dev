@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { BrokerInput } from '@/components/broker-input';
 
 interface Row {
   selected: boolean;
@@ -23,32 +24,28 @@ interface Row {
 export default function ImportAssetsPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [parsing, setParsing] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [bulkBroker, setBulkBroker] = useState('');
   const [registering, setRegistering] = useState(false);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     setRows([]);
-    if (!file) {
-      setPreviewUrl(null);
-      return;
-    }
-    setPreviewUrl(URL.createObjectURL(file));
+    setPreviewUrls(files.map((f) => URL.createObjectURL(f)));
   }
 
   async function handleParse() {
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
+    const files = Array.from(fileInputRef.current?.files ?? []);
+    if (files.length === 0) {
       toast.error('画像を選択してください');
       return;
     }
     setParsing(true);
     try {
       const formData = new FormData();
-      formData.append('image', file);
+      for (const file of files) formData.append('images', file);
       const res = await fetch('/api/import/parse', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? '解析に失敗しました');
@@ -129,27 +126,36 @@ export default function ImportAssetsPage() {
     <div className="max-w-4xl mx-auto space-y-4">
       <h1 className="text-2xl font-bold text-gray-800">画像から資産を追加</h1>
       <p className="text-sm text-gray-500">
-        証券会社サイトの保有資産一覧のスクリーンショットをアップロードすると、AIが銘柄名・保有数量・評価額を自動で読み取ります。読み取り内容は登録前に確認・修正できます。
+        証券会社サイトの保有資産一覧のスクリーンショットをアップロードすると、AIが銘柄名・保有数量・評価額を自動で読み取ります。読み取り内容は登録前に確認・修正できます。一覧が複数ページにまたがる場合は、複数枚まとめて選択してください。
       </p>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">画像を選択</CardTitle>
+          <CardTitle className="text-base">画像を選択（複数選択可）</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleFileChange}
             className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-gray-300 file:bg-white file:text-sm"
           />
-          {previewUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={previewUrl} alt="プレビュー" className="max-h-64 rounded-md border" />
+          {previewUrls.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {previewUrls.map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={url} alt={`プレビュー${i + 1}`} className="max-h-40 rounded-md border" />
+              ))}
+            </div>
           )}
-          <Button onClick={handleParse} disabled={parsing || !previewUrl}>
-            {parsing ? '解析中…' : 'この画像を解析する'}
+          <Button onClick={handleParse} disabled={parsing || previewUrls.length === 0}>
+            {parsing
+              ? '解析中…'
+              : previewUrls.length > 1
+                ? `${previewUrls.length}枚の画像を解析する`
+                : 'この画像を解析する'}
           </Button>
         </CardContent>
       </Card>
@@ -162,10 +168,10 @@ export default function ImportAssetsPage() {
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="bulkBroker">証券会社（一括設定・個別入力欄が空の場合に適用）</Label>
-              <Input
+              <BrokerInput
                 id="bulkBroker"
                 value={bulkBroker}
-                onChange={(e) => setBulkBroker(e.target.value)}
+                onChange={setBulkBroker}
                 placeholder="例: 岡三証券"
                 className="mt-1 max-w-xs"
               />
@@ -188,9 +194,10 @@ export default function ImportAssetsPage() {
                       </div>
                       <div>
                         <Label className="text-xs text-gray-400">証券会社（個別・任意）</Label>
-                        <Input
+                        <BrokerInput
+                          id={`broker-${i}`}
                           value={row.broker}
-                          onChange={(e) => updateRow(i, 'broker', e.target.value)}
+                          onChange={(v) => updateRow(i, 'broker', v)}
                           placeholder={bulkBroker || '例: SBI証券'}
                         />
                       </div>
