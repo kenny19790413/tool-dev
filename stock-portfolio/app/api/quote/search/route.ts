@@ -18,9 +18,12 @@ export async function GET(req: NextRequest) {
 
   try {
     const results = await searchSymbols(q);
-    return NextResponse.json({
-      results: results.map((r) => ({ ...r, market: inferMarket(r.symbol) })),
-    });
+    const mapped = results.map((r) => ({ ...r, market: inferMarket(r.symbol) }));
+    // 銘柄コード（数字のみ）での検索は、日本の証券コードを想定して日本株(.T)を優先表示する
+    if (/^\d+$/.test(q.trim())) {
+      mapped.sort((a, b) => Number(!a.symbol.endsWith('.T')) - Number(!b.symbol.endsWith('.T')));
+    }
+    return NextResponse.json({ results: mapped });
   } catch (e) {
     console.error(e);
     return NextResponse.json(
