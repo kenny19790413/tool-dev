@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/client';
 import { getQuote, getDividendPerShare, getDividendMonths, getAnalystTarget, getUsdJpyRate } from '@/lib/stock/yahoo';
 import { fetchFundNav } from '@/lib/stock/fundNav';
+import { calcAssetValueJpy, type AssetWithValuations } from '@/lib/portfolio';
 
 export async function POST() {
   const [stocks, funds] = await Promise.all([
@@ -46,12 +47,34 @@ export async function POST() {
   );
 
   let rateUpdated = false;
+  let usdJpyRate = 150;
   try {
-    const rate = await getUsdJpyRate();
-    await prisma.exchangeRate.create({ data: { pair: 'USDJPY', rate } });
+    usdJpyRate = await getUsdJpyRate();
+    await prisma.exchangeRate.create({ data: { pair: 'USDJPY', rate: usdJpyRate } });
     rateUpdated = true;
   } catch (e) {
     console.error('為替レート取得失敗', e);
+    const latestRate = await prisma.exchangeRate.findFirst({ where: { pair: 'USDJPY' }, orderBy: { fetchedAt: 'desc' } });
+    if (latestRate) usdJpyRate = Number(latestRate.rate);
+  }
+
+  try {
+    const allAssets = await prisma.asset.findMany({
+      include: { valuations: { orderBy: { valuedAt: 'desc' }, take: 1 } },
+    });
+    const totalValueJpy = (allAssets as unknown as AssetWithValuations[]).reduce(
+      (sum, a) => sum + calcAssetValueJpy(a, usdJpyRate),
+      0
+    );
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    await prisma.portfolioSnapshot.upsert({
+      where: { date: today },
+      update: { totalValueJpy },
+      create: { date: today, totalValueJpy },
+    });
+  } catch (e) {
+    console.error('評価額スナップショット保存失敗', e);
   }
 
   const allResults = [...stockResults, ...fundResults];

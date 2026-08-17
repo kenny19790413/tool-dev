@@ -79,6 +79,14 @@ model Valuation {
   @@index([assetId, valuedAt])
 }
 
+// ポートフォリオ全体の評価額スナップショット（「株価を更新」実行のたびに当日分をupsert）
+model PortfolioSnapshot {
+  id            Int      @id @default(autoincrement())
+  date          DateTime @unique @db.Date // 記録日（日付のみ、1日1件）
+  totalValueJpy Decimal  @db.Decimal(18, 2) // 全資産評価額の合計（JPY換算）
+  createdAt     DateTime @default(now())
+}
+
 // 為替レート取得履歴（USDJPY等）
 model ExchangeRate {
   id        Int      @id @default(autoincrement())

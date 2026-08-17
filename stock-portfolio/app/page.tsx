@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RefreshAllButton } from './_components/RefreshAllButton';
 import { PortfolioBreakdownChart } from './_components/PortfolioBreakdownChart';
+import { PortfolioValueChart } from './_components/PortfolioValueChart';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,6 +116,15 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">資産評価額の推移</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PortfolioValueChart />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
