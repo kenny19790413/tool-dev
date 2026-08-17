@@ -43,6 +43,18 @@ export default async function DashboardPage() {
     return { type, label: ASSET_TYPE_LABEL[type], value, count: items.length };
   }).filter((b) => b.count > 0);
 
+  const brokerTotals = new Map<string, { value: number; count: number }>();
+  for (const asset of typed) {
+    const broker = asset.broker?.trim() || '未設定';
+    const entry = brokerTotals.get(broker) ?? { value: 0, count: 0 };
+    entry.value += calcAssetValueJpy(asset, usdJpyRate);
+    entry.count += 1;
+    brokerTotals.set(broker, entry);
+  }
+  const brokerBreakdown = [...brokerTotals.entries()]
+    .map(([broker, v]) => ({ type: broker, label: broker, value: v.value, count: v.count }))
+    .sort((a, b) => b.value - a.value);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -122,6 +134,17 @@ export default async function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {brokerBreakdown.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">証券会社別内訳</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PortfolioBreakdownChart data={brokerBreakdown} />
+          </CardContent>
+        </Card>
+      )}
 
       {totalDistribution > 0 && (
         <Card>

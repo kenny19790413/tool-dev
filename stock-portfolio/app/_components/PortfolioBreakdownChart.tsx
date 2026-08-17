@@ -3,7 +3,7 @@
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatJpy } from '@/lib/portfolio';
 
-const COLORS = ['#2563eb', '#16a34a', '#d97706', '#7c3aed'];
+const COLORS = ['#2563eb', '#16a34a', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#dc2626'];
 
 interface BreakdownItem {
   type: string;
@@ -18,7 +18,15 @@ export function PortfolioBreakdownChart({ data }: { data: BreakdownItem[] }) {
       <div style={{ width: '100%', height: 260 }}>
         <ResponsiveContainer>
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="label" innerRadius={60} outerRadius={100} paddingAngle={2}>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="label"
+              innerRadius={60}
+              outerRadius={100}
+              paddingAngle={2}
+              isAnimationActive={false}
+            >
               {data.map((_, i) => (
                 <Cell key={i} fill={COLORS[i % COLORS.length]} />
               ))}
