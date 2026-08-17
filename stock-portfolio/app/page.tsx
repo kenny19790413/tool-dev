@@ -5,6 +5,7 @@ import {
   calcAssetDistributionJpy,
   calcMonthlyDistributionJpy,
   calcPortfolioGain,
+  hasDistributionInfo,
   ASSET_TYPE_LABEL,
   formatJpy,
   type AssetWithValuations,
@@ -55,6 +56,8 @@ export default async function DashboardPage() {
   const brokerBreakdown = [...brokerTotals.entries()]
     .map(([broker, v]) => ({ type: broker, label: broker, value: v.value, count: v.count }))
     .sort((a, b) => b.value - a.value);
+
+  const missingDistributionAssets = typed.filter((a) => a.type === 'PRIVATE' && !hasDistributionInfo(a));
 
   return (
     <div className="space-y-6">
@@ -116,6 +119,27 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {missingDistributionAssets.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-amber-900">
+              ⚠ 配当・分配金が未入力のプライベート資産が{missingDistributionAssets.length}件あります
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1 text-sm">
+              {missingDistributionAssets.map((a) => (
+                <li key={a.id}>
+                  <Link href={`/assets/${a.id}`} className="text-amber-900 underline hover:text-amber-700">
+                    {a.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
