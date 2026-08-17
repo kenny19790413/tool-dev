@@ -4,6 +4,7 @@ import {
   calcAssetValueJpy,
   calcAssetDistributionJpy,
   calcMonthlyDistributionJpy,
+  calcPortfolioGain,
   ASSET_TYPE_LABEL,
   formatJpy,
   type AssetWithValuations,
@@ -29,6 +30,7 @@ export default async function DashboardPage() {
 
   const totalValue = typed.reduce((sum, a) => sum + calcAssetValueJpy(a, usdJpyRate), 0);
   const totalDistribution = typed.reduce((sum, a) => sum + calcAssetDistributionJpy(a, usdJpyRate), 0);
+  const portfolioGain = calcPortfolioGain(typed, usdJpyRate);
   const { monthly: monthlyDistribution, unscheduled: unscheduledDistribution } = calcMonthlyDistributionJpy(
     typed,
     usdJpyRate
@@ -48,13 +50,40 @@ export default async function DashboardPage() {
         <RefreshAllButton />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-normal text-gray-500">総資産</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-gray-800">{formatJpy(totalValue)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-normal text-gray-500">含み損益</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {portfolioGain.trackedCount === 0 ? (
+              <p className="text-lg text-gray-300">取得単価が未入力です</p>
+            ) : (
+              <>
+                <p className={`text-3xl font-bold ${portfolioGain.gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatJpy(portfolioGain.gain)}
+                </p>
+                {portfolioGain.percent !== null && (
+                  <p className={`text-sm ${portfolioGain.gain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {portfolioGain.gain >= 0 ? '+' : ''}
+                    {portfolioGain.percent.toFixed(1)}%
+                  </p>
+                )}
+                {portfolioGain.untrackedCount > 0 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    取得単価未入力の{portfolioGain.untrackedCount}件は含みません
+                  </p>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
         <Card>

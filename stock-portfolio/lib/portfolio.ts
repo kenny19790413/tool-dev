@@ -102,6 +102,29 @@ export function calcAssetGainPercent(asset: AssetWithValuations, usdJpyRate: num
   return (gain / cost) * 100;
 }
 
+// ポートフォリオ全体の含み損益。avgCost未入力の資産（BOND/PRIVATEなど）は集計から除外し、件数を別途返す。
+export function calcPortfolioGain(
+  assets: AssetWithValuations[],
+  usdJpyRate: number
+): { gain: number; percent: number | null; trackedCount: number; untrackedCount: number } {
+  let gain = 0;
+  let cost = 0;
+  let trackedCount = 0;
+  let untrackedCount = 0;
+  for (const asset of assets) {
+    const assetGain = calcAssetGainJpy(asset, usdJpyRate);
+    if (assetGain === null) {
+      untrackedCount++;
+      continue;
+    }
+    trackedCount++;
+    gain += assetGain;
+    cost += calcAssetValueJpy(asset, usdJpyRate) - assetGain;
+  }
+  const percent = cost !== 0 ? (gain / cost) * 100 : null;
+  return { gain, percent, trackedCount, untrackedCount };
+}
+
 // Yahoo Financeのアナリスト推奨度キー → 日本語ラベル
 export const RECOMMENDATION_LABEL: Record<string, string> = {
   strong_buy: '強気買い',
