@@ -115,6 +115,9 @@ export default async function AssetsPage({
           <Link href="/assets/import" className="text-sm text-blue-600 underline">
             画像から追加
           </Link>
+          <Link href="/assets/import-csv" className="text-sm text-blue-600 underline">
+            CSVから取り込む
+          </Link>
           <Link href="/assets/new" className="text-sm text-blue-600 underline">
             + 資産を追加
           </Link>
