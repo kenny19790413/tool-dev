@@ -47,6 +47,16 @@ export function hasDistributionInfo(asset: Asset): boolean {
   return asset.annualDistribution !== null && asset.annualDistribution !== undefined;
 }
 
+// 分配金・配当情報が未入力で、かつ「警告すべき状態」かどうか。
+// 決算月が判明していない資産は常に対象。決算月が判明している資産は、
+// 今年その決算月を迎える（＝もう過ぎている）まではまだ未入力でも警告しない。
+export function isDistributionInfoOverdue(asset: Asset, today: Date = new Date()): boolean {
+  if (hasDistributionInfo(asset)) return false;
+  if (asset.distributionMonths.length === 0) return true;
+  const currentMonth = today.getMonth() + 1;
+  return asset.distributionMonths.some((m) => m <= currentMonth);
+}
+
 // 資産1件の年間配当・分配金見込み（JPY換算、概算値）
 // STOCK: 自動取得の1株配当×数量。BOND/FUND/PRIVATE: 手動入力した年間分配金総額
 export function calcAssetDistributionJpy(asset: AssetWithValuations, usdJpyRate: number): number {

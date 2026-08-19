@@ -5,7 +5,7 @@ import {
   calcAssetDistributionJpy,
   calcMonthlyDistributionJpy,
   calcPortfolioGain,
-  hasDistributionInfo,
+  isDistributionInfoOverdue,
   ASSET_TYPE_LABEL,
   formatJpy,
   type AssetWithValuations,
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
     .map(([broker, v]) => ({ type: broker, label: broker, value: v.value, count: v.count }))
     .sort((a, b) => b.value - a.value);
 
-  const missingDistributionAssets = typed.filter((a) => a.type === 'PRIVATE' && !hasDistributionInfo(a));
+  const missingDistributionAssets = typed.filter((a) => a.type === 'PRIVATE' && isDistributionInfoOverdue(a));
 
   return (
     <div className="space-y-6">
@@ -124,7 +124,7 @@ export default async function DashboardPage() {
         <Card className="border-amber-300 bg-amber-50">
           <CardHeader className="pb-2">
             <CardTitle className="text-base text-amber-900">
-              ⚠ 配当・分配金が未入力のプライベート資産が{missingDistributionAssets.length}件あります
+              ⚠ 決算月を過ぎても配当・分配金が未入力のプライベート資産が{missingDistributionAssets.length}件あります
             </CardTitle>
           </CardHeader>
           <CardContent>
