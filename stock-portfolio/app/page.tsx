@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RefreshAllButton } from './_components/RefreshAllButton';
 import { PortfolioBreakdownChart } from './_components/PortfolioBreakdownChart';
 import { PortfolioValueChart } from './_components/PortfolioValueChart';
+import { BenchmarkChart } from './_components/BenchmarkChart';
 import { MarketNewsCard } from './_components/MarketNewsCard';
 
 export const dynamic = 'force-dynamic';
@@ -62,6 +63,22 @@ export default async function DashboardPage() {
     usdJpyRate
   );
   const maxMonthly = Math.max(...monthlyDistribution, 1);
+
+  // 今月・来月の予定（配当・分配金の入金予定月 / 株主優待の権利確定月）
+  const currentMonth = new Date().getMonth() + 1;
+  const nextMonth = (currentMonth % 12) + 1;
+  function buildUpcomingEvents(month: number) {
+    const events: { id: number; name: string; kind: string }[] = [];
+    for (const a of typed) {
+      if (a.distributionMonths.includes(month)) events.push({ id: a.id, name: a.name, kind: '配当・分配金' });
+      if (a.shareholderPerkMonths.includes(month)) events.push({ id: a.id, name: a.name, kind: '株主優待' });
+    }
+    return events;
+  }
+  const upcomingEvents = [
+    { month: currentMonth, label: '今月', events: buildUpcomingEvents(currentMonth) },
+    { month: nextMonth, label: '来月', events: buildUpcomingEvents(nextMonth) },
+  ];
 
   const breakdown = ASSET_ORDER.map((type) => {
     const items = typed.filter((a) => a.type === type);
@@ -239,6 +256,15 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent>
           <PortfolioValueChart />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">ベンチマーク比較（日経平均・TOPIX）</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BenchmarkChart />
         </CardContent>
       </Card>
 
@@ -425,6 +451,35 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">今月・来月の予定</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {upcomingEvents.map(({ month, label, events }) => (
+            <div key={label}>
+              <p className="text-sm font-medium text-gray-700 mb-1">
+                {label}（{month}月）
+              </p>
+              {events.length === 0 ? (
+                <p className="text-sm text-gray-400">予定はありません</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {events.map((e, i) => (
+                    <li key={i} className="flex justify-between">
+                      <Link href={`/assets/${e.id}`} className="text-blue-700 hover:underline truncate mr-2">
+                        {e.name}
+                      </Link>
+                      <span className="text-gray-400">{e.kind}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {totalDistribution > 0 && (
         <Card>
