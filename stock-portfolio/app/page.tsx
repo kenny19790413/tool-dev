@@ -22,11 +22,12 @@ export const dynamic = 'force-dynamic';
 const ASSET_ORDER = ['STOCK', 'BOND', 'FUND', 'PRIVATE'] as const;
 
 export default async function DashboardPage() {
-  const [assets, latestRate] = await Promise.all([
+  const [assets, latestRate, allocationTargets] = await Promise.all([
     prisma.asset.findMany({
       include: { valuations: { orderBy: { valuedAt: 'desc' }, take: 1 } },
     }),
     prisma.exchangeRate.findFirst({ where: { pair: 'USDJPY' }, orderBy: { fetchedAt: 'desc' } }),
+    prisma.allocationTarget.findMany(),
   ]);
 
   const usdJpyRate = latestRate ? Number(latestRate.rate) : 150; // フォールバック値（未取得時の概算）
@@ -46,6 +47,25 @@ export default async function DashboardPage() {
     const value = items.reduce((sum, a) => sum + calcAssetValueJpy(a, usdJpyRate), 0);
     return { type, label: ASSET_TYPE_LABEL[type], value, count: items.length };
   }).filter((b) => b.count > 0);
+
+  const targetByType = new Map(allocationTargets.map((t) => [t.assetType, Number(t.targetPercent)]));
+  const allocationComparison =
+    targetByType.size > 0
+      ? ASSET_ORDER.filter((type) => targetByType.has(type) || breakdown.some((b) => b.type === type)).map(
+          (type) => {
+            const value = breakdown.find((b) => b.type === type)?.value ?? 0;
+            const actualPercent = totalValue > 0 ? (value / totalValue) * 100 : 0;
+            const targetPercent = targetByType.get(type) ?? null;
+            return {
+              type,
+              label: ASSET_TYPE_LABEL[type],
+              actualPercent,
+              targetPercent,
+              diff: targetPercent !== null ? actualPercent - targetPercent : null,
+            };
+          }
+        )
+      : [];
 
   const brokerTotals = new Map<string, { value: number; count: number }>();
   for (const asset of typed) {
@@ -171,6 +191,43 @@ export default async function DashboardPage() {
             </p>
           ) : (
             <PortfolioBreakdownChart data={breakdown} />
+          )}
+          {allocationComparison.length > 0 && (
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-sm font-medium text-gray-700 mb-2">目標配分とのズレ</p>
+              <table className="w-full text-sm">
+                <tbody>
+                  {allocationComparison.map((row) => (
+                    <tr key={row.type} className="border-b last:border-0">
+                      <td className="py-1.5">{row.label}</td>
+                      <td className="py-1.5 text-right text-gray-500">{row.actualPercent.toFixed(1)}%</td>
+                      <td className="py-1.5 text-right text-gray-400">
+                        {row.targetPercent !== null ? `目標 ${row.targetPercent.toFixed(1)}%` : '目標未設定'}
+                      </td>
+                      <td
+                        className={`py-1.5 text-right font-medium w-20 ${
+                          row.diff === null
+                            ? 'text-gray-300'
+                            : Math.abs(row.diff) < 1
+                              ? 'text-gray-400'
+                              : row.diff > 0
+                                ? 'text-red-600'
+                                : 'text-blue-600'
+                        }`}
+                      >
+                        {row.diff !== null ? `${row.diff > 0 ? '+' : ''}${row.diff.toFixed(1)}pt` : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="text-xs text-gray-400 mt-2">
+                <Link href="/settings" className="underline">
+                  設定
+                </Link>
+                で目標配分を変更できます。
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>

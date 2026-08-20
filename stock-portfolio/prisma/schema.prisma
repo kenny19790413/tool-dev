@@ -122,3 +122,10 @@ model Credential {
   passwordHash String
   updatedAt    DateTime @updatedAt
 }
+
+// 資産クラスごとの目標配分（%）。未設定の資産クラスはズレ表示の対象外。
+model AllocationTarget {
+  assetType     AssetType @id
+  targetPercent Decimal   @db.Decimal(5, 2)
+  updatedAt     DateTime  @updatedAt
+}
