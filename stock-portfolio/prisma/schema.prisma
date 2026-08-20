@@ -18,6 +18,13 @@ enum AssetType {
   PRIVATE // プライベート資産（未公開株など）
 }
 
+// 保有名義（個人/法人で配当・分配金の税務上の扱いが異なるため区別する）
+enum AssetOwnerType {
+  INDIVIDUAL // 個人（源泉徴収20.315%で課税関係が完結する申告分離課税を想定）
+  CORPORATE  // 法人（源泉徴収15.315%は法人税額から控除される前払いに過ぎず、最終的な税負担は
+             // 益金不算入割合や法人全体の所得水準により異なるため、このアプリでは簡易計算しない）
+}
+
 enum Market {
   JP // 日本株
   US // 米国株
@@ -37,6 +44,7 @@ model Asset {
   quantity  Decimal? @db.Decimal(18, 4) // STOCK/FUNDのみ使用（保有株数 or 口数）
   avgCost   Decimal? @db.Decimal(18, 4) // STOCK/FUNDのみ使用（平均取得単価、STOCKは1株あたり・FUNDは1万口あたり、任意入力）
   broker    String? // 購入した証券会社（任意）
+  ownerType AssetOwnerType @default(CORPORATE) // 保有名義（個人/法人）。既存資産は現状すべて法人所有のためCORPORATEを既定値とする。
   note      String?
 
   // 株価/基準価額APIから取得したキャッシュ値（STOCK/FUNDのみ使用）

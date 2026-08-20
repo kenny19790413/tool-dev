@@ -14,13 +14,28 @@ export function toNumber(v: DecimalLike): number {
 // 投資信託の基準価額は「1万口あたり」の金額で表示される慣習
 export const FUND_NAV_UNIT = 10000;
 
-// 配当・分配金にかかる源泉徴収税率（所得税15.315%+住民税5% = 20.315%、特定口座・一般的な上場株式等を想定）
-// NISA口座等の非課税分は考慮していない概算値。
+// 配当・分配金にかかる源泉徴収税率（個人・申告分離課税を想定：所得税15.315%+住民税5% = 20.315%）
+// NISA口座等の非課税分は考慮していない概算値。個人保有分はこの税率で課税関係が完結するため「手取り」を計算できる。
 export const DIVIDEND_TAX_RATE = 0.20315;
 
 export function calcAfterTaxAmount(grossAmount: number): number {
   return grossAmount * (1 - DIVIDEND_TAX_RATE);
 }
+
+// 法人が受け取る配当・分配金の源泉徴収税率（所得税15.315%のみ、住民税の源泉徴収なし）。
+// これは法人税の前払いであり法人税額から控除されるため、個人と違って「手取り」を単純計算できない。
+// 最終的な税負担は益金不算入割合（株式の保有区分による）や法人全体の所得水準によって変わるため、
+// このアプリでは源泉徴収額の参考表示にとどめ、法人の「税引後手取り」は計算しない。
+export const CORPORATE_WITHHOLDING_RATE = 0.15315;
+
+export function calcCorporateWithholding(grossAmount: number): number {
+  return grossAmount * CORPORATE_WITHHOLDING_RATE;
+}
+
+export const ASSET_OWNER_TYPE_LABEL: Record<'INDIVIDUAL' | 'CORPORATE', string> = {
+  INDIVIDUAL: '個人',
+  CORPORATE: '法人',
+};
 
 // アナリスト目標株価に対する上昇/下落余地（%）。currentPrice/targetMeanPriceが揃わない場合はnull。
 // Yahoo Financeの目標株価は通常「今後12ヶ月」を想定した見通し。

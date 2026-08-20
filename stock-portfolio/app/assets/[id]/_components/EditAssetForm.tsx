@@ -15,6 +15,7 @@ interface Props {
   avgCost: number | null;
   broker: string | null;
   note: string | null;
+  ownerType: 'INDIVIDUAL' | 'CORPORATE';
   showQuantityFields: boolean;
   annualDistribution?: number | null;
   distributionCurrency?: string;
@@ -31,6 +32,7 @@ export function EditAssetForm({
   avgCost,
   broker,
   note,
+  ownerType,
   showQuantityFields,
   annualDistribution,
   distributionCurrency,
@@ -44,6 +46,7 @@ export function EditAssetForm({
   const [qty, setQty] = useState(quantity !== null ? String(quantity) : '');
   const [cost, setCost] = useState(avgCost !== null ? String(avgCost) : '');
   const [brokerName, setBrokerName] = useState(broker ?? '');
+  const [owner, setOwner] = useState<'INDIVIDUAL' | 'CORPORATE'>(ownerType);
   const [memo, setMemo] = useState(note ?? '');
   const [distribution, setDistribution] = useState(
     annualDistribution !== null && annualDistribution !== undefined ? String(annualDistribution) : ''
@@ -57,7 +60,12 @@ export function EditAssetForm({
     e.preventDefault();
     setSaving(true);
     try {
-      const body: Record<string, unknown> = { note: memo, broker: brokerName, distributionMonths: months };
+      const body: Record<string, unknown> = {
+        note: memo,
+        broker: brokerName,
+        distributionMonths: months,
+        ownerType: owner,
+      };
       if (showQuantityFields) {
         body.quantity = qty;
         body.avgCost = cost;
@@ -161,6 +169,32 @@ export function EditAssetForm({
           </div>
         </div>
       )}
+      <div>
+        <Label>保有名義</Label>
+        <div className="mt-1 flex gap-4">
+          <label className="flex items-center gap-1.5 text-sm">
+            <input
+              type="radio"
+              name="ownerType"
+              checked={owner === 'INDIVIDUAL'}
+              onChange={() => setOwner('INDIVIDUAL')}
+            />
+            個人
+          </label>
+          <label className="flex items-center gap-1.5 text-sm">
+            <input
+              type="radio"
+              name="ownerType"
+              checked={owner === 'CORPORATE'}
+              onChange={() => setOwner('CORPORATE')}
+            />
+            法人
+          </label>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">
+          配当・分配金の税務上の扱いが異なります（個人は源泉徴収で完結、法人は法人税の前払いとして控除）。
+        </p>
+      </div>
       <div>
         <Label htmlFor="broker">証券会社</Label>
         <BrokerInput id="broker" value={brokerName} onChange={setBrokerName} className="mt-1" />

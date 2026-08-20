@@ -7,7 +7,9 @@ import {
   calcPortfolioGain,
   isDistributionInfoOverdue,
   calcAfterTaxAmount,
+  calcCorporateWithholding,
   DIVIDEND_TAX_RATE,
+  CORPORATE_WITHHOLDING_RATE,
   ASSET_TYPE_LABEL,
   formatJpy,
   type AssetWithValuations,
@@ -36,6 +38,12 @@ export default async function DashboardPage() {
 
   const totalValue = typed.reduce((sum, a) => sum + calcAssetValueJpy(a, usdJpyRate), 0);
   const totalDistribution = typed.reduce((sum, a) => sum + calcAssetDistributionJpy(a, usdJpyRate), 0);
+  const individualDistribution = typed
+    .filter((a) => a.ownerType === 'INDIVIDUAL')
+    .reduce((sum, a) => sum + calcAssetDistributionJpy(a, usdJpyRate), 0);
+  const corporateDistribution = typed
+    .filter((a) => a.ownerType === 'CORPORATE')
+    .reduce((sum, a) => sum + calcAssetDistributionJpy(a, usdJpyRate), 0);
   const portfolioGain = calcPortfolioGain(typed, usdJpyRate);
   const { monthly: monthlyDistribution, unscheduled: unscheduledDistribution } = calcMonthlyDistributionJpy(
     typed,
@@ -131,10 +139,18 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-blue-700">{formatJpy(totalDistribution)}</p>
-            <p className="text-xs text-gray-400 mt-1">
-              税引後目安: {formatJpy(calcAfterTaxAmount(totalDistribution))}（源泉徴収{(DIVIDEND_TAX_RATE * 100).toFixed(3)}
-              %、NISA等は考慮せず概算）
-            </p>
+            {individualDistribution > 0 && (
+              <p className="text-xs text-gray-400 mt-1">
+                個人保有分 税引後目安: {formatJpy(calcAfterTaxAmount(individualDistribution))}（源泉徴収
+                {(DIVIDEND_TAX_RATE * 100).toFixed(3)}%、NISA等は考慮せず概算）
+              </p>
+            )}
+            {corporateDistribution > 0 && (
+              <p className="text-xs text-gray-400 mt-1">
+                法人保有分 源泉徴収額(参考): {formatJpy(calcCorporateWithholding(corporateDistribution))}（
+                {(CORPORATE_WITHHOLDING_RATE * 100).toFixed(3)}%、法人税から控除される前払いのため「手取り」は算出せず）
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card>

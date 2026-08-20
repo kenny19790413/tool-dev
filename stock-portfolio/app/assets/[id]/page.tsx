@@ -6,8 +6,10 @@ import {
   calcAssetGainJpy,
   calcUpsidePercent,
   calcAfterTaxAmount,
+  calcCorporateWithholding,
   hasDistributionInfo,
   ASSET_TYPE_LABEL,
+  ASSET_OWNER_TYPE_LABEL,
   MARKET_LABEL,
   RECOMMENDATION_LABEL,
   FUND_NAV_UNIT,
@@ -64,6 +66,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Badge variant="outline">{ASSET_TYPE_LABEL[asset.type]}</Badge>
+            <Badge variant="outline">{ASSET_OWNER_TYPE_LABEL[asset.ownerType]}</Badge>
             {asset.market && <span className="text-xs text-gray-400">{MARKET_LABEL[asset.market]}</span>}
             {isManualValuation && asset.currency === 'USD' && (
               <span className="text-xs text-gray-400">米ドル建て</span>
@@ -124,7 +127,14 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             ) : distribution > 0 ? (
               <>
                 <p className="text-2xl font-bold text-blue-700">{formatJpy(distribution)}</p>
-                <p className="text-xs text-gray-400">税引後目安: {formatJpy(calcAfterTaxAmount(distribution))}</p>
+                {asset.ownerType === 'INDIVIDUAL' ? (
+                  <p className="text-xs text-gray-400">税引後目安: {formatJpy(calcAfterTaxAmount(distribution))}</p>
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    源泉徴収額(参考): {formatJpy(calcCorporateWithholding(distribution))}
+                    <span className="block">法人税から控除される前払いのため「手取り」は計算していません</span>
+                  </p>
+                )}
                 <p className="text-xs text-gray-400 mt-1">
                   {asset.distributionMonths.length > 0
                     ? `入金月: ${asset.distributionMonths.map((m) => `${m}月`).join('・')}`
@@ -289,6 +299,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             avgCost={asset.avgCost !== null ? toNumber(asset.avgCost) : null}
             broker={asset.broker}
             note={asset.note}
+            ownerType={asset.ownerType}
             showQuantityFields={autoPriced}
             annualDistribution={asset.annualDistribution !== null ? toNumber(asset.annualDistribution) : null}
             distributionCurrency={asset.currency}
