@@ -143,7 +143,7 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">資産評価額の推移</CardTitle>
+          <CardTitle className="text-base">資産評価額・含み損益の推移</CardTitle>
         </CardHeader>
         <CardContent>
           <PortfolioValueChart />

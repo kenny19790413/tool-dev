@@ -84,6 +84,7 @@ model PortfolioSnapshot {
   id            Int      @id @default(autoincrement())
   date          DateTime @unique @db.Date // 記録日（日付のみ、1日1件）
   totalValueJpy Decimal  @db.Decimal(18, 2) // 全資産評価額の合計（JPY換算）
+  totalGainJpy  Decimal? @db.Decimal(18, 2) // 含み損益の合計（JPY換算、取得単価未入力の資産は除く。集計対象が0件ならnull）
   createdAt     DateTime @default(now())
 }
 

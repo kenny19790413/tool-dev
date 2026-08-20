@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/client';
 import { getQuote, getDividendPerShare, getDividendMonths, getAnalystTarget, getUsdJpyRate } from '@/lib/stock/yahoo';
 import { fetchFundNav } from '@/lib/stock/fundNav';
-import { calcAssetValueJpy, type AssetWithValuations } from '@/lib/portfolio';
+import { calcAssetValueJpy, calcPortfolioGain, type AssetWithValuations } from '@/lib/portfolio';
 
 export async function POST() {
   const [stocks, funds] = await Promise.all([
@@ -62,16 +62,16 @@ export async function POST() {
     const allAssets = await prisma.asset.findMany({
       include: { valuations: { orderBy: { valuedAt: 'desc' }, take: 1 } },
     });
-    const totalValueJpy = (allAssets as unknown as AssetWithValuations[]).reduce(
-      (sum, a) => sum + calcAssetValueJpy(a, usdJpyRate),
-      0
-    );
+    const typedAssets = allAssets as unknown as AssetWithValuations[];
+    const totalValueJpy = typedAssets.reduce((sum, a) => sum + calcAssetValueJpy(a, usdJpyRate), 0);
+    const portfolioGain = calcPortfolioGain(typedAssets, usdJpyRate);
+    const totalGainJpy = portfolioGain.trackedCount > 0 ? portfolioGain.gain : null;
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
     await prisma.portfolioSnapshot.upsert({
       where: { date: today },
-      update: { totalValueJpy },
-      create: { date: today, totalValueJpy },
+      update: { totalValueJpy, totalGainJpy },
+      create: { date: today, totalValueJpy, totalGainJpy },
     });
   } catch (e) {
     console.error('評価額スナップショット保存失敗', e);

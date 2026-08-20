@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
   const points = snapshots.map((s) => ({
     date: s.date.toISOString().slice(0, 10),
     totalValueJpy: Number(s.totalValueJpy),
+    totalGainJpy: s.totalGainJpy === null ? null : Number(s.totalGainJpy),
   }));
   return NextResponse.json({ points });
 }
