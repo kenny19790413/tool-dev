@@ -17,6 +17,7 @@ import {
   type AssetWithValuations,
 } from '@/lib/portfolio';
 import { PriceHistoryChart } from './_components/PriceHistoryChart';
+import { NewsList } from './_components/NewsList';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RefreshPriceButton } from './_components/RefreshPriceButton';
@@ -213,6 +214,8 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
       )}
 
       {isStock && <PriceHistoryChart assetId={asset.id} currency={asset.currency} />}
+
+      {isStock && <NewsList assetId={asset.id} />}
 
       {isFund && (
         <Card>
