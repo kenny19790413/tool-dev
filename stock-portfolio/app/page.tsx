@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RefreshAllButton } from './_components/RefreshAllButton';
 import { PortfolioBreakdownChart } from './_components/PortfolioBreakdownChart';
 import { PortfolioValueChart } from './_components/PortfolioValueChart';
+import { MarketNewsCard } from './_components/MarketNewsCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -276,6 +277,8 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      <MarketNewsCard />
 
       <p className="text-xs text-gray-400 text-right">
         為替レート(USD/JPY):{' '}
