@@ -51,6 +51,10 @@ model Asset {
   // 配当・分配金が実際に支払われる月（1〜12、複数可）。空配列=未設定（不明/未入力）
   distributionMonths Int[] @default([])
 
+  // 株主優待（STOCKのみ想定、任意入力）
+  shareholderPerk       String? // 優待内容（自由記述）
+  shareholderPerkMonths Int[]   @default([]) // 権利確定月（1〜12、複数可）
+
   // アナリスト目標株価（STOCKのみ、Yahoo Financeの実際のアナリスト予想。AIによる推測ではない）
   targetMeanPrice          Decimal?  @db.Decimal(18, 4) // 目標株価の平均
   targetHighPrice          Decimal?  @db.Decimal(18, 4) // 目標株価の強気予想

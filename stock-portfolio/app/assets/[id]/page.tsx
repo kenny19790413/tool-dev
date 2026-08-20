@@ -165,6 +165,22 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
         </Card>
       )}
 
+      {isStock && (asset.shareholderPerk || asset.shareholderPerkMonths.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">株主優待</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm text-gray-600">
+            <p>{asset.shareholderPerk || '内容未入力'}</p>
+            {asset.shareholderPerkMonths.length > 0 && (
+              <p className="text-xs text-gray-400">
+                権利確定月: {asset.shareholderPerkMonths.map((m) => `${m}月`).join('・')}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {isStock && (
         <Card>
           <CardHeader>
@@ -278,6 +294,9 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             distributionCurrency={asset.currency}
             showDistributionField={!isStock}
             distributionMonths={asset.distributionMonths}
+            showShareholderPerkFields={isStock}
+            shareholderPerk={asset.shareholderPerk}
+            shareholderPerkMonths={asset.shareholderPerkMonths}
           />
         </CardContent>
       </Card>

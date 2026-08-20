@@ -20,6 +20,9 @@ interface Props {
   distributionCurrency?: string;
   showDistributionField?: boolean;
   distributionMonths?: number[];
+  showShareholderPerkFields?: boolean;
+  shareholderPerk?: string | null;
+  shareholderPerkMonths?: number[];
 }
 
 export function EditAssetForm({
@@ -33,6 +36,9 @@ export function EditAssetForm({
   distributionCurrency,
   showDistributionField,
   distributionMonths,
+  showShareholderPerkFields,
+  shareholderPerk,
+  shareholderPerkMonths,
 }: Props) {
   const router = useRouter();
   const [qty, setQty] = useState(quantity !== null ? String(quantity) : '');
@@ -43,6 +49,8 @@ export function EditAssetForm({
     annualDistribution !== null && annualDistribution !== undefined ? String(annualDistribution) : ''
   );
   const [months, setMonths] = useState<number[]>(distributionMonths ?? []);
+  const [perk, setPerk] = useState(shareholderPerk ?? '');
+  const [perkMonths, setPerkMonths] = useState<number[]>(shareholderPerkMonths ?? []);
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -56,6 +64,10 @@ export function EditAssetForm({
       }
       if (showDistributionField) {
         body.annualDistribution = distribution;
+      }
+      if (showShareholderPerkFields) {
+        body.shareholderPerk = perk;
+        body.shareholderPerkMonths = perkMonths;
       }
       const res = await fetch(`/api/assets/${assetId}`, {
         method: 'PATCH',
@@ -133,6 +145,22 @@ export function EditAssetForm({
           決算日・分配日の月を選択してください（複数選択可）。単純な「年間見込み÷12」ではなく、実際の入金予定月を確認できるようになります。
         </p>
       </div>
+      {showShareholderPerkFields && (
+        <div>
+          <Label htmlFor="perk">株主優待（任意）</Label>
+          <Input
+            id="perk"
+            value={perk}
+            onChange={(e) => setPerk(e.target.value)}
+            placeholder="例: クオカード1,000円分"
+            className="mt-1"
+          />
+          <Label className="mt-2 block">優待の権利確定月</Label>
+          <div className="mt-1">
+            <MonthPicker value={perkMonths} onChange={setPerkMonths} />
+          </div>
+        </div>
+      )}
       <div>
         <Label htmlFor="broker">証券会社</Label>
         <BrokerInput id="broker" value={brokerName} onChange={setBrokerName} className="mt-1" />

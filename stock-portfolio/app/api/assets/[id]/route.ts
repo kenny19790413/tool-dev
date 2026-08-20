@@ -32,6 +32,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         .filter((n: number) => Number.isInteger(n) && n >= 1 && n <= 12);
     if (body.note !== undefined) data.note = body.note || null;
     if (body.broker !== undefined) data.broker = body.broker || null;
+    if (body.shareholderPerk !== undefined) data.shareholderPerk = body.shareholderPerk || null;
+    if (body.shareholderPerkMonths !== undefined && Array.isArray(body.shareholderPerkMonths))
+      data.shareholderPerkMonths = body.shareholderPerkMonths
+        .map((v: unknown) => Number(v))
+        .filter((n: number) => Number.isInteger(n) && n >= 1 && n <= 12);
     if (body.name !== undefined && String(body.name).trim()) data.name = String(body.name).trim();
 
     const asset = await prisma.asset.update({ where: { id: Number(id) }, data });
