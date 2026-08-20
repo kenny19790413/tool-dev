@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { RefreshPriceButton } from './_components/RefreshPriceButton';
 import { EditAssetForm } from './_components/EditAssetForm';
 import { AddValuationForm } from './_components/AddValuationForm';
+import { DistributionReceiptSection } from './_components/DistributionReceiptSection';
 import { DeleteAssetButton } from './_components/DeleteAssetButton';
 
 export const dynamic = 'force-dynamic';
@@ -35,7 +36,10 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
   const [asset, latestRate] = await Promise.all([
     prisma.asset.findUnique({
       where: { id: assetId },
-      include: { valuations: { orderBy: { valuedAt: 'desc' } } },
+      include: {
+        valuations: { orderBy: { valuedAt: 'desc' } },
+        distributionReceipts: { orderBy: { receivedAt: 'desc' } },
+      },
     }),
     prisma.exchangeRate.findFirst({ where: { pair: 'USDJPY' }, orderBy: { fetchedAt: 'desc' } }),
   ]);
@@ -237,6 +241,24 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">配当・分配金の受取記録</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DistributionReceiptSection
+            assetId={asset.id}
+            currency={asset.currency}
+            receipts={asset.distributionReceipts.map((r) => ({
+              id: r.id,
+              amount: toNumber(r.amount),
+              receivedAt: r.receivedAt.toISOString(),
+              note: r.note,
+            }))}
+          />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

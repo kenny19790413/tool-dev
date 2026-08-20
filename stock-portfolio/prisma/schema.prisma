@@ -63,8 +63,22 @@ model Asset {
   updatedAt DateTime @updatedAt
 
   valuations Valuation[] // BOND/PRIVATEの手動評価額履歴
+  distributionReceipts DistributionReceipt[] // 配当・分配金の実際の受取記録
 
   @@index([type])
+}
+
+// 配当・分配金の実際の受取記録（annualDistributionは「見込み」、こちらは実績）
+model DistributionReceipt {
+  id         Int      @id @default(autoincrement())
+  assetId    Int
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  amount     Decimal  @db.Decimal(18, 2) // 受取額（資産のcurrency建て）
+  receivedAt DateTime // 受取日
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([assetId, receivedAt])
 }
 
 // 非上場資産（債券・プライベート資産）の手動評価額履歴
