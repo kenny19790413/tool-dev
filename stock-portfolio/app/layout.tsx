@@ -17,6 +17,7 @@ const navItems = [
   { href: '/', label: 'ダッシュボード' },
   { href: '/assets', label: '資産一覧' },
   { href: '/assets/new', label: '資産を追加' },
+  { href: '/export', label: 'エクスポート' },
   { href: '/settings', label: '設定' },
 ];
 
