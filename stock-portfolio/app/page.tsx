@@ -8,6 +8,7 @@ import {
   isDistributionInfoOverdue,
   calcAfterTaxAmount,
   calcCorporateWithholding,
+  calcAssetGainJpy,
   DIVIDEND_TAX_RATE,
   CORPORATE_WITHHOLDING_RATE,
   ASSET_TYPE_LABEL,
@@ -45,6 +46,17 @@ export default async function DashboardPage() {
     .filter((a) => a.ownerType === 'CORPORATE')
     .reduce((sum, a) => sum + calcAssetDistributionJpy(a, usdJpyRate), 0);
   const portfolioGain = calcPortfolioGain(typed, usdJpyRate);
+
+  // 損益通算シミュレーション（個人保有・含み損のある資産のみ対象）。
+  // 実際に売却（実現）して初めて使える制度である旨、および同一年の他の譲渡益や
+  // 申告分離課税を選択した配当所得との相殺が前提である旨に注意。
+  const individualLossAssets = typed
+    .filter((a) => a.ownerType === 'INDIVIDUAL')
+    .map((a) => ({ id: a.id, name: a.name, gain: calcAssetGainJpy(a, usdJpyRate) }))
+    .filter((g): g is { id: number; name: string; gain: number } => g.gain !== null && g.gain < 0)
+    .sort((a, b) => a.gain - b.gain);
+  const totalIndividualLoss = individualLossAssets.reduce((sum, g) => sum + g.gain, 0);
+  const potentialTaxSaving = Math.abs(totalIndividualLoss) * DIVIDEND_TAX_RATE;
   const { monthly: monthlyDistribution, unscheduled: unscheduledDistribution } = calcMonthlyDistributionJpy(
     typed,
     usdJpyRate
@@ -75,6 +87,43 @@ export default async function DashboardPage() {
           }
         )
       : [];
+
+  // 集中リスクスコア（ハーフィンダール指数、HHI）: 各資産の構成比%を2乗して合計。0〜10000で、
+  // 数値が大きいほど特定の資産・証券会社に偏っている。
+  function calcHhi(values: number[], total: number): number {
+    if (total <= 0) return 0;
+    return values.reduce((sum, v) => sum + (v / total) * 100 * ((v / total) * 100), 0);
+  }
+  const assetHhi = calcHhi(
+    typed.map((a) => calcAssetValueJpy(a, usdJpyRate)),
+    totalValue
+  );
+  const brokerValuesForHhi = new Map<string, number>();
+  for (const asset of typed) {
+    const broker = asset.broker?.trim() || '未設定';
+    brokerValuesForHhi.set(broker, (brokerValuesForHhi.get(broker) ?? 0) + calcAssetValueJpy(asset, usdJpyRate));
+  }
+  const brokerHhi = calcHhi([...brokerValuesForHhi.values()], totalValue);
+  const topHoldings = [...typed]
+    .map((a) => ({ id: a.id, name: a.name, value: calcAssetValueJpy(a, usdJpyRate) }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3);
+  const top3Percent = totalValue > 0 ? (topHoldings.reduce((s, t) => s + t.value, 0) / totalValue) * 100 : 0;
+  function hhiLevel(hhi: number): { label: string; color: string } {
+    if (hhi < 1500) return { label: '分散度良好', color: 'text-green-600' };
+    if (hhi < 2500) return { label: 'やや集中', color: 'text-amber-600' };
+    return { label: '集中度が高い', color: 'text-red-600' };
+  }
+
+  const gainContributions = typed
+    .map((a) => ({ id: a.id, name: a.name, gain: calcAssetGainJpy(a, usdJpyRate) }))
+    .filter((g): g is { id: number; name: string; gain: number } => g.gain !== null && g.gain !== 0)
+    .sort((a, b) => b.gain - a.gain);
+  const topGainers = gainContributions.slice(0, 5);
+  const topLosers = gainContributions
+    .filter((g) => g.gain < 0)
+    .slice(-5)
+    .reverse();
 
   const brokerTotals = new Map<string, { value: number; count: number }>();
   for (const asset of typed) {
@@ -256,6 +305,123 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <PortfolioBreakdownChart data={brokerBreakdown} />
+          </CardContent>
+        </Card>
+      )}
+
+      {gainContributions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">銘柄別の含み損益寄与度</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">含み益への貢献 上位</p>
+              <ul className="space-y-1 text-sm">
+                {topGainers.map((g) => (
+                  <li key={g.id} className="flex justify-between border-b last:border-0 py-1">
+                    <Link href={`/assets/${g.id}`} className="text-blue-700 hover:underline truncate mr-2">
+                      {g.name}
+                    </Link>
+                    <span className={g.gain >= 0 ? 'text-green-600' : 'text-red-600'}>{formatJpy(g.gain)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">含み損の大きい銘柄</p>
+              {topLosers.length === 0 ? (
+                <p className="text-sm text-gray-400">含み損の銘柄はありません</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {topLosers.map((g) => (
+                    <li key={g.id} className="flex justify-between border-b last:border-0 py-1">
+                      <Link href={`/assets/${g.id}`} className="text-blue-700 hover:underline truncate mr-2">
+                        {g.name}
+                      </Link>
+                      <span className="text-red-600">{formatJpy(g.gain)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p className="text-xs text-gray-400 sm:col-span-2">
+              取得単価が入力されている資産のみ対象です（{gainContributions.length}件）。
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {totalValue > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">集中リスクスコア</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">銘柄の集中度（HHI）</p>
+                <p className={`text-xl font-bold ${hhiLevel(assetHhi).color}`}>
+                  {Math.round(assetHhi).toLocaleString('ja-JP')}{' '}
+                  <span className="text-sm font-normal">（{hhiLevel(assetHhi).label}）</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">証券会社の集中度（HHI）</p>
+                <p className={`text-xl font-bold ${hhiLevel(brokerHhi).color}`}>
+                  {Math.round(brokerHhi).toLocaleString('ja-JP')}{' '}
+                  <span className="text-sm font-normal">（{hhiLevel(brokerHhi).label}）</span>
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 text-sm text-gray-600">
+              <p>
+                上位3銘柄で保有全体の <span className="font-medium">{top3Percent.toFixed(1)}%</span> を占めています：
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {topHoldings.map((h) => (
+                  <li key={h.id}>
+                    <Link href={`/assets/${h.id}`} className="text-blue-700 hover:underline">
+                      {h.name}
+                    </Link>
+                    <span className="text-gray-400 ml-2">
+                      {totalValue > 0 ? ((h.value / totalValue) * 100).toFixed(1) : '0'}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <p className="text-xs text-gray-400 mt-3">
+              HHI（ハーフィンダール指数）は各資産・証券会社の構成比を2乗して合計した指標（0〜10000）で、数値が大きいほど偏りが大きいことを示します。1500未満は分散度良好、2500以上は集中度が高い目安です。
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {individualLossAssets.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-amber-900">損益通算シミュレーション（個人保有分）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-amber-900">
+              含み損の合計: <span className="font-semibold">{formatJpy(totalIndividualLoss)}</span>
+              　実現した場合の節税額目安:{' '}
+              <span className="font-semibold">{formatJpy(potentialTaxSaving)}</span>
+            </p>
+            <ul className="mt-2 space-y-0.5 text-sm">
+              {individualLossAssets.map((g) => (
+                <li key={g.id} className="flex justify-between">
+                  <Link href={`/assets/${g.id}`} className="text-amber-900 underline hover:text-amber-700">
+                    {g.name}
+                  </Link>
+                  <span className="text-red-700">{formatJpy(g.gain)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-amber-700 mt-3">
+              ※ あくまで試算です。実際に売却（実現）して初めて使える制度で、同一年の他の譲渡益や（申告分離課税を選択した場合の）配当所得との相殺が前提です。相殺しきれない損失は翌年以降3年間繰り越せます（確定申告が必要）。法人保有分は対象外（法人税の損金算入は別の仕組みのため）。
+            </p>
           </CardContent>
         </Card>
       )}
