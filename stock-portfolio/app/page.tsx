@@ -6,6 +6,8 @@ import {
   calcMonthlyDistributionJpy,
   calcPortfolioGain,
   isDistributionInfoOverdue,
+  calcAfterTaxAmount,
+  DIVIDEND_TAX_RATE,
   ASSET_TYPE_LABEL,
   formatJpy,
   type AssetWithValuations,
@@ -108,6 +110,10 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-blue-700">{formatJpy(totalDistribution)}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              税引後目安: {formatJpy(calcAfterTaxAmount(totalDistribution))}（源泉徴収{(DIVIDEND_TAX_RATE * 100).toFixed(3)}
+              %、NISA等は考慮せず概算）
+            </p>
           </CardContent>
         </Card>
         <Card>

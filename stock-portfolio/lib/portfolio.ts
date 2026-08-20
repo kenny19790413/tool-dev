@@ -14,6 +14,14 @@ export function toNumber(v: DecimalLike): number {
 // 投資信託の基準価額は「1万口あたり」の金額で表示される慣習
 export const FUND_NAV_UNIT = 10000;
 
+// 配当・分配金にかかる源泉徴収税率（所得税15.315%+住民税5% = 20.315%、特定口座・一般的な上場株式等を想定）
+// NISA口座等の非課税分は考慮していない概算値。
+export const DIVIDEND_TAX_RATE = 0.20315;
+
+export function calcAfterTaxAmount(grossAmount: number): number {
+  return grossAmount * (1 - DIVIDEND_TAX_RATE);
+}
+
 // アナリスト目標株価に対する上昇/下落余地（%）。currentPrice/targetMeanPriceが揃わない場合はnull。
 // Yahoo Financeの目標株価は通常「今後12ヶ月」を想定した見通し。
 export function calcUpsidePercent(currentPrice: number, targetMeanPrice: number): number | null {

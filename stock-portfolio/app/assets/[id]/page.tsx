@@ -5,6 +5,7 @@ import {
   calcAssetDistributionJpy,
   calcAssetGainJpy,
   calcUpsidePercent,
+  calcAfterTaxAmount,
   hasDistributionInfo,
   ASSET_TYPE_LABEL,
   MARKET_LABEL,
@@ -123,6 +124,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             ) : distribution > 0 ? (
               <>
                 <p className="text-2xl font-bold text-blue-700">{formatJpy(distribution)}</p>
+                <p className="text-xs text-gray-400">税引後目安: {formatJpy(calcAfterTaxAmount(distribution))}</p>
                 <p className="text-xs text-gray-400 mt-1">
                   {asset.distributionMonths.length > 0
                     ? `入金月: ${asset.distributionMonths.map((m) => `${m}月`).join('・')}`
