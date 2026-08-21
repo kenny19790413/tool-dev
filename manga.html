@@ -367,6 +367,7 @@ textarea{resize:vertical;min-height:60px}
     <div id="newSeriesFields" style="display:none">
       <input type="hidden" id="newSeriesTitle">
       <input type="hidden" id="newSeriesCoverUrl">
+      <input type="hidden" id="newSeriesKana">
       <div class="form-row" style="margin-top:10px">
         <div class="form-group" style="margin:0">
           <label>作者名</label>
@@ -497,6 +498,9 @@ textarea{resize:vertical;min-height:60px}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <h3 style="margin:0">📚 作品の管理</h3>
       <button onclick="closeSeriesModal()" style="font-size:20px;line-height:1;background:none;border:none;color:#a0aec0;cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button onclick="bulkFillKana()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer" title="ふりがな未入力の作品にまとめて読み仮名を取得（五十音順ソート用）">🈁 ふりがな一括取得</button>
     </div>
     <div id="seriesGenreFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
     <div class="series-list" id="seriesListEl"></div>
@@ -1752,7 +1756,9 @@ function parseNdl(xmlText){
       const issued=get('issued')||'';
       const issuedM=issued.match(/^(\d{4})\.(\d{2})/);
       const rd=issuedM?`${issuedM[1]}-${issuedM[2]}-01`:/^\d{4}$/.test(issued)?issued+'-01-01':'';
-      return{_src:'ndl',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,author:normalizeAuthor(get('creator')),publisher:get('publisher'),label:'',magazine:'',price:0,releaseDate:rd,thumb:'',isbn:''};
+      const kanaEl=item.getElementsByTagName('dcndl:titleTranscription')[0];
+      const titleKana=kataToHira((kanaEl?kanaEl.textContent:'').trim());
+      return{_src:'ndl',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,author:normalizeAuthor(get('creator')),publisher:get('publisher'),label:'',magazine:'',price:0,releaseDate:rd,thumb:'',isbn:'',titleKana};
     }).filter(it=>it.cleanTitle&&it.cleanTitle.length>0);
   }catch(e){return[];}
 }
@@ -1788,6 +1794,7 @@ function selectBookInline(idx){
     document.getElementById('newSeriesLabel').value=item.label||'';
     document.getElementById('newSeriesMagazine').value=item.magazine||'';
     document.getElementById('newSeriesCoverUrl').value=item.thumb||'';
+    document.getElementById('newSeriesKana').value=item.titleKana||'';
   }
   document.getElementById('editRakutenUrl').value=item.rakutenUrl||'';
   document.getElementById('editAsin').value=item.asin||'';
@@ -1866,7 +1873,7 @@ function openAddModal() {
   document.getElementById('newSeriesFields').style.display='none';
   const _pw=document.getElementById('volumePublisherWrap'); if(_pw)_pw.style.display='';
   const _aw=document.getElementById('volumeAuthorWrap'); if(_aw)_aw.style.display='';
-  ['newSeriesTitle','newSeriesAuthor','newSeriesPublisher','newSeriesPrice','newSeriesLabel','newSeriesMagazine','newSeriesCoverUrl'].forEach(id=>document.getElementById(id).value='');
+  ['newSeriesTitle','newSeriesAuthor','newSeriesPublisher','newSeriesPrice','newSeriesLabel','newSeriesMagazine','newSeriesCoverUrl','newSeriesKana'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('editRakutenUrl').value='';
   document.getElementById('editAsin').value='';
   document.getElementById('editIsbn').value='';
@@ -2166,6 +2173,7 @@ async function fetchPublisherFromOpenLibrary(seriesTitle) {
       'Jump Comics':'集英社','Viz Media':'','VIZ Media':'','Yen Press':'',
       'Kodansha Comics':'講談社','Kodansha':'講談社','Kodansha USA':'講談社',
       'Square Enix Manga':'スクウェア・エニックス','Square Enix':'スクウェア・エニックス',
+      'Shogakukan':'小学館','Shogakukan Inc':'小学館','Shogakukan Inc.':'小学館','Shogakukan Asia':'小学館',
       'Seven Seas Entertainment':'','Dark Horse Comics':'','Vertical Inc':'',
       'Tokyopop':'','Del Rey Manga':''};
     const jpPub=allPubs.find(p=>/[぀-鿿]/.test(p));
@@ -2359,7 +2367,8 @@ async function saveVolume() {
     const newLabel=document.getElementById('newSeriesLabel').value.trim();
     const newMagazine=document.getElementById('newSeriesMagazine').value.trim();
     const newCoverUrl=document.getElementById('newSeriesCoverUrl').value.trim();
-    await newRef.set({title:newTitle,author:newAuthor,publisher:newPub,price:newPrice,genre:newGenre,completed:newCompleted,rating:0,label:newLabel,magazine:newMagazine,coverUrl:newCoverUrl});
+    const newKana=kataToHira(document.getElementById('newSeriesKana').value.trim());
+    await newRef.set({title:newTitle,author:newAuthor,publisher:newPub,price:newPrice,genre:newGenre,completed:newCompleted,rating:0,label:newLabel,magazine:newMagazine,coverUrl:newCoverUrl,kana:newKana});
   } else if(seriesId&&seriesList[seriesId]){
     resolvedTitle=seriesList[seriesId].title;
   } else {alert('作品を選択してください');return;}
@@ -2407,7 +2416,8 @@ function renderSeriesList() {
     if(_seriesGenreFilter==='__none__')return !s.genre;
     return s.genre===_seriesGenreFilter;
   });
-  const sorted=filtered.sort((a,b)=>a[1].title.localeCompare(b[1].title,'ja'));
+  const sortKey=s=>kataToHira(s.kana||s.title);
+  const sorted=filtered.sort((a,b)=>sortKey(a[1]).localeCompare(sortKey(b[1]),'ja'));
   if(sorted.length===0){el.innerHTML=`<div class="series-empty">${_seriesGenreFilter?'該当する作品がありません':'登録作品がありません'}</div>`;return;}
   el.innerHTML=sorted.map(([id,s])=>{
     const sub=[s.author,s.publisher,s.genre,s.price?`¥${Number(s.price).toLocaleString()}`:''].filter(Boolean).join(' · ');
@@ -2429,6 +2439,9 @@ function renderSeriesList() {
       <div class="series-edit-form" id="sef_${id}">
         <div class="form-group" style="margin-bottom:10px"><label>タイトル</label>
           <input type="text" id="stitle_${id}" value="${escHtml(s.title||'')}" placeholder="作品タイトル">
+        </div>
+        <div class="form-group" style="margin-bottom:10px"><label>ふりがな（五十音順ソート用）</label>
+          <input type="text" id="sekana_${id}" value="${escHtml(s.kana||'')}" placeholder="例: かいへんのまほうつかい">
         </div>
         <div class="form-row">
           <div class="form-group" style="margin:0"><label>ジャンル</label>
@@ -2539,8 +2552,9 @@ async function saveSeriesEdit(id, btn) {
   const magazine=(form.querySelector('[id^="sem_"]')?.value||'').trim();
   const coverUrl=(form.querySelector('[id^="secv_"]')?.value||'').trim();
   const newTitle=(form.querySelector('[id^="stitle_"]')?.value||'').trim();
+  const kana=kataToHira((form.querySelector('[id^="sekana_"]')?.value||'').trim());
   const oldTitle=seriesList[id]?.title||'';
-  const updateData={genre,completed,rating,author,publisher,label,magazine,coverUrl};
+  const updateData={genre,completed,rating,author,publisher,label,magazine,coverUrl,kana};
   if(newTitle) updateData.title=newTitle;
   await dbSeriesRef.child(id).update(updateData);
   // タイトル変更時は登録済みの各巻データにもタイトルを反映（月別リスト等はvolume側のtitleを表示するため）
@@ -2588,6 +2602,11 @@ function closeBookSearch() { document.getElementById('bookSearchModal').classLis
 
 function normalizeAuthor(s) {
   return (s||'').replace(/[\/／]\s*著\s*$/,'').replace(/[\s　]+著\s*$/,'').replace(/\s*著$/,'').replace(/\s*\(著\)\s*$/,'').trim();
+}
+
+// カタカナ→ひらがな変換（ふりがな比較を統一するため）
+function kataToHira(s) {
+  return (s||'').replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
 }
 
 function extractVolume(title) {
@@ -2670,7 +2689,7 @@ function normRakuten(item) {
   return {_src:'rakuten',title:rawTitle,cleanTitle:ev.cleanTitle,volume:ev.volume,
     author:normalizeAuthor(item.author||''),publisher:item.publisherName||'',
     label:'',magazine:'',price:Number(item.itemPrice||item.listPrice||0),releaseDate:rd,thumb:thumb,isbn:item.isbn||'',
-    rakutenUrl:item.affiliateUrl||item.itemUrl||''};
+    rakutenUrl:item.affiliateUrl||item.itemUrl||'',titleKana:kataToHira(item.titleKana||'')};
 }
 
 function normAmazonPA(item) {
@@ -2762,6 +2781,7 @@ function selectBook(item) {
   document.getElementById('newSeriesLabel').value=item.label;
   document.getElementById('newSeriesMagazine').value=item.magazine;
   document.getElementById('newSeriesCoverUrl').value=item.thumb||'';
+  document.getElementById('newSeriesKana').value=item.titleKana||'';
   document.getElementById('newSeriesFields').style.display='';
   if(item.volume)document.getElementById('volumeNum').value=item.volume;
   if(item.releaseDate)document.getElementById('releaseDate').value=item.releaseDate;
@@ -2924,13 +2944,24 @@ async function bulkRefetchBooks() {
           }
         } catch(e2){}
       }
-      // ③ 出版社がまだ取れていない場合 Wikipedia → Open Library で補完
+      // ③ 出版社がまだ取れていない場合 楽天Books → Wikipedia → Open Library の順で補完
       if(!v.publisher&&!saves.publisher){
-        const wikiPub=await fetchPublisherFromWikipedia(seriesTitle);
-        if(wikiPub) saves.publisher=wikiPub;
-        else {
-          const olPub=await fetchPublisherFromOpenLibrary(seriesTitle);
-          if(olPub) saves.publisher=olPub;
+        try {
+          const nk3=t=>t.replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
+          const ns3=nk3(seriesTitle);
+          const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(seriesTitle)}&booksGenreId=001001&hits=10`).then(r => r.json());
+          for (const ri of (rkData.Items || []).map(i => i.Item)) {
+            if (!nk3(ri.title || '').includes(ns3)) continue;
+            if (ri.publisherName) { saves.publisher = ri.publisherName; break; }
+          }
+        } catch(e3){}
+        if(!saves.publisher){
+          const wikiPub=await fetchPublisherFromWikipedia(seriesTitle);
+          if(wikiPub) saves.publisher=wikiPub;
+          else {
+            const olPub=await fetchPublisherFromOpenLibrary(seriesTitle);
+            if(olPub) saves.publisher=olPub;
+          }
         }
       }
       if (Object.keys(saves).length > 0) {
@@ -2950,6 +2981,54 @@ async function bulkRefetchBooks() {
   banner.style.whiteSpace='pre-wrap';
   banner.textContent=msg;
   setTimeout(() => { banner.style.display='none'; banner.style.whiteSpace=''; }, 10000);
+}
+
+// ── 既存作品への一括ふりがな取得（五十音順ソート用） ──
+async function bulkFillKana() {
+  const targets = Object.entries(seriesList).filter(([,s]) => !s.kana);
+  if (targets.length === 0) { alert('ふりがな未入力の作品はありません'); return; }
+  if (!confirm(`ふりがな未入力の ${targets.length} 件を取得しますか？\n（見つからなかった作品は作品管理から手動入力してください）`)) return;
+
+  const banner = document.getElementById('bulkRefetchBanner');
+  banner.style.display = '';
+  let done = 0, updated = 0;
+  const notFound = [];
+  const nk = t => (t||'').replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
+
+  for (const [id, s] of targets) {
+    done++;
+    banner.textContent = `🈁 ふりがな取得中… ${done} / ${targets.length} 件`;
+    try {
+      const ns = nk(s.title);
+      let kana = '';
+      try {
+        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(s.title)}&booksGenreId=001001&hits=10`).then(r => r.json());
+        for (const ri of (rkData.Items || []).map(i => i.Item)) {
+          if (!nk(ri.title).includes(ns)) continue;
+          if (ri.titleKana) { kana = kataToHira(ri.titleKana); break; }
+        }
+      } catch(e){}
+      if (!kana) {
+        try {
+          const ndlXml = await fetch(`https://iss.ndl.go.jp/api/opensearch?title=${encodeURIComponent(s.title)}&cnt=10`).then(r => r.text());
+          for (const item of parseNdl(ndlXml)) {
+            if (!nk(item.cleanTitle).includes(ns) && !ns.includes(nk(item.cleanTitle))) continue;
+            if (item.titleKana) { kana = item.titleKana; break; }
+          }
+        } catch(e){}
+      }
+      if (kana) { await dbSeriesRef.child(id).update({kana}); updated++; }
+      else notFound.push(s.title);
+    } catch(e) { notFound.push(s.title); }
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  let msg = `✅ ${updated} 件のふりがなを取得しました（全 ${targets.length} 件処理完了）`;
+  if (notFound.length > 0) msg += `\n⚠️ 見つからなかった作品（作品管理で手動入力してください）:\n${notFound.join('、')}`;
+  banner.style.whiteSpace = 'pre-wrap';
+  banner.textContent = msg;
+  setTimeout(() => { banner.style.display = 'none'; banner.style.whiteSpace=''; }, 10000);
+  renderSeriesList();
 }
 
 // ── 誤入力発売日リセット（現在表示月の巻で -01 固定のもの） ──
