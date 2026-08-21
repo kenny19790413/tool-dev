@@ -16,6 +16,8 @@
       "printquote/**",
       "meishi-order/**",
       "meishi-order-kanko/**",
+      "stock-portfolio/**",
+      "app/**",
       "workers/**",
       "**/.env",
       "**/.env.*",
