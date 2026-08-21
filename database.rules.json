@@ -7,12 +7,16 @@
       }
     },
     "public_catalog": {
-      ".read": true,
-      ".write": "auth != null"
+      ".read": false,
+      ".write": false
     },
     "public_config": {
-      ".read": true,
-      ".write": "auth != null"
+      ".read": false,
+      ".write": false
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
     }
   }
 }

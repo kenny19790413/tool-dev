@@ -323,9 +323,6 @@ textarea{resize:vertical;min-height:60px}
 .btn-icon.amazon:hover{color:#ff9900}
 .btn-icon.rakuten{color:#bf0000;font-weight:bold;font-size:11px}
 .btn-icon.rakuten:hover{color:#990000}
-.btn-icon.public-on{color:#3182ce}
-.btn-icon.public-off{color:#cbd5e0}
-.btn-icon.public-off:hover{color:#3182ce}
 
 /* ─── テーマカスタマイズ ─── */
 .theme-color-btn{width:36px;height:36px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:all .2s;flex-shrink:0}
@@ -1620,27 +1617,6 @@ function getRakutenLink(v) {
   return makeAffLink('https://search.rakuten.co.jp/search/mall/'+encodeURIComponent(seriesTitle+volSuffix)+'/101-/');
 }
 
-async function togglePublicSeries(id) {
-  if(!currentUser||!dbSeriesRef)return;
-  const s=seriesList[id]; if(!s)return;
-  const newPublic=!s.isPublic;
-  const pubRef=database.ref('public_catalog/'+id);
-  if(newPublic){
-    const pubData={
-      title:s.title,author:s.author||'',publisher:s.publisher||'',
-      genre:s.genre||'',completed:s.completed||false,rating:s.rating||0,
-      label:s.label||'',coverUrl:s.coverUrl||'',
-      ownerId:currentUser.uid,publishedAt:Date.now()
-    };
-    await pubRef.set(pubData);
-    await database.ref('public_config/amazonTag').set(userSettings.amazonTag||'');
-  } else {
-    await pubRef.remove();
-  }
-  await dbSeriesRef.child(id).update({isPublic:newPublic});
-  showSaved(); renderSeriesList();
-}
-
 // ── ユーティリティ ──
 function getMonthVolumes() {
   return Object.entries(volumesList).map(([id,v])=>({id,...v})).filter(v=>{
@@ -2567,7 +2543,6 @@ function renderSeriesList() {
           ${(s.tags||[]).length?`<div class="series-item-tags">${(s.tags||[]).map(t=>`<span class="tag-chip">${escHtml(t)}</span>`).join('')}</div>`:''}
         </div>
         <button class="btn-icon" onclick="openNextVolumeFromSeries('${id}')" title="次巻を追加" style="color:#6b46c1;font-size:16px;font-weight:700">＋</button>
-        <button class="btn-icon ${s.isPublic?'public-on':'public-off'}" onclick="togglePublicSeries('${id}')" title="${s.isPublic?'公開中（クリックで非公開に）':'クリックで公開サイトに掲載'}">🌐</button>
         <button class="btn-icon edit" onclick="toggleSeriesEdit('${id}')" title="編集">✎</button>
         <button class="btn-icon" onclick="deleteSeries('${id}')" title="削除">✕</button>
       </div>

@@ -29,7 +29,6 @@
     "rewrites": [
       { "source": "/kakeibo",        "destination": "/kakeibo.html" },
       { "source": "/manga",          "destination": "/manga.html" },
-      { "source": "/manga-list",     "destination": "/manga-public.html" },
       { "source": "/bucket-list",    "destination": "/bucket-list.html" }
     ],
     "cleanUrls": true
