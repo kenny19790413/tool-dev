@@ -1507,8 +1507,18 @@ function calChangeMonth(delta) {
 }
 
 // ── 発見（話題の新刊・楽天Booksランキング） ──
-const DISCOVER_CACHE_KEY='mg_discover_cache';
 const DISCOVER_CACHE_TTL=6*60*60*1000; // 6時間
+const DISCOVER_GENRES=[
+  {id:'001001',    label:'すべて'},
+  {id:'001001001', label:'少年'},
+  {id:'001001002', label:'少女'},
+  {id:'001001003', label:'青年'},
+  {id:'001001004', label:'レディース'},
+  {id:'001001006', label:'文庫'},
+  {id:'001001012', label:'その他'},
+];
+let _discoverGenreId='001001';
+function discoverCacheKey(genreId) { return 'mg_discover_cache_'+genreId; }
 function renderDiscover() {
   document.getElementById('summaryLabel1').textContent='話題の新刊';
   document.getElementById('summaryLabel2').textContent='';
@@ -1516,34 +1526,47 @@ function renderDiscover() {
   document.getElementById('totalCount').textContent='';
   document.getElementById('boughtTotal').textContent='';
   document.getElementById('unboughtTotal').textContent='';
+  const genreTabs=DISCOVER_GENRES.map(g=>{
+    const active=_discoverGenreId===g.id;
+    return `<button style="padding:5px 12px;border-radius:20px;border:1px solid ${active?'#9b59b6':'#e2d9f3'};background:${active?'#9b59b6':'#faf5ff'};color:${active?'#fff':'#6b46c1'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}" onclick="setDiscoverGenre('${g.id}')">${g.label}</button>`;
+  }).join('');
   document.getElementById('viewArea').innerHTML=`
     <div class="card">
       <div class="card-header">
         <h2>🔍 話題の新刊・発見</h2>
         <button class="sort-btn" onclick="loadDiscoverRanking(true)">🔄 更新</button>
       </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px">${genreTabs}</div>
       <div id="discoverList" style="padding:16px;text-align:center;color:#718096">読み込み中…</div>
     </div>`;
   loadDiscoverRanking(false);
 }
+function setDiscoverGenre(genreId) {
+  _discoverGenreId=genreId;
+  renderDiscover();
+}
 async function loadDiscoverRanking(forceRefresh) {
   const listEl=document.getElementById('discoverList');
   if(!listEl) return;
+  const genreId=_discoverGenreId;
+  const cacheKey=discoverCacheKey(genreId);
   if(!forceRefresh){
     try{
-      const cached=JSON.parse(localStorage.getItem(DISCOVER_CACHE_KEY)||'null');
+      const cached=JSON.parse(localStorage.getItem(cacheKey)||'null');
       if(cached&&(Date.now()-cached.fetchedAt)<DISCOVER_CACHE_TTL){ renderDiscoverItems(cached.items); return; }
     }catch(e){}
   }
   listEl.textContent='🔄 楽天Booksから取得中…';
   try{
-    const url=`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&booksGenreId=001001&sort=sales&hits=30`;
+    const url=`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&booksGenreId=${genreId}&sort=sales&hits=30`;
     const data=await fetch(url).then(r=>r.json());
+    if(genreId!==_discoverGenreId) return; // 取得中にジャンルが切り替えられていたら破棄
     const items=(data.Items||[]).map(x=>normRakuten(x.Item)).filter(it=>it.cleanTitle);
     if(items.length===0){ listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>取得できませんでした。時間をおいて「更新」をお試しください</p></div>'; return; }
-    localStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify({items,fetchedAt:Date.now()}));
+    localStorage.setItem(cacheKey, JSON.stringify({items,fetchedAt:Date.now()}));
     renderDiscoverItems(items);
   }catch(e){
+    if(genreId!==_discoverGenreId) return;
     listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>取得に失敗しました。時間をおいて「更新」をお試しください</p></div>';
   }
 }
