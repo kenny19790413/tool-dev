@@ -245,6 +245,9 @@ textarea{resize:vertical;min-height:60px}
 .series-item-info{flex:1;min-width:0}
 .series-item-title{font-size:13px;font-weight:700}
 .series-item-sub{font-size:11px;color:#718096;margin-top:2px}
+.series-item-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.tag-chip{font-size:10px;padding:1px 8px;border-radius:10px;background:#f0e6ff;color:#6b46c1;white-space:nowrap}
+.tag-chip.active{background:#6b46c1;color:#fff}
 .series-edit-form{margin-top:10px;padding-top:10px;border-top:1px solid var(--br);display:none}
 .series-empty{text-align:center;padding:20px;color:#a0aec0;font-size:13px}
 
@@ -444,6 +447,13 @@ textarea{resize:vertical;min-height:60px}
       <label>メモ</label>
       <textarea id="volumeMemo" placeholder="例: 図書館で借りる・Kindle版待ち など"></textarea>
     </div>
+    <div class="form-group" style="margin-top:14px">
+      <label>読了後の感想・評価</label>
+      <div class="star-input" id="volRatingStars">
+        <span id="vrs_1" onclick="setVolRating(1)">☆</span><span id="vrs_2" onclick="setVolRating(2)">☆</span><span id="vrs_3" onclick="setVolRating(3)">☆</span><span id="vrs_4" onclick="setVolRating(4)">☆</span><span id="vrs_5" onclick="setVolRating(5)">☆</span>
+      </div>
+      <textarea id="volumeReview" placeholder="例: 展開が熱かった、作画が綺麗だった など" style="margin-top:6px"></textarea>
+    </div>
     <div class="budget-warning" id="budgetWarning"></div>
     <div id="apiRefetchStatus" style="display:none;font-size:12px;color:#718096;margin-bottom:8px;text-align:center;white-space:pre-line"></div>
     <div class="modal-actions">
@@ -502,7 +512,8 @@ textarea{resize:vertical;min-height:60px}
     <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
       <button onclick="bulkFillKana()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer" title="ふりがな未入力の作品にまとめて読み仮名を取得（五十音順ソート用）">🈁 ふりがな一括取得</button>
     </div>
-    <div id="seriesGenreFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+    <div id="seriesGenreFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+    <div id="seriesTagFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
     <div class="series-list" id="seriesListEl"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeSeriesModal()">閉じる</button>
@@ -1327,6 +1338,7 @@ function volumeRow(v, isSearch, today) {
   const completedBadge=completed?`<span class="completed-badge">完結</span>`:'';
   const ratingHtml=rating?`<span class="stars">${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</span>`:'';
   const memoHtml=v.memo?`<div class="td-memo">💬 ${escHtml(v.memo)}</div>`:'';
+  const reviewHtml=(v.review||v.rating)?`<div class="td-memo">📝 ${v.rating?('★'.repeat(v.rating)+'☆'.repeat(5-v.rating)+' '):''}${escHtml(v.review||'')}</div>`:'';
   const titleHtml=isSearch?highlight(v.title,searchQuery):escHtml(v.title);
   let dateMark='';
   if(d){const rd=new Date(d);rd.setHours(0,0,0,0);const diff=(rd-today)/86400000;if(diff===0)dateMark=' 🔴';else if(diff===1)dateMark=' 🟡';}
@@ -1335,7 +1347,7 @@ function volumeRow(v, isSearch, today) {
     <td class="td-date">${dateStr}${dateMark}</td>
     <td class="td-vol" ${isSearch?'':'style="display:none"'}>${monthStr}</td>
     <td class="td-title"><div class="td-title-inner">
-      <div>${titleHtml}${genreBadge}${completedBadge}${ratingHtml}</div>${memoHtml}
+      <div>${titleHtml}${genreBadge}${completedBadge}${ratingHtml}</div>${memoHtml}${reviewHtml}
     </div></td>
     <td class="td-vol">${volStr}</td>
     <td class="td-pub">${escHtml(v.publisher||'─')}</td>
@@ -1386,8 +1398,9 @@ function renderHistory() {
       const genreBadge=genre?`<span class="genre-badge genre-${escHtml(genre)}">${escHtml(genre)}</span>`:'';
       const completedBadge=completed?`<span class="completed-badge">完結</span>`:'';
       const memoHtml=v.memo?`<div class="td-memo">💬 ${escHtml(v.memo)}</div>`:'';
+      const reviewHtml=(v.review||v.rating)?`<div class="td-memo">📝 ${v.rating?('★'.repeat(v.rating)+'☆'.repeat(5-v.rating)+' '):''}${escHtml(v.review||'')}</div>`:'';
       html+=`<tr class="${status==='read'?'status-read':''}"><td class="td-date">${dateStr}</td>
-        <td class="td-title"><div class="td-title-inner"><div>${escHtml(v.title)}${genreBadge}${completedBadge}</div>${memoHtml}</div></td>
+        <td class="td-title"><div class="td-title-inner"><div>${escHtml(v.title)}${genreBadge}${completedBadge}</div>${memoHtml}${reviewHtml}</div></td>
         <td class="td-vol">${volStr}</td><td class="td-pub">${escHtml(v.publisher||'─')}</td>
         <td class="td-price" style="text-align:right">${priceStr}</td>
         <td class="td-actions"><button class="status-btn ${status}" onclick="cycleStatus('${v.id}')">${STATUS_LABEL[status]}</button></td>
@@ -1868,7 +1881,8 @@ function onSeriesChange() {
 function openAddModal() {
   document.getElementById('addModalTitle').textContent='📖 新刊を追加';
   document.getElementById('editVolumeId').value='';
-  ['seriesSelect','volumeNum','publisher','price','volumeMemo','volumeAuthor'].forEach(id=>document.getElementById(id).value='');
+  ['seriesSelect','volumeNum','publisher','price','volumeMemo','volumeAuthor','volumeReview'].forEach(id=>document.getElementById(id).value='');
+  resetVolRating();
   const _si=document.getElementById('seriesSearchInput'); if(_si)_si.value='';
   document.getElementById('newSeriesFields').style.display='none';
   const _pw=document.getElementById('volumePublisherWrap'); if(_pw)_pw.style.display='';
@@ -1901,6 +1915,8 @@ function openEditModal(id) {
   document.getElementById('publisher').value=v.publisher||series.publisher||'';
   document.getElementById('price').value=v.price||'';
   document.getElementById('volumeMemo').value=v.memo||'';
+  document.getElementById('volumeReview').value=v.review||'';
+  setVolRating(0); setVolRating(v.rating||0);
   document.getElementById('volumeAuthor').value=v.author||series.author||'';
   document.getElementById('editRakutenUrl').value=v.rakutenUrl||'';
   document.getElementById('editAsin').value=v.asin||'';
@@ -1923,6 +1939,8 @@ function openNextVolumeModal(id) {
   document.getElementById('publisher').value=v.publisher||'';
   document.getElementById('price').value=v.price||'';
   document.getElementById('volumeMemo').value='';
+  document.getElementById('volumeReview').value='';
+  resetVolRating();
   document.getElementById('volumeAuthor').value=seriesList[v.seriesId]?.author||v.author||'';
   document.getElementById('editRakutenUrl').value='';
   document.getElementById('editAsin').value='';
@@ -2338,6 +2356,8 @@ async function saveVolume() {
   const author=document.getElementById('volumeAuthor').value.trim()||(seriesId!=='__new__'?(seriesList[seriesId]?.author||''):(document.getElementById('newSeriesAuthor').value.trim()));
   const price=parseFloat(document.getElementById('price').value)||0;
   const memo=document.getElementById('volumeMemo').value.trim();
+  const review=document.getElementById('volumeReview').value.trim();
+  const rating=parseInt(document.getElementById('volRatingStars').getAttribute('data-rating')||'0')||0;
   const rakutenUrl=(document.getElementById('editRakutenUrl').value||'').trim();
   const asin=(document.getElementById('editAsin').value||'').trim();
   const isbn=(document.getElementById('editIsbn').value||'').trim();
@@ -2379,7 +2399,7 @@ async function saveVolume() {
     if(dup&&!confirm(`「${resolvedTitle} 第${volumeNum}巻」はすでに登録されています。\n続けて登録しますか？`))return;
   }
 
-  const data={seriesId:resolvedSeriesId,title:resolvedTitle,volume:volumeNum,releaseDate,publisher,author,price,memo,rakutenUrl,asin,isbn,status:editId?(volumesList[editId]?.status||'none'):'none',purchased:false};
+  const data={seriesId:resolvedSeriesId,title:resolvedTitle,volume:volumeNum,releaseDate,publisher,author,price,memo,review,rating,rakutenUrl,asin,isbn,status:editId?(volumesList[editId]?.status||'none'):'none',purchased:false};
   let savedRef;
   if(editId){await dbVolumesRef.child(editId).set({...data,status:volumesList[editId]?.status||'none',purchased:volumesList[editId]?.purchased||false}); savedRef=dbVolumesRef.child(editId);}
   else{savedRef=dbVolumesRef.push(); await savedRef.set(data);}
@@ -2391,9 +2411,15 @@ async function saveVolume() {
 
 // ── 作品管理モーダル ──
 let _seriesGenreFilter='';
-function openSeriesModal() { _seriesGenreFilter=''; renderSeriesList(); document.getElementById('seriesModal').classList.remove('hidden'); }
+let _seriesTagFilter=[];
+function openSeriesModal() { _seriesGenreFilter=''; _seriesTagFilter=[]; renderSeriesList(); document.getElementById('seriesModal').classList.remove('hidden'); }
 function closeSeriesModal() { document.getElementById('seriesModal').classList.add('hidden'); }
 function setSeriesGenreFilter(g) { _seriesGenreFilter=g; renderSeriesList(); }
+function toggleSeriesTagFilter(t) {
+  const i=_seriesTagFilter.indexOf(t);
+  if(i>=0) _seriesTagFilter.splice(i,1); else _seriesTagFilter.push(t);
+  renderSeriesList();
+}
 function renderSeriesList() {
   const el=document.getElementById('seriesListEl');
   // ジャンルフィルタータブ生成
@@ -2411,7 +2437,19 @@ function renderSeriesList() {
       ...(counts['未設定']>0?[{label:`未設定 (${counts['未設定']})`,val:'__none__'}]:[])
     ].map(t=>`<button style="${tabStyle(_seriesGenreFilter===t.val)}" onclick="setSeriesGenreFilter('${t.val}')">${escHtml(t.label)}</button>`).join('');
   }
+  // タグフィルターチップ生成（複数選択・AND絞り込み）
+  const tagWrap=document.getElementById('seriesTagFilterWrap');
+  if(tagWrap){
+    const tagCounts={};
+    all.forEach(s=>(s.tags||[]).forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
+    const allTags=Object.keys(tagCounts).sort((a,b)=>tagCounts[b]-tagCounts[a]);
+    tagWrap.innerHTML=allTags.map(t=>{
+      const active=_seriesTagFilter.includes(t);
+      return `<span class="tag-chip${active?' active':''}" style="cursor:pointer" onclick="toggleSeriesTagFilter('${t.replace(/'/g,"\\'")}')">${escHtml(t)} (${tagCounts[t]})</span>`;
+    }).join('');
+  }
   const filtered=Object.entries(seriesList).filter(([,s])=>{
+    if(_seriesTagFilter.length && !_seriesTagFilter.every(t=>(s.tags||[]).includes(t))) return false;
     if(_seriesGenreFilter==='')return true;
     if(_seriesGenreFilter==='__none__')return !s.genre;
     return s.genre===_seriesGenreFilter;
@@ -2430,6 +2468,7 @@ function renderSeriesList() {
           <div class="series-item-title">${escHtml(s.title)}${completedBadge}</div>
           <div class="star-inline" id="sti_${id}">${[1,2,3,4,5].map(n=>`<span id="istar_${id}_${n}" class="${n<=rating?'on':''}" onclick="setInlineRating('${id}',${n})" title="${n}★">${n<=rating?'★':'☆'}</span>`).join('')}</div>
           ${sub?`<div class="series-item-sub">${escHtml(sub)}</div>`:''}
+          ${(s.tags||[]).length?`<div class="series-item-tags">${(s.tags||[]).map(t=>`<span class="tag-chip">${escHtml(t)}</span>`).join('')}</div>`:''}
         </div>
         <button class="btn-icon" onclick="openNextVolumeFromSeries('${id}')" title="次巻を追加" style="color:#6b46c1;font-size:16px;font-weight:700">＋</button>
         <button class="btn-icon ${s.isPublic?'public-on':'public-off'}" onclick="togglePublicSeries('${id}')" title="${s.isPublic?'公開中（クリックで非公開に）':'クリックで公開サイトに掲載'}">🌐</button>
@@ -2481,6 +2520,9 @@ function renderSeriesList() {
             ${[1,2,3,4,5].map(n=>`<span id="star_${id}_${n}" class="${n<=rating?'on':''}" onclick="setRating('${id}',${n})">${n<=rating?'★':'☆'}</span>`).join('')}
           </div>
         </div>
+        <div class="form-group" style="margin-top:10px"><label>タグ（カンマ区切り）</label>
+          <input type="text" id="setags_${id}" value="${escHtml((s.tags||[]).join(', '))}" placeholder="例: 積読, お気に入り, 全巻購入済み">
+        </div>
         <div class="form-group" style="margin-top:10px"><label>表紙画像URL（任意・公開サイト表示用）</label>
           <input type="text" id="secv_${id}" value="${escHtml(s.coverUrl||'')}" placeholder="例: https://books.google.com/...">
         </div>
@@ -2514,6 +2556,8 @@ function openNextVolumeFromSeries(id) {
   document.getElementById('price').value=s.price||'';
   document.getElementById('volumeAuthor').value=s.author||'';
   document.getElementById('volumeMemo').value='';
+  document.getElementById('volumeReview').value='';
+  resetVolRating();
   document.getElementById('editRakutenUrl').value='';
   document.getElementById('editAsin').value='';
   document.getElementById('editIsbn').value='';
@@ -2539,6 +2583,19 @@ function setRating(id,n) {
   }
   document.getElementById(`ser_${id}`).setAttribute('data-rating',newRating);
 }
+// ── 巻ごとの感想・評価（新刊追加/編集モーダル） ──
+function setVolRating(n) {
+  const wrap=document.getElementById('volRatingStars');
+  const cur=parseInt(wrap.getAttribute('data-rating')||'0');
+  const newRating=(cur===n)?0:n;
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById(`vrs_${i}`);
+    el.textContent=i<=newRating?'★':'☆';
+    el.className=i<=newRating?'on':'';
+  }
+  wrap.setAttribute('data-rating',newRating);
+}
+function resetVolRating() { document.getElementById('volRatingStars').setAttribute('data-rating','0'); for(let i=1;i<=5;i++){const el=document.getElementById(`vrs_${i}`);el.textContent='☆';el.className='';} }
 async function saveSeriesEdit(id, btn) {
   if(!currentUser||!dbSeriesRef)return;
   const form = btn ? btn.closest('.series-edit-form') : document.getElementById('sef_'+id);
@@ -2553,8 +2610,9 @@ async function saveSeriesEdit(id, btn) {
   const coverUrl=(form.querySelector('[id^="secv_"]')?.value||'').trim();
   const newTitle=(form.querySelector('[id^="stitle_"]')?.value||'').trim();
   const kana=kataToHira((form.querySelector('[id^="sekana_"]')?.value||'').trim());
+  const tags=(form.querySelector('[id^="setags_"]')?.value||'').split(/[,、]/).map(t=>t.trim()).filter(Boolean);
   const oldTitle=seriesList[id]?.title||'';
-  const updateData={genre,completed,rating,author,publisher,label,magazine,coverUrl,kana};
+  const updateData={genre,completed,rating,author,publisher,label,magazine,coverUrl,kana,tags};
   if(newTitle) updateData.title=newTitle;
   await dbSeriesRef.child(id).update(updateData);
   // タイトル変更時は登録済みの各巻データにもタイトルを反映（月別リスト等はvolume側のtitleを表示するため）
