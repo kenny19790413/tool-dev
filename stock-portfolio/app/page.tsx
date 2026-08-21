@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db/client';
 import {
   calcAssetValueJpy,
@@ -21,12 +22,17 @@ import { PortfolioBreakdownChart } from './_components/PortfolioBreakdownChart';
 import { PortfolioValueChart } from './_components/PortfolioValueChart';
 import { BenchmarkChart } from './_components/BenchmarkChart';
 import { MarketNewsCard } from './_components/MarketNewsCard';
+import { OnboardingCard } from './_components/OnboardingCard';
+import { Term } from './_components/Term';
 
 export const dynamic = 'force-dynamic';
 
 const ASSET_ORDER = ['STOCK', 'BOND', 'FUND', 'PRIVATE'] as const;
 
 export default async function DashboardPage() {
+  const cookieStore = await cookies();
+  const isAdvanced = cookieStore.get('sp_mode')?.value === 'advanced';
+
   const [assets, latestRate, allocationTargets] = await Promise.all([
     prisma.asset.findMany({
       include: { valuations: { orderBy: { valuedAt: 'desc' }, take: 1 } },
@@ -163,6 +169,8 @@ export default async function DashboardPage() {
         <RefreshAllButton />
       </div>
 
+      <OnboardingCard />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -174,7 +182,9 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-normal text-gray-500">含み損益</CardTitle>
+            <CardTitle className="text-sm font-normal text-gray-500">
+              <Term slug="unrealized-gain">含み損益</Term>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {portfolioGain.trackedCount === 0 ? (
@@ -207,13 +217,15 @@ export default async function DashboardPage() {
             <p className="text-3xl font-bold text-blue-700">{formatJpy(totalDistribution)}</p>
             {individualDistribution > 0 && (
               <p className="text-xs text-gray-400 mt-1">
-                個人保有分 税引後目安: {formatJpy(calcAfterTaxAmount(individualDistribution))}（源泉徴収
-                {(DIVIDEND_TAX_RATE * 100).toFixed(3)}%、NISA等は考慮せず概算）
+                個人保有分 税引後目安: {formatJpy(calcAfterTaxAmount(individualDistribution))}（
+                <Term slug="withholding-tax">源泉徴収</Term>
+                {(DIVIDEND_TAX_RATE * 100).toFixed(3)}%、<Term slug="nisa">NISA</Term>等は考慮せず概算）
               </p>
             )}
             {corporateDistribution > 0 && (
               <p className="text-xs text-gray-400 mt-1">
-                法人保有分 源泉徴収額(参考): {formatJpy(calcCorporateWithholding(corporateDistribution))}（
+                法人保有分 <Term slug="corporate-withholding">源泉徴収額(参考)</Term>:{' '}
+                {formatJpy(calcCorporateWithholding(corporateDistribution))}（
                 {(CORPORATE_WITHHOLDING_RATE * 100).toFixed(3)}%、法人税から控除される前払いのため「手取り」は算出せず）
               </p>
             )}
@@ -259,14 +271,16 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">ベンチマーク比較（日経平均・TOPIX）</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BenchmarkChart />
-        </CardContent>
-      </Card>
+      {isAdvanced && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">ベンチマーク比較（日経平均・TOPIX）</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BenchmarkChart />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -324,7 +338,7 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      {brokerBreakdown.length > 0 && (
+      {isAdvanced && brokerBreakdown.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">証券会社別内訳</CardTitle>
@@ -335,7 +349,7 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      {gainContributions.length > 0 && (
+      {isAdvanced && gainContributions.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">銘柄別の含み損益寄与度</CardTitle>
@@ -378,10 +392,12 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      {totalValue > 0 && (
+      {isAdvanced && totalValue > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">集中リスクスコア</CardTitle>
+            <CardTitle className="text-base">
+              <Term slug="hhi">集中リスクスコア</Term>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -424,10 +440,12 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      {individualLossAssets.length > 0 && (
+      {isAdvanced && individualLossAssets.length > 0 && (
         <Card className="border-amber-300 bg-amber-50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-amber-900">損益通算シミュレーション（個人保有分）</CardTitle>
+            <CardTitle className="text-base text-amber-900">
+              <Term slug="tax-loss-harvesting">損益通算</Term>シミュレーション（個人保有分）
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-amber-900">
@@ -481,7 +499,7 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      {totalDistribution > 0 && (
+      {isAdvanced && totalDistribution > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">配当・分配金の入金予定（月別）</CardTitle>
@@ -513,6 +531,12 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {!isAdvanced && (
+        <p className="text-sm text-gray-400 text-center">
+          集中リスクスコアや損益通算シミュレーションなどの詳しい分析は、右上の「表示: シンプル/詳細」から確認できます。
+        </p>
       )}
 
       <MarketNewsCard />

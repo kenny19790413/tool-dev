@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Toaster } from '@/components/ui/sonner';
 import { getSession } from '@/lib/auth';
 import { UserMenu } from './_components/UserMenu';
+import { DisplayModeToggle } from './_components/DisplayModeToggle';
 import './globals.css';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
@@ -19,6 +20,7 @@ const navItems = [
   { href: '/assets/new', label: '資産を追加' },
   { href: '/simulator', label: 'シミュレーション' },
   { href: '/export', label: 'エクスポート' },
+  { href: '/glossary', label: '用語集' },
   { href: '/settings', label: '設定' },
 ];
 
@@ -42,6 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     </Link>
                   ))}
                 </nav>
+                <DisplayModeToggle />
                 <UserMenu />
               </div>
             )}

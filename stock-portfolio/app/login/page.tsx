@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,6 +68,11 @@ function LoginForm() {
               {loading ? 'ログイン中…' : 'ログイン'}
             </Button>
           </form>
+          <div className="mt-4 pt-4 border-t text-center">
+            <Link href="/demo" className="text-sm text-blue-600 underline">
+              ゲストとして体験する（デモ・架空データ）
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
