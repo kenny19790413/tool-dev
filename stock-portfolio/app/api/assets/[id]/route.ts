@@ -23,6 +23,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.quantity !== undefined) data.quantity = body.quantity === '' ? null : Number(body.quantity);
     if (body.avgCost !== undefined)
       data.avgCost = body.avgCost === '' || body.avgCost === null ? null : Number(body.avgCost);
+    if (body.avgCostFxRate !== undefined)
+      data.avgCostFxRate = body.avgCostFxRate === '' || body.avgCostFxRate === null ? null : Number(body.avgCostFxRate);
+    if (body.clearSplitAlert === true) {
+      data.splitAlert = null;
+      data.splitAlertRatio = null;
+      data.splitAlertAt = null;
+    }
     if (body.annualDistribution !== undefined)
       data.annualDistribution =
         body.annualDistribution === '' || body.annualDistribution === null ? null : Number(body.annualDistribution);

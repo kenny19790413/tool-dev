@@ -244,6 +244,11 @@ export default async function AssetsPage({
                       </Link>
                       {asset.ticker && <div className="text-xs text-gray-400">{asset.ticker}</div>}
                       {asset.broker && <div className="text-xs text-gray-400">{asset.broker}</div>}
+                      {asset.splitAlert && (
+                        <Badge variant="outline" className="mt-1 border-amber-400 text-amber-700">
+                          ⚠ 分割・併合を検知
+                        </Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {asset.type === 'STOCK' || asset.type === 'FUND'

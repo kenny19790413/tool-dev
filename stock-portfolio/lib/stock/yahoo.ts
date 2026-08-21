@@ -143,6 +143,48 @@ export async function getDividendMonths(symbol: string): Promise<number[]> {
   }
 }
 
+export interface StockSplitEvent {
+  date: string; // ISO日付（YYYY-MM-DD）
+  ratio: number; // 新株数/旧株数（例: 1→2分割なら2、2→1併合なら0.5）
+  label: string; // 表示用（例: "2:1"）
+}
+
+// 指定日以降に発生した株式分割・併合をYahoo Financeの株価履歴から検知する（実際に起きた事実のみ、予測ではない）。
+// sinceがnullの場合は過去1年分を確認する。
+export async function getStockSplits(symbol: string, since: Date | null): Promise<StockSplitEvent[]> {
+  try {
+    const range = since && Date.now() - since.getTime() > 300 * 24 * 60 * 60 * 1000 ? '2y' : '1y';
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+      symbol
+    )}?interval=1d&range=${range}&events=split`;
+    const res = await fetch(url, { headers: BASE_HEADERS, cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const splits = data?.chart?.result?.[0]?.events?.splits;
+    if (!splits || typeof splits !== 'object') return [];
+
+    const events: StockSplitEvent[] = [];
+    for (const entry of Object.values(splits) as {
+      date?: number;
+      numerator?: number;
+      denominator?: number;
+      splitRatio?: string;
+    }[]) {
+      if (typeof entry?.date !== 'number' || !entry.numerator || !entry.denominator) continue;
+      const date = new Date(entry.date * 1000);
+      if (since && date <= since) continue;
+      events.push({
+        date: date.toISOString().slice(0, 10),
+        ratio: entry.numerator / entry.denominator,
+        label: entry.splitRatio ?? `${entry.numerator}:${entry.denominator}`,
+      });
+    }
+    return events.sort((a, b) => a.date.localeCompare(b.date));
+  } catch {
+    return [];
+  }
+}
+
 export interface PricePoint {
   date: string; // ISO日付（YYYY-MM-DD）
   close: number;

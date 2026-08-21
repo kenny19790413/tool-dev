@@ -4,6 +4,7 @@ import {
   calcAssetValueJpy,
   calcAssetDistributionJpy,
   calcAssetGainJpy,
+  calcGainBreakdown,
   calcUpsidePercent,
   calcAfterTaxAmount,
   calcCorporateWithholding,
@@ -28,6 +29,7 @@ import { EditAssetForm } from './_components/EditAssetForm';
 import { AddValuationForm } from './_components/AddValuationForm';
 import { DistributionReceiptSection } from './_components/DistributionReceiptSection';
 import { DeleteAssetButton } from './_components/DeleteAssetButton';
+import { SplitAlertBanner } from './_components/SplitAlertBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +57,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
   const distribution = calcAssetDistributionJpy(typedAsset, usdJpyRate);
   const distributionInfo = hasDistributionInfo(typedAsset);
   const gain = calcAssetGainJpy(typedAsset, usdJpyRate);
+  const gainBreakdown = calcGainBreakdown(typedAsset, usdJpyRate);
   const isStock = asset.type === 'STOCK';
   const isFund = asset.type === 'FUND';
   const autoPriced = hasAutoPrice(asset.type);
@@ -91,6 +94,16 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
           <DeleteAssetButton assetId={asset.id} />
         </div>
       </div>
+
+      {asset.splitAlert && (
+        <SplitAlertBanner
+          assetId={asset.id}
+          message={asset.splitAlert}
+          ratio={toNumber(asset.splitAlertRatio) || 1}
+          quantity={asset.quantity !== null ? toNumber(asset.quantity) : null}
+          avgCost={asset.avgCost !== null ? toNumber(asset.avgCost) : null}
+        />
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
@@ -147,6 +160,36 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
           </CardContent>
         </Card>
       </div>
+
+      {gainBreakdown && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">含み損益の要因分解（価格変動 / 為替変動）</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">価格変動による損益</span>
+              <span className={gainBreakdown.priceGainJpy >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {formatJpy(gainBreakdown.priceGainJpy)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">為替変動による損益</span>
+              <span className={gainBreakdown.fxGainJpy >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {formatJpy(gainBreakdown.fxGainJpy)}
+              </span>
+            </div>
+            <div className="flex justify-between border-t pt-1 mt-1 font-medium">
+              <span className="text-gray-600">合計（円ベースの真の損益）</span>
+              <span>{formatJpy(gainBreakdown.totalGainJpy)}</span>
+            </div>
+            <p className="text-xs text-gray-400 pt-1">
+              取得時レート {toNumber(asset.avgCostFxRate).toLocaleString('ja-JP')}円、現在レート {usdJpyRate.toLocaleString('ja-JP')}円で計算した概算です。
+              上部の「含み損益」（{gain !== null ? formatJpy(gain) : '-'}）は取得時レートを考慮せず現在レートのみで換算した簡易値のため、この合計とは一致しません。
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {isStock && (
         <Card>
@@ -297,6 +340,8 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             assetId={asset.id}
             quantity={asset.quantity !== null ? toNumber(asset.quantity) : null}
             avgCost={asset.avgCost !== null ? toNumber(asset.avgCost) : null}
+            avgCostFxRate={asset.avgCostFxRate !== null ? toNumber(asset.avgCostFxRate) : null}
+            currency={asset.currency}
             broker={asset.broker}
             note={asset.note}
             ownerType={asset.ownerType}

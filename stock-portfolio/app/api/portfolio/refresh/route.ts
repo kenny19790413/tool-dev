@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/client';
-import { getQuote, getDividendPerShare, getDividendMonths, getAnalystTarget, getUsdJpyRate } from '@/lib/stock/yahoo';
+import {
+  getQuote,
+  getDividendPerShare,
+  getDividendMonths,
+  getAnalystTarget,
+  getUsdJpyRate,
+  getStockSplits,
+} from '@/lib/stock/yahoo';
 import { fetchFundNav } from '@/lib/stock/fundNav';
 import { calcAssetValueJpy, calcPortfolioGain, type AssetWithValuations } from '@/lib/portfolio';
 
@@ -17,6 +24,9 @@ export async function POST() {
       const distributionMonths =
         asset.distributionMonths.length > 0 ? undefined : await getDividendMonths(asset.ticker!);
       const analystTarget = await getAnalystTarget(asset.ticker!);
+      const splitsSince = asset.priceUpdatedAt ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const splits = await getStockSplits(asset.ticker!, splitsSince);
+      const latestSplit = splits.length > 0 ? splits[splits.length - 1] : null;
       await prisma.asset.update({
         where: { id: asset.id },
         data: {
@@ -31,6 +41,13 @@ export async function POST() {
           recommendationKey: analystTarget.recommendationKey,
           numberOfAnalystOpinions: analystTarget.numberOfAnalystOpinions,
           analystDataUpdatedAt: new Date(),
+          ...(latestSplit
+            ? {
+                splitAlert: `${latestSplit.date}: ${latestSplit.label}の株式分割・併合を検知しました（比率 x${latestSplit.ratio}）`,
+                splitAlertRatio: latestSplit.ratio,
+                splitAlertAt: new Date(latestSplit.date),
+              }
+            : {}),
         },
       });
     })

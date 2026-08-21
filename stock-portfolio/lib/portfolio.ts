@@ -125,6 +125,42 @@ export function calcAssetGainJpy(asset: AssetWithValuations, usdJpyRate: number)
   return null;
 }
 
+export interface GainBreakdown {
+  priceGainJpy: number; // 価格変動による損益（現在の為替レートで評価）
+  fxGainJpy: number; // 取得時からの為替変動による損益
+  totalGainJpy: number; // priceGainJpy + fxGainJpy（取得時レートを考慮した「真の」円ベース損益）
+}
+
+// USD建て資産の含み損益を「価格変動要因」と「為替変動要因」に分解する。
+// avgCostFxRate（取得時のUSD/JPYレート）が入力されている場合のみ計算可能。
+// 分解の考え方:
+//   価格要因 = (現在値 - 取得単価) × 数量 × 現在レート … 為替が現在レートのまま一定だったとした場合の価格差分
+//   為替要因 = 取得単価 × 数量 × (現在レート - 取得時レート) … 数量・単価が取得時のまま、為替だけ動いた場合の変動分
+// この2つの合計（totalGainJpy）は「取得時に実際に払ったJPYコスト」を基準にした真の円ベース損益であり、
+// calcAssetGainJpy（常に現在レートで一律換算するだけで取得時レートを考慮しない簡易値）とは一致しない点に注意。
+// avgCostFxRateが入力された資産では、このtotalGainJpyの方がより正確な円ベース損益となる。
+export function calcGainBreakdown(asset: AssetWithValuations, usdJpyRate: number): GainBreakdown | null {
+  if (asset.currency !== 'USD') return null;
+  if (asset.avgCost === null || asset.avgCost === undefined) return null;
+  if (asset.avgCostFxRate === null || asset.avgCostFxRate === undefined) return null;
+  if (asset.type !== 'STOCK' && asset.type !== 'FUND') return null;
+
+  const avgCostFxRate = toNumber(asset.avgCostFxRate);
+  const avgCost = toNumber(asset.avgCost);
+  const currentPrice = toNumber(asset.currentPrice);
+  const quantity = toNumber(asset.quantity);
+
+  if (asset.type === 'STOCK') {
+    const priceGainJpy = (currentPrice - avgCost) * quantity * usdJpyRate;
+    const fxGainJpy = avgCost * quantity * (usdJpyRate - avgCostFxRate);
+    return { priceGainJpy, fxGainJpy, totalGainJpy: priceGainJpy + fxGainJpy };
+  }
+  // FUND: currentPrice/avgCostは1万口あたりの基準価額
+  const priceGainJpy = ((currentPrice - avgCost) / FUND_NAV_UNIT) * quantity * usdJpyRate;
+  const fxGainJpy = ((avgCost / FUND_NAV_UNIT) * quantity) * (usdJpyRate - avgCostFxRate);
+  return { priceGainJpy, fxGainJpy, totalGainJpy: priceGainJpy + fxGainJpy };
+}
+
 // 資産1件の含み損益率（%）。avgCost未入力または取得コストが0の場合はnull。
 export function calcAssetGainPercent(asset: AssetWithValuations, usdJpyRate: number): number | null {
   const gain = calcAssetGainJpy(asset, usdJpyRate);

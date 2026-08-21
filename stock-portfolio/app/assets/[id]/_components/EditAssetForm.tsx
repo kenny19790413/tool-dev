@@ -13,6 +13,8 @@ interface Props {
   assetId: number;
   quantity: number | null;
   avgCost: number | null;
+  avgCostFxRate?: number | null;
+  currency?: string;
   broker: string | null;
   note: string | null;
   ownerType: 'INDIVIDUAL' | 'CORPORATE';
@@ -30,6 +32,8 @@ export function EditAssetForm({
   assetId,
   quantity,
   avgCost,
+  avgCostFxRate,
+  currency,
   broker,
   note,
   ownerType,
@@ -45,6 +49,10 @@ export function EditAssetForm({
   const router = useRouter();
   const [qty, setQty] = useState(quantity !== null ? String(quantity) : '');
   const [cost, setCost] = useState(avgCost !== null ? String(avgCost) : '');
+  const [fxRate, setFxRate] = useState(
+    avgCostFxRate !== null && avgCostFxRate !== undefined ? String(avgCostFxRate) : ''
+  );
+  const showFxRateField = showQuantityFields && currency === 'USD';
   const [brokerName, setBrokerName] = useState(broker ?? '');
   const [owner, setOwner] = useState<'INDIVIDUAL' | 'CORPORATE'>(ownerType);
   const [memo, setMemo] = useState(note ?? '');
@@ -69,6 +77,9 @@ export function EditAssetForm({
       if (showQuantityFields) {
         body.quantity = qty;
         body.avgCost = cost;
+      }
+      if (showFxRateField) {
+        body.avgCostFxRate = fxRate;
       }
       if (showDistributionField) {
         body.annualDistribution = distribution;
@@ -123,6 +134,25 @@ export function EditAssetForm({
               className="mt-1"
             />
           </div>
+        </div>
+      )}
+      {showFxRateField && (
+        <div>
+          <Label htmlFor="fxRate">取得時のUSD/JPYレート（任意）</Label>
+          <Input
+            id="fxRate"
+            type="number"
+            inputMode="decimal"
+            step="any"
+            min="0"
+            value={fxRate}
+            onChange={(e) => setFxRate(e.target.value)}
+            placeholder="例: 145.30"
+            className="mt-1"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            入力すると、含み損益を「価格変動」と「為替変動」の要因別に分解表示できるようになります。
+          </p>
         </div>
       )}
       {showDistributionField && (

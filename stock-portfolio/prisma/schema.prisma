@@ -43,6 +43,7 @@ model Asset {
   currency  String    @default("JPY") // 通貨（JPY/USD）。BOND/PRIVATEは評価額(Valuation)の建値通貨としても使用
   quantity  Decimal? @db.Decimal(18, 4) // STOCK/FUNDのみ使用（保有株数 or 口数）
   avgCost   Decimal? @db.Decimal(18, 4) // STOCK/FUNDのみ使用（平均取得単価、STOCKは1株あたり・FUNDは1万口あたり、任意入力）
+  avgCostFxRate Decimal? @db.Decimal(10, 4) // USD建て資産のみ使用（取得時の想定USD/JPYレート、任意入力）。入力時のみ含み損益を為替要因/価格要因に分解表示できる
   broker    String? // 購入した証券会社（任意）
   ownerType AssetOwnerType @default(CORPORATE) // 保有名義（個人/法人）。既存資産は現状すべて法人所有のためCORPORATEを既定値とする。
   note      String?
@@ -70,6 +71,12 @@ model Asset {
   recommendationKey        String? // "strong_buy" | "buy" | "hold" | "sell" | "strong_sell" 等
   numberOfAnalystOpinions  Int? // 予想を出したアナリスト数
   analystDataUpdatedAt     DateTime?
+
+  // 株式分割・併合の検知アラート（STOCKのみ）。Yahoo Financeの株価データから検知した未確認の分割情報。
+  // quantity/avgCostは自動では書き換えず、ユーザーが内容を確認して手動で反映するまでこのフィールドに保持する。
+  splitAlert       String? // 例: "2026-08-15: 1株→2株の分割を検知しました"
+  splitAlertRatio  Decimal? @db.Decimal(10, 4) // 分割比率（新株数/旧株数。例: 1→2分割なら2、2→1併合なら0.5）
+  splitAlertAt     DateTime? // 分割検知日
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

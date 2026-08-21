@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/client';
-import { getQuote, getDividendPerShare, getDividendMonths, getAnalystTarget } from '@/lib/stock/yahoo';
+import { getQuote, getDividendPerShare, getDividendMonths, getAnalystTarget, getStockSplits } from '@/lib/stock/yahoo';
 import { fetchFundNav } from '@/lib/stock/fundNav';
 
 interface Params {
@@ -19,6 +19,12 @@ export async function POST(_req: NextRequest, { params }: Params) {
       // 配当月が未設定の場合のみ自動推定で埋める（ユーザーの手動設定は上書きしない）
       const distributionMonths = asset.distributionMonths.length > 0 ? undefined : await getDividendMonths(asset.ticker);
       const analystTarget = await getAnalystTarget(asset.ticker);
+      // 前回更新日以降（初回は直近30日）に発生した株式分割・併合を検知。quantity/avgCostは自動では書き換えず、
+      // アラートとして保持し、ユーザーが内容を確認して手動で反映するまで残す。
+      const splitsSince = asset.priceUpdatedAt ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const splits = await getStockSplits(asset.ticker, splitsSince);
+      const latestSplit = splits.length > 0 ? splits[splits.length - 1] : null;
+
       const updated = await prisma.asset.update({
         where: { id: asset.id },
         data: {
@@ -33,6 +39,13 @@ export async function POST(_req: NextRequest, { params }: Params) {
           recommendationKey: analystTarget.recommendationKey,
           numberOfAnalystOpinions: analystTarget.numberOfAnalystOpinions,
           analystDataUpdatedAt: new Date(),
+          ...(latestSplit
+            ? {
+                splitAlert: `${latestSplit.date}: ${latestSplit.label}の株式分割・併合を検知しました（比率 x${latestSplit.ratio}）`,
+                splitAlertRatio: latestSplit.ratio,
+                splitAlertAt: new Date(latestSplit.date),
+              }
+            : {}),
         },
       });
       return NextResponse.json({ asset: updated });
