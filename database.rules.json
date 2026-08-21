@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "public_catalog": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "public_config": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}
