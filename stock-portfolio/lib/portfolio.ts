@@ -158,6 +158,72 @@ export function calcPortfolioGain(
   return { gain, percent, trackedCount, untrackedCount };
 }
 
+// 銘柄名の名寄せ用に、全角英数字を半角化した上で空白・括弧類を除去
+function normalizeAssetName(name: string): string {
+  return name.normalize('NFKC').replace(/[\s()（）【】[\]]/g, '');
+}
+
+export interface ConsolidatedGroupItem {
+  id: number;
+  name: string;
+  broker: string | null;
+  quantity: number | null;
+  valueJpy: number;
+}
+
+export interface ConsolidatedGroup {
+  key: string;
+  name: string;
+  type: Asset['type'];
+  currency: string;
+  totalQuantity: number | null;
+  totalValueJpy: number;
+  weightedAvgCost: number | null;
+  items: ConsolidatedGroupItem[];
+}
+
+// 同一銘柄が複数の証券会社に分散している場合、合算した保有状況を確認できるようグループ化する。
+// STOCK/FUNDはtickerで、それ以外は正規化した名前でグループ化する（tickerの方が信頼できるため優先）。
+export function buildConsolidatedGroups(assets: AssetWithValuations[], usdJpyRate: number): ConsolidatedGroup[] {
+  const groups = new Map<string, ConsolidatedGroup>();
+
+  for (const asset of assets) {
+    const key = asset.ticker ? `ticker:${asset.ticker}` : `name:${asset.type}:${normalizeAssetName(asset.name)}`;
+    const valueJpy = calcAssetValueJpy(asset, usdJpyRate);
+    const quantity = hasAutoPrice(asset.type) ? toNumber(asset.quantity) : null;
+
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        key,
+        name: asset.name,
+        type: asset.type,
+        currency: asset.currency,
+        totalQuantity: quantity !== null ? 0 : null,
+        totalValueJpy: 0,
+        weightedAvgCost: null,
+        items: [],
+      };
+      groups.set(key, group);
+    }
+    group.totalValueJpy += valueJpy;
+    if (quantity !== null && group.totalQuantity !== null) group.totalQuantity += quantity;
+    group.items.push({ id: asset.id, name: asset.name, broker: asset.broker, quantity, valueJpy });
+  }
+
+  for (const group of groups.values()) {
+    const assetsInGroup = assets.filter((a) => group.items.some((it) => it.id === a.id));
+    const allHaveCost = assetsInGroup.length > 0 && assetsInGroup.every((a) => a.avgCost !== null);
+    if (allHaveCost && group.totalQuantity && group.totalQuantity > 0) {
+      const totalCost = assetsInGroup.reduce((sum, a) => sum + toNumber(a.avgCost) * toNumber(a.quantity), 0);
+      const totalQty = assetsInGroup.reduce((sum, a) => sum + toNumber(a.quantity), 0);
+      group.weightedAvgCost = totalQty > 0 ? totalCost / totalQty : null;
+    }
+  }
+
+  return [...groups.values()].sort((a, b) => b.totalValueJpy - a.totalValueJpy);
+}
+
 // Yahoo Financeのアナリスト推奨度キー → 日本語ラベル
 export const RECOMMENDATION_LABEL: Record<string, string> = {
   strong_buy: '強気買い',

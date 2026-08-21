@@ -112,6 +112,9 @@ export default async function AssetsPage({
         <h1 className="text-2xl font-bold text-gray-800">資産一覧</h1>
         <div className="flex items-center gap-3">
           <RefreshAllButton />
+          <Link href="/assets/consolidated" className="text-sm text-blue-600 underline">
+            銘柄別の合算ビュー
+          </Link>
           <Link href="/assets/import" className="text-sm text-blue-600 underline">
             画像から追加
           </Link>

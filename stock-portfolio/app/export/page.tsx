@@ -7,27 +7,41 @@ import { Button } from '@/components/ui/button';
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i);
 
-export default function ExportPage() {
-  const [year, setYear] = useState(CURRENT_YEAR);
+function useDownload() {
   const [downloading, setDownloading] = useState(false);
-
-  async function handleDownload() {
+  async function download(url: string, filename: string) {
     setDownloading(true);
     try {
-      const res = await fetch(`/api/export/tax-summary?year=${year}`);
+      const res = await fetch(url);
       if (!res.ok) throw new Error('ダウンロードに失敗しました');
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `tax-summary-${year}.csv`;
+      a.href = objectUrl;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(objectUrl);
     } finally {
       setDownloading(false);
     }
+  }
+  return { download, downloading };
+}
+
+export default function ExportPage() {
+  const [year, setYear] = useState(CURRENT_YEAR);
+  const taxDownload = useDownload();
+  const backupDownload = useDownload();
+
+  async function handleDownload() {
+    await taxDownload.download(`/api/export/tax-summary?year=${year}`, `tax-summary-${year}.csv`);
+  }
+
+  async function handleBackupDownload() {
+    const today = new Date().toISOString().slice(0, 10);
+    await backupDownload.download('/api/export/backup', `stock-portfolio-backup-${today}.json`);
   }
 
   return (
@@ -57,10 +71,24 @@ export default function ExportPage() {
                 ))}
               </select>
             </div>
-            <Button onClick={handleDownload} disabled={downloading}>
-              {downloading ? '準備中…' : 'CSVをダウンロード'}
+            <Button onClick={handleDownload} disabled={taxDownload.downloading}>
+              {taxDownload.downloading ? '準備中…' : 'CSVをダウンロード'}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">全データバックアップ</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-500">
+            資産・評価額履歴・受取記録・評価額推移・為替レート履歴・目標配分設定を含む全データをJSON形式でダウンロードします（ログインパスワードは含みません）。万一の際の記録用・自由な分析用にお使いください。
+          </p>
+          <Button onClick={handleBackupDownload} disabled={backupDownload.downloading} variant="outline">
+            {backupDownload.downloading ? '準備中…' : 'JSONでダウンロード'}
+          </Button>
         </CardContent>
       </Card>
     </div>

@@ -276,6 +276,19 @@ textarea{resize:vertical;min-height:60px}
 .btn-open-book-search{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--cbg);color:var(--a1);border:1.5px solid #c4b5fd;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
 .btn-open-book-search:hover{background:#ede9fe}
 
+/* ─── 発見（新刊ランキング） ─── */
+.discover-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;padding:16px}
+.discover-card{border:1px solid var(--br);border-radius:10px;overflow:hidden;background:var(--card);display:flex;flex-direction:column}
+.discover-thumb{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:var(--br)}
+.discover-thumb-ph{width:100%;aspect-ratio:2/3;background:var(--br);display:flex;align-items:center;justify-content:center;font-size:28px}
+.discover-info{padding:8px 10px;display:flex;flex-direction:column;gap:2px;flex:1}
+.discover-title{font-size:12px;font-weight:700;line-height:1.35}
+.discover-sub{font-size:10px;color:#718096}
+.discover-actions{margin-top:6px;display:flex;flex-direction:column;gap:6px}
+.discover-buy{display:block;text-align:center;padding:5px 8px;border-radius:6px;background:#bf0000;color:#fff;font-size:11px;font-weight:700;text-decoration:none}
+.discover-add{padding:5px 8px;border-radius:6px;border:1px solid var(--a1);background:var(--cbg);color:var(--a1);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit}
+.discover-registered{text-align:center;font-size:11px;color:#38a169;font-weight:700}
+
 /* ─── 予算警告 ─── */
 .budget-warning{background:#fff5f5;border:1.5px solid #feb2b2;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px;color:#c53030;display:none}
 .budget-warning.show{display:block}
@@ -668,6 +681,7 @@ textarea{resize:vertical;min-height:60px}
   <button class="nav-tab"        id="tab-history"  onclick="setView('history')">📋 購入履歴</button>
   <button class="nav-tab"        id="tab-graph"    onclick="setView('graph')">📊 グラフ</button>
   <button class="nav-tab"        id="tab-calendar" onclick="setView('calendar')">🗓️ カレンダー</button>
+  <button class="nav-tab"        id="tab-discover" onclick="setView('discover')">🔍 発見</button>
 </div>
 
 <!-- 検索バー（月別のみ） -->
@@ -1097,6 +1111,7 @@ function render() {
   if(viewMode==='graph')    { renderGraph();    return; }
   if(viewMode==='calendar') { renderCalendar(); return; }
   if(viewMode==='history')  { renderHistory();  return; }
+  if(viewMode==='discover') { renderDiscover(); return; }
   renderMonthly();
 }
 
@@ -1492,6 +1507,87 @@ function calChangeMonth(delta) {
   calMonth+=delta;
   if(calMonth>12){calMonth=1;calYear++;} if(calMonth<1){calMonth=12;calYear--;}
   renderCalendar();
+}
+
+// ── 発見（話題の新刊・楽天Booksランキング） ──
+const DISCOVER_CACHE_KEY='mg_discover_cache';
+const DISCOVER_CACHE_TTL=6*60*60*1000; // 6時間
+function renderDiscover() {
+  document.getElementById('summaryLabel1').textContent='話題の新刊';
+  document.getElementById('summaryLabel2').textContent='';
+  document.getElementById('summaryLabel3').textContent='';
+  document.getElementById('totalCount').textContent='';
+  document.getElementById('boughtTotal').textContent='';
+  document.getElementById('unboughtTotal').textContent='';
+  document.getElementById('viewArea').innerHTML=`
+    <div class="card">
+      <div class="card-header">
+        <h2>🔍 話題の新刊・発見</h2>
+        <button class="sort-btn" onclick="loadDiscoverRanking(true)">🔄 更新</button>
+      </div>
+      <div id="discoverList" style="padding:16px;text-align:center;color:#718096">読み込み中…</div>
+    </div>`;
+  loadDiscoverRanking(false);
+}
+async function loadDiscoverRanking(forceRefresh) {
+  const listEl=document.getElementById('discoverList');
+  if(!listEl) return;
+  if(!forceRefresh){
+    try{
+      const cached=JSON.parse(localStorage.getItem(DISCOVER_CACHE_KEY)||'null');
+      if(cached&&(Date.now()-cached.fetchedAt)<DISCOVER_CACHE_TTL){ renderDiscoverItems(cached.items); return; }
+    }catch(e){}
+  }
+  listEl.textContent='🔄 楽天Booksから取得中…';
+  try{
+    const url=`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&booksGenreId=001001&sort=sales&hits=30`;
+    const data=await fetch(url).then(r=>r.json());
+    const items=(data.Items||[]).map(x=>normRakuten(x.Item)).filter(it=>it.cleanTitle);
+    if(items.length===0){ listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>取得できませんでした。時間をおいて「更新」をお試しください</p></div>'; return; }
+    localStorage.setItem(DISCOVER_CACHE_KEY, JSON.stringify({items,fetchedAt:Date.now()}));
+    renderDiscoverItems(items);
+  }catch(e){
+    listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>取得に失敗しました。時間をおいて「更新」をお試しください</p></div>';
+  }
+}
+function isDiscoverItemRegistered(item) {
+  const nk=t=>(t||'').replace(/[\s　\-－・【】「」（）()]/g,'').toLowerCase();
+  const nt=nk(item.cleanTitle);
+  return Object.values(volumesList).some(v=>{
+    if(item.isbn&&v.isbn&&v.isbn===item.isbn) return true;
+    return nk(v.title)===nt&&String(v.volume||'')===String(item.volume||'');
+  });
+}
+function renderDiscoverItems(items) {
+  window._inlineResults=items; // selectBookInline()が参照する配列を共有利用
+  const listEl=document.getElementById('discoverList');
+  if(!listEl) return;
+  listEl.className='discover-grid';
+  listEl.style.cssText='';
+  listEl.innerHTML=items.map((it,idx)=>{
+    const registered=isDiscoverItemRegistered(it);
+    const priceStr=it.price?`¥${Number(it.price).toLocaleString('ja-JP')}`:'';
+    const dateStr=it.releaseDate?new Date(it.releaseDate).toLocaleDateString('ja-JP',{year:'numeric',month:'numeric',day:'numeric'}):'';
+    const thumbHtml=it.thumb?`<img class="discover-thumb" src="${escHtml(it.thumb)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:'';
+    const phStyle=it.thumb?'style="display:none"':'';
+    const affLink=getRakutenLink({isbn:it.isbn,title:it.cleanTitle,volume:it.volume});
+    return `<div class="discover-card">
+      <a href="${escHtml(affLink)}" target="_blank" rel="noopener sponsored">${thumbHtml}<div class="discover-thumb-ph" ${phStyle}>📚</div></a>
+      <div class="discover-info">
+        <div class="discover-title">${escHtml(it.cleanTitle)}${it.volume?` ${escHtml(String(it.volume))}`:''}</div>
+        <div class="discover-sub">${escHtml(it.author||'')}${it.publisher?' · '+escHtml(it.publisher):''}</div>
+        <div class="discover-sub">${escHtml(dateStr)}${priceStr?' · '+priceStr:''}</div>
+        <div class="discover-actions">
+          <a class="discover-buy" href="${escHtml(affLink)}" target="_blank" rel="noopener sponsored">🛒 楽天で見る</a>
+          ${registered?'<span class="discover-registered">✓ 登録済み</span>':`<button class="discover-add" onclick="addDiscoverItem(${idx})">＋ 追加</button>`}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function addDiscoverItem(idx) {
+  openAddModal();
+  selectBookInline(idx);
 }
 
 // ── Amazon PA-API Worker URL（デプロイ後に設定） ──
