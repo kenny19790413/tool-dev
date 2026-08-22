@@ -1464,8 +1464,8 @@ function renderMonthly() {
       </div>
       ${vols.length===0?`<div class="empty-state"><div class="icon">📭</div><p>${isSearch?`「${escHtml(searchQuery)}」に一致する作品はありません`:'この月の登録はありません<br>右下の＋ボタンで追加してください'}</p></div>`:''}
     </div>`;
-  renderPendingSection();
   if(!isSearch) renderUnpurchasedSection();
+  renderPendingSection();
 }
 
 function volumeRow(v, isSearch, today) {
