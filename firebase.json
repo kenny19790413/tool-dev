@@ -26,9 +26,12 @@
       "33_SNSハーネス/**",
       "開発環境1/**"
     ],
+    "redirects": [
+      { "source": "/manga",          "destination": "/bibliotheque", "type": 301 }
+    ],
     "rewrites": [
       { "source": "/kakeibo",        "destination": "/kakeibo.html" },
-      { "source": "/manga",          "destination": "/manga.html" },
+      { "source": "/bibliotheque",   "destination": "/manga.html" },
       { "source": "/bucket-list",    "destination": "/bucket-list.html" }
     ],
     "cleanUrls": true
