@@ -564,15 +564,17 @@ textarea{resize:vertical;min-height:60px}
         <a href="https://affiliate.amazon.co.jp/" target="_blank" rel="noopener" style="color:var(--a1)">Amazon アソシエイト</a>に登録後のタグID（なければ空欄でOK・リンクは機能します）
       </div>
     </div>
-    <hr class="divider">
-    <div class="form-group">
-      <label>楽天Books APIキー <span id="rakutenKeyStatus" style="font-weight:400"></span></label>
-      <input type="text" id="rakutenAppIdInput" placeholder="アプリID" autocomplete="off" style="margin-bottom:6px">
-      <input type="text" id="rakutenAccessKeyInput" placeholder="アクセスキー（pk_...）" autocomplete="off" style="margin-bottom:6px">
-      <input type="date" id="rakutenExpiryInput">
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">
-        価格・出版社の自動取得に使用。期限が近づくとバナーで通知します。
-        <a href="https://webservice.rakuten.co.jp/app/list" target="_blank" rel="noopener" style="color:var(--a1)">楽天ウェブサービスでアプリID・有効期限を確認/延長</a>
+    <div id="rakutenKeySection" style="display:none">
+      <hr class="divider">
+      <div class="form-group">
+        <label>楽天Books APIキー <span id="rakutenKeyStatus" style="font-weight:400"></span></label>
+        <input type="text" id="rakutenAppIdInput" placeholder="アプリID" autocomplete="off" style="margin-bottom:6px">
+        <input type="text" id="rakutenAccessKeyInput" placeholder="アクセスキー（pk_...）" autocomplete="off" style="margin-bottom:6px">
+        <input type="date" id="rakutenExpiryInput">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">
+          価格・出版社の自動取得に使用。期限が近づくとバナーで通知します。
+          <a href="https://webservice.rakuten.co.jp/app/list" target="_blank" rel="noopener" style="color:var(--a1)">楽天ウェブサービスでアプリID・有効期限を確認/延長</a>
+        </div>
       </div>
     </div>
     <div class="modal-actions">
@@ -765,6 +767,9 @@ const database = firebase.database();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 let currentUser = null, dbSeriesRef = null, dbVolumesRef = null, dbSettingsRef = null, attachedUid = null;
+// オーナー（アプリ管理者）のみ楽天Books APIキー設定を表示・編集できるようにする
+const OWNER_EMAIL = 'ken1979okabe@gmail.com';
+function isOwnerUser() { return !!(currentUser && currentUser.email === OWNER_EMAIL); }
 let seriesList = {}, volumesList = {}, userSettings = { budget: 0 };
 let currentYear = new Date().getFullYear(), currentMonth = new Date().getMonth() + 1;
 let calYear = currentYear, calMonth = currentMonth;
@@ -979,10 +984,14 @@ function syncAppearanceUI(s){
 function openSettingsModal() {
   document.getElementById('budgetInput').value=userSettings.budget||'';
   document.getElementById('amazonTagInput').value=userSettings.amazonTag||'';
-  document.getElementById('rakutenAppIdInput').value=getRakutenAppId();
-  document.getElementById('rakutenAccessKeyInput').value=getRakutenAccessKey();
-  document.getElementById('rakutenExpiryInput').value=getRakutenExpiry();
-  updateRakutenKeyStatusLabel();
+  const showRakutenSection=isOwnerUser();
+  document.getElementById('rakutenKeySection').style.display=showRakutenSection?'':'none';
+  if(showRakutenSection){
+    document.getElementById('rakutenAppIdInput').value=getRakutenAppId();
+    document.getElementById('rakutenAccessKeyInput').value=getRakutenAccessKey();
+    document.getElementById('rakutenExpiryInput').value=getRakutenExpiry();
+    updateRakutenKeyStatusLabel();
+  }
   document.getElementById('settingsModal').classList.remove('hidden');
 }
 function updateRakutenKeyStatusLabel() {
@@ -1005,9 +1014,12 @@ async function saveSettings() {
   if(!currentUser||!dbSettingsRef)return;
   const budget=parseInt(document.getElementById('budgetInput').value)||0;
   const amazonTag=(document.getElementById('amazonTagInput').value||'').trim();
-  const rakutenAppId=(document.getElementById('rakutenAppIdInput').value||'').trim();
-  const rakutenAccessKey=(document.getElementById('rakutenAccessKeyInput').value||'').trim();
-  const rakutenExpiry=(document.getElementById('rakutenExpiryInput').value||'').trim();
+  let rakutenAppId=userSettings.rakutenAppId||'', rakutenAccessKey=userSettings.rakutenAccessKey||'', rakutenExpiry=userSettings.rakutenExpiry||'';
+  if(isOwnerUser()){
+    rakutenAppId=(document.getElementById('rakutenAppIdInput').value||'').trim();
+    rakutenAccessKey=(document.getElementById('rakutenAccessKeyInput').value||'').trim();
+    rakutenExpiry=(document.getElementById('rakutenExpiryInput').value||'').trim();
+  }
   await dbSettingsRef.set({budget,amazonTag,rakutenAppId,rakutenAccessKey,rakutenExpiry});
   showSaved(); closeSettingsModal(); checkRakutenKeyExpiry();
 }
@@ -1022,6 +1034,7 @@ function rakutenKeyDaysLeft() {
 }
 function checkRakutenKeyExpiry() {
   const banner=document.getElementById('rakutenKeyExpiryBanner'); if(!banner)return;
+  if(!isOwnerUser()){banner.style.display='none';return;}
   const days=rakutenKeyDaysLeft();
   if(days===null||days>30){banner.style.display='none';return;}
   const snoozeUntil=parseInt(localStorage.getItem('rakutenKeyExpirySnooze')||'0');
