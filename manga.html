@@ -1253,7 +1253,7 @@ function renderUnpurchasedSection() {
   const container=document.getElementById('viewArea');
   let el=document.getElementById('unpurchasedSection');
   if(list.length===0){if(el)el.remove();return;}
-  if(!el){el=document.createElement('div');el.id='unpurchasedSection';container.prepend(el);}
+  if(!el){el=document.createElement('div');el.id='unpurchasedSection';container.appendChild(el);}
   const arrow=_unpurchasedOpen?'▲':'▼';
   const totalAmt=list.reduce((s,v)=>s+(v.price||0),0);
   el.innerHTML=`<div class="card pending-card">
