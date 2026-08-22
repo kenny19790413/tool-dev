@@ -570,6 +570,24 @@ textarea{resize:vertical;min-height:60px}
   </div>
 </div>
 
+<!-- チュートリアルモーダル -->
+<div id="tutorialModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:420px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div id="tutorialStepDots" style="display:flex;gap:5px"></div>
+      <button onclick="closeTutorialModal(true)" style="font-size:20px;line-height:1;background:none;border:none;color:#a0aec0;cursor:pointer;padding:2px 6px" title="スキップ">✕</button>
+    </div>
+    <div id="tutorialStepBody" style="min-height:220px;text-align:center;padding:12px 4px"></div>
+    <div class="modal-actions" style="justify-content:space-between">
+      <button class="btn-cancel" onclick="closeTutorialModal(true)">スキップ</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-cancel" id="tutorialPrevBtn" onclick="tutorialStep(-1)">戻る</button>
+        <button class="btn-save" id="tutorialNextBtn" onclick="tutorialStep(1)">次へ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 設定モーダル -->
 <div id="settingsModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:380px">
@@ -705,6 +723,7 @@ textarea{resize:vertical;min-height:60px}
 <div class="header">
   <div class="header-user">
     <span id="userName" style="font-size:12px"></span>
+    <button onclick="showTutorial()" title="使い方ガイド">❓ 使い方</button>
     <button id="notifBtn" onclick="toggleNotification()">🔔 通知</button>
     <button onclick="openSeriesModal()">📚 作品管理</button>
     <button onclick="bulkRefetchBooks()">🔄 一括更新</button>
@@ -870,12 +889,50 @@ function attachDatabase(user) {
 
 function showSaved() { const el=document.getElementById('savingIndicator'); if(!el)return; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),1500); }
 
+// ── チュートリアル ──
+const TUTORIAL_STEPS=[
+  {icon:'📚',title:'Ma Bibliothèque へようこそ',body:'欲しい本の発売日・購入状況を月ごとに管理できるアプリです。買い忘れを防いだり、新しい本との出会いをサポートします。'},
+  {icon:'➕',title:'まず作品を登録してみましょう',body:'右下の＋ボタンから新刊を追加できます。タイトルや作者名を入力すると、価格・出版社・表紙画像を自動で検索して入力してくれます。'},
+  {icon:'🔍',title:'発見タブで新刊を探す',body:'「🔍 発見」タブでは話題の新刊ランキングをチェックできます。作品管理で作者に⭐を付けてフォローすると、その作者の新刊を自動でお知らせします。'},
+  {icon:'📚',title:'作品管理でまとめて整理',body:'「📚 作品管理」では、タグ付け・五十音順ソート・ふりがな取得・表紙一括取得などをまとめて行えます。作品名・作者名からも検索できます。'},
+  {icon:'🎨',title:'見た目も自由にカスタマイズ',body:'「🎨 テーマ」から配色・文字サイズ（特大まで対応）・月別ページの並び順を自分好みに変更できます。困ったときはヘッダーの「❓ 使い方」からいつでもこのガイドを見返せます。'},
+];
+let _tutorialIdx=0;
+function showTutorial() {
+  _tutorialIdx=0;
+  renderTutorialStep();
+  document.getElementById('tutorialModal').classList.remove('hidden');
+}
+function renderTutorialStep() {
+  const step=TUTORIAL_STEPS[_tutorialIdx];
+  document.getElementById('tutorialStepBody').innerHTML=`
+    <div style="font-size:48px;margin-bottom:12px">${step.icon}</div>
+    <h3 style="margin-bottom:10px">${escHtml(step.title)}</h3>
+    <p style="font-size:14px;color:var(--txt2);line-height:1.7">${escHtml(step.body)}</p>`;
+  document.getElementById('tutorialStepDots').innerHTML=TUTORIAL_STEPS.map((_,i)=>
+    `<span style="width:7px;height:7px;border-radius:50%;background:${i===_tutorialIdx?'var(--a1)':'var(--br)'}"></span>`).join('');
+  document.getElementById('tutorialPrevBtn').style.visibility=_tutorialIdx===0?'hidden':'visible';
+  document.getElementById('tutorialNextBtn').textContent=_tutorialIdx===TUTORIAL_STEPS.length-1?'はじめる':'次へ';
+}
+function tutorialStep(dir) {
+  const newIdx=_tutorialIdx+dir;
+  if(newIdx<0)return;
+  if(newIdx>=TUTORIAL_STEPS.length){ closeTutorialModal(true); return; }
+  _tutorialIdx=newIdx;
+  renderTutorialStep();
+}
+function closeTutorialModal(markSeen) {
+  document.getElementById('tutorialModal').classList.add('hidden');
+  if(markSeen) localStorage.setItem('mg_tutorial_seen','1');
+}
+
 function onUserSignedIn(user) {
   currentUser=user; redirectPending=false; localStorage.removeItem('mg_auth_pending');
   hideAuthLoading(); hideLoginOverlay();
   document.getElementById('userName').textContent=user.displayName||user.email;
   attachDatabase(user); updateNotifBtn();
   if(Notification.permission==='default') setTimeout(()=>requestNotifPermission(),2000);
+  if(!localStorage.getItem('mg_tutorial_seen')) setTimeout(()=>showTutorial(),800);
 }
 function onUserSignedOut() {
   currentUser=null; attachedUid=null;
