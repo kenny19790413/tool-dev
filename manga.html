@@ -381,6 +381,16 @@ textarea{resize:vertical;min-height:60px}
       <input type="hidden" id="newSeriesTitle">
       <input type="hidden" id="newSeriesCoverUrl">
       <input type="hidden" id="newSeriesKana">
+      <div class="form-group" style="margin-top:10px">
+        <label>媒体タイプ</label>
+        <select id="newSeriesMediaType" onchange="onMediaTypeChange(this.value,'new')">
+          <option value="漫画">漫画</option>
+          <option value="小説">小説</option>
+          <option value="単行本">単行本</option>
+          <option value="新書">新書</option>
+          <option value="文庫">文庫</option>
+        </select>
+      </div>
       <div class="form-row" style="margin-top:10px">
         <div class="form-group" style="margin:0">
           <label>作者名</label>
@@ -402,7 +412,7 @@ textarea{resize:vertical;min-height:60px}
         </div>
       </div>
       <div class="form-row" style="margin-top:10px">
-        <div class="form-group" style="margin:0">
+        <div class="form-group" id="newSeriesGenreWrap" style="margin:0">
           <label>ジャンル</label>
           <select id="newSeriesGenre">
             <option value="">── 未設定 ──</option>
@@ -428,7 +438,7 @@ textarea{resize:vertical;min-height:60px}
     <div class="form-row" style="margin-top:10px">
       <div class="form-group" style="margin:0">
         <label>巻数</label>
-        <input type="text" id="volumeNum" autocomplete="off" placeholder="例: 12">
+        <input type="text" id="volumeNum" autocomplete="off" placeholder="例: 12（単行本・新書等は空欄でOK）">
       </div>
       <div class="form-group" style="margin:0">
         <label>発売日</label>
@@ -523,7 +533,10 @@ textarea{resize:vertical;min-height:60px}
       <input type="text" id="seriesTextFilterInput" placeholder="🔍 作品名・作者名で絞り込み" autocomplete="off" oninput="setSeriesTextFilter(this.value)" style="flex:1">
       <button onclick="bulkFillKana()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer;white-space:nowrap" title="ふりがな未入力の作品にまとめて読み仮名を取得（五十音順ソート用）">🈁 ふりがな一括取得</button>
     </div>
-    <div id="seriesGenreFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+    <div id="seriesMediaTypeFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+    <div id="seriesGenreFilterOuter">
+      <div id="seriesGenreFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+    </div>
     <div id="seriesTagFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
     <div class="series-list" id="seriesListEl"></div>
     <div class="modal-actions">
@@ -667,6 +680,7 @@ textarea{resize:vertical;min-height:60px}
     <div class="current-month" id="currentMonthLabel"></div>
     <button onclick="changeMonth(1)">&#8250;</button>
     <button id="goTodayBtn" onclick="goToCurrentMonth()" title="今月に戻る" style="margin-left:8px;width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(135deg,#9b59b6,#6b46c1);color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(107,70,193,.35);flex-shrink:0">⌂</button>
+    <button id="searchToggleBtn" onclick="toggleSearchBar()" title="作品名・作者名で検索" style="margin-left:8px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.25);color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">🔍</button>
   </div>
 </div>
 
@@ -682,11 +696,11 @@ textarea{resize:vertical;min-height:60px}
   <button class="nav-tab"        id="tab-discover" onclick="setView('discover')">🔍 発見</button>
 </div>
 
-<!-- 検索バー（月別のみ） -->
-<div class="search-wrap" id="searchWrap">
+<!-- 検索バー（月別のみ・🔍アイコンで開閉） -->
+<div class="search-wrap" id="searchWrap" style="display:none">
   <div class="search-box">
     <span class="search-icon">🔍</span>
-    <input type="text" id="searchInput" placeholder="作品名で検索（全期間）..." oninput="onSearchInput()" autocomplete="off">
+    <input type="text" id="searchInput" placeholder="作品名・作者名で検索（全期間）..." oninput="onSearchInput()" autocomplete="off">
     <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
   </div>
   <div class="search-hint" id="searchHint"></div>
@@ -1091,13 +1105,24 @@ function goToCurrentMonth() {
 }
 
 // ── ビュー切り替え ──
+let _searchBarOpen=false;
+function toggleSearchBar() {
+  _searchBarOpen=!_searchBarOpen;
+  document.getElementById('searchWrap').style.display=_searchBarOpen?'':'none';
+  if(_searchBarOpen){
+    document.getElementById('searchInput').focus();
+  } else {
+    clearSearch();
+  }
+}
 function setView(mode) {
   viewMode=mode;
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+mode).classList.add('active');
   const isMonthly=mode==='monthly';
   document.getElementById('monthNav').style.display=isMonthly?'':'none';
-  document.getElementById('searchWrap').style.display=isMonthly?'':'none';
+  document.getElementById('searchToggleBtn').style.display=isMonthly?'':'none';
+  document.getElementById('searchWrap').style.display=(isMonthly&&_searchBarOpen)?'':'none';
   document.getElementById('genreFilterWrap').style.display=isMonthly?'':'none';
   render();
 }
@@ -1984,6 +2009,7 @@ function openAddModal() {
   const _pw=document.getElementById('volumePublisherWrap'); if(_pw)_pw.style.display='';
   const _aw=document.getElementById('volumeAuthorWrap'); if(_aw)_aw.style.display='';
   ['newSeriesTitle','newSeriesAuthor','newSeriesPublisher','newSeriesPrice','newSeriesLabel','newSeriesMagazine','newSeriesCoverUrl','newSeriesKana'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('newSeriesMediaType').value='漫画'; onMediaTypeChange('漫画','new');
   document.getElementById('editRakutenUrl').value='';
   document.getElementById('editAsin').value='';
   document.getElementById('editIsbn').value='';
@@ -2484,7 +2510,8 @@ async function saveVolume() {
     const newMagazine=document.getElementById('newSeriesMagazine').value.trim();
     const newCoverUrl=document.getElementById('newSeriesCoverUrl').value.trim();
     const newKana=kataToHira(document.getElementById('newSeriesKana').value.trim());
-    await newRef.set({title:newTitle,author:newAuthor,publisher:newPub,price:newPrice,genre:newGenre,completed:newCompleted,rating:0,label:newLabel,magazine:newMagazine,coverUrl:newCoverUrl,kana:newKana});
+    const newMediaType=document.getElementById('newSeriesMediaType').value||'漫画';
+    await newRef.set({title:newTitle,author:newAuthor,publisher:newPub,price:newPrice,genre:newGenre,completed:newCompleted,rating:0,label:newLabel,magazine:newMagazine,coverUrl:newCoverUrl,kana:newKana,mediaType:newMediaType});
   } else if(seriesId&&seriesList[seriesId]){
     resolvedTitle=seriesList[seriesId].title;
   } else {alert('作品を選択してください');return;}
@@ -2509,10 +2536,18 @@ async function saveVolume() {
 let _seriesGenreFilter='';
 let _seriesTagFilter=[];
 let _seriesTextFilter='';
-function openSeriesModal() { _seriesGenreFilter=''; _seriesTagFilter=[]; _seriesTextFilter=''; const _stf=document.getElementById('seriesTextFilterInput'); if(_stf)_stf.value=''; renderSeriesList(); document.getElementById('seriesModal').classList.remove('hidden'); }
+let _seriesMediaTypeFilter='';
+function openSeriesModal() { _seriesGenreFilter=''; _seriesTagFilter=[]; _seriesTextFilter=''; _seriesMediaTypeFilter=''; const _stf=document.getElementById('seriesTextFilterInput'); if(_stf)_stf.value=''; renderSeriesList(); document.getElementById('seriesModal').classList.remove('hidden'); }
 function closeSeriesModal() { document.getElementById('seriesModal').classList.add('hidden'); }
 function setSeriesGenreFilter(g) { _seriesGenreFilter=g; renderSeriesList(); }
+function setSeriesMediaTypeFilter(m) { _seriesMediaTypeFilter=m; renderSeriesList(); }
 function setSeriesTextFilter(q) { _seriesTextFilter=q.trim().toLowerCase(); renderSeriesList(); }
+// ── 媒体タイプ切り替え（漫画以外はジャンル区分＝少年/青年等が意味を持たないため隠す） ──
+function onMediaTypeChange(mediaType, id) {
+  const wrap=id==='new'?document.getElementById('newSeriesGenreWrap'):document.getElementById('segwrap_'+id);
+  if(!wrap)return;
+  wrap.style.display=mediaType==='漫画'?'':'none';
+}
 function toggleSeriesTagFilter(t) {
   const i=_seriesTagFilter.indexOf(t);
   if(i>=0) _seriesTagFilter.splice(i,1); else _seriesTagFilter.push(t);
@@ -2520,20 +2555,37 @@ function toggleSeriesTagFilter(t) {
 }
 function renderSeriesList() {
   const el=document.getElementById('seriesListEl');
-  // ジャンルフィルタータブ生成
-  const genres=['少年','少女','青年','女性','全年齢'];
   const all=Object.values(seriesList);
-  const counts={};
-  genres.forEach(g=>{counts[g]=all.filter(s=>s.genre===g).length;});
-  counts['未設定']=all.filter(s=>!s.genre).length;
   const tabStyle=(active)=>`padding:4px 10px;border-radius:20px;border:1px solid ${active?'#9b59b6':'#e2d9f3'};background:${active?'#9b59b6':'#faf5ff'};color:${active?'#fff':'#6b46c1'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}`;
-  const filterWrap=document.getElementById('seriesGenreFilterWrap');
-  if(filterWrap){
-    filterWrap.innerHTML=[
+  // 媒体タイプフィルタータブ生成
+  const mediaTypes=['漫画','小説','単行本','新書','文庫'];
+  const mediaCounts={};
+  mediaTypes.forEach(m=>{mediaCounts[m]=all.filter(s=>(s.mediaType||'漫画')===m).length;});
+  const mediaWrap=document.getElementById('seriesMediaTypeFilterWrap');
+  if(mediaWrap){
+    mediaWrap.innerHTML=[
       {label:`すべて (${all.length})`,val:''},
-      ...genres.filter(g=>counts[g]>0).map(g=>({label:`${g} (${counts[g]})`,val:g})),
-      ...(counts['未設定']>0?[{label:`未設定 (${counts['未設定']})`,val:'__none__'}]:[])
-    ].map(t=>`<button style="${tabStyle(_seriesGenreFilter===t.val)}" onclick="setSeriesGenreFilter('${t.val}')">${escHtml(t.label)}</button>`).join('');
+      ...mediaTypes.filter(m=>mediaCounts[m]>0).map(m=>({label:`${m} (${mediaCounts[m]})`,val:m}))
+    ].map(t=>`<button style="${tabStyle(_seriesMediaTypeFilter===t.val)}" onclick="setSeriesMediaTypeFilter('${t.val}')">${escHtml(t.label)}</button>`).join('');
+  }
+  // ジャンルフィルタータブ生成（漫画以外の媒体タイプに絞っている時は非表示）
+  const genreFilterOuter=document.getElementById('seriesGenreFilterOuter');
+  const showGenreFilter=_seriesMediaTypeFilter===''||_seriesMediaTypeFilter==='漫画';
+  if(genreFilterOuter) genreFilterOuter.style.display=showGenreFilter?'':'none';
+  if(showGenreFilter){
+    const genres=['少年','少女','青年','女性','全年齢'];
+    const mangaOnly=all.filter(s=>(s.mediaType||'漫画')==='漫画');
+    const counts={};
+    genres.forEach(g=>{counts[g]=mangaOnly.filter(s=>s.genre===g).length;});
+    counts['未設定']=mangaOnly.filter(s=>!s.genre).length;
+    const filterWrap=document.getElementById('seriesGenreFilterWrap');
+    if(filterWrap){
+      filterWrap.innerHTML=[
+        {label:`すべて (${mangaOnly.length})`,val:''},
+        ...genres.filter(g=>counts[g]>0).map(g=>({label:`${g} (${counts[g]})`,val:g})),
+        ...(counts['未設定']>0?[{label:`未設定 (${counts['未設定']})`,val:'__none__'}]:[])
+      ].map(t=>`<button style="${tabStyle(_seriesGenreFilter===t.val)}" onclick="setSeriesGenreFilter('${t.val}')">${escHtml(t.label)}</button>`).join('');
+    }
   }
   // タグフィルターチップ生成（複数選択・AND絞り込み）
   const tagWrap=document.getElementById('seriesTagFilterWrap');
@@ -2547,24 +2599,27 @@ function renderSeriesList() {
     }).join('');
   }
   const filtered=Object.entries(seriesList).filter(([,s])=>{
+    if(_seriesMediaTypeFilter && (s.mediaType||'漫画')!==_seriesMediaTypeFilter) return false;
     if(_seriesTextFilter && !((s.title||'')+' '+(s.author||'')).toLowerCase().includes(_seriesTextFilter)) return false;
     if(_seriesTagFilter.length && !_seriesTagFilter.every(t=>(s.tags||[]).includes(t))) return false;
+    if(!showGenreFilter) return true;
     if(_seriesGenreFilter==='')return true;
     if(_seriesGenreFilter==='__none__')return !s.genre;
     return s.genre===_seriesGenreFilter;
   });
   const sortKey=s=>kataToHira(s.kana||s.title);
   const sorted=filtered.sort((a,b)=>sortKey(a[1]).localeCompare(sortKey(b[1]),'ja'));
-  if(sorted.length===0){el.innerHTML=`<div class="series-empty">${(_seriesGenreFilter||_seriesTagFilter.length||_seriesTextFilter)?'該当する作品がありません':'登録作品がありません'}</div>`;return;}
+  if(sorted.length===0){el.innerHTML=`<div class="series-empty">${(_seriesGenreFilter||_seriesTagFilter.length||_seriesTextFilter||_seriesMediaTypeFilter)?'該当する作品がありません':'登録作品がありません'}</div>`;return;}
   el.innerHTML=sorted.map(([id,s])=>{
     const sub=[s.author,s.publisher,s.genre,s.price?`¥${Number(s.price).toLocaleString()}`:''].filter(Boolean).join(' · ');
     const rating=s.rating||0;
     const starsHtml=`<span class="stars">${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</span>`;
     const completedBadge=s.completed?`<span class="completed-badge">完結</span>`:'';
+    const mediaTypeBadge=(s.mediaType&&s.mediaType!=='漫画')?`<span class="tag-chip" style="margin-left:4px">${escHtml(s.mediaType)}</span>`:'';
     return `<div class="series-item" id="si_${id}">
       <div class="series-item-row">
         <div class="series-item-info">
-          <div class="series-item-title">${escHtml(s.title)}${completedBadge}</div>
+          <div class="series-item-title">${escHtml(s.title)}${completedBadge}${mediaTypeBadge}</div>
           <div class="star-inline" id="sti_${id}">${[1,2,3,4,5].map(n=>`<span id="istar_${id}_${n}" class="${n<=rating?'on':''}" onclick="setInlineRating('${id}',${n})" title="${n}★">${n<=rating?'★':'☆'}</span>`).join('')}</div>
           ${sub?`<div class="series-item-sub">${escHtml(sub)}</div>`:''}
           ${(s.tags||[]).length?`<div class="series-item-tags">${(s.tags||[]).map(t=>`<span class="tag-chip">${escHtml(t)}</span>`).join('')}</div>`:''}
@@ -2580,8 +2635,13 @@ function renderSeriesList() {
         <div class="form-group" style="margin-bottom:10px"><label>ふりがな（五十音順ソート用）</label>
           <input type="text" id="sekana_${id}" value="${escHtml(s.kana||'')}" placeholder="例: かいへんのまほうつかい">
         </div>
+        <div class="form-group" style="margin-bottom:10px"><label>媒体タイプ</label>
+          <select id="semedia_${id}" onchange="onMediaTypeChange(this.value,'${id}')">
+            ${['漫画','小説','単行本','新書','文庫'].map(m=>`<option value="${m}" ${(s.mediaType||'漫画')===m?'selected':''}>${m}</option>`).join('')}
+          </select>
+        </div>
         <div class="form-row">
-          <div class="form-group" style="margin:0"><label>ジャンル</label>
+          <div class="form-group" id="segwrap_${id}" style="margin:0${(s.mediaType||'漫画')!=='漫画'?';display:none':''}"><label>ジャンル</label>
             <select id="seg_${id}">
               <option value="">未設定</option>
               ${['少年','少女','青年','女性','全年齢'].map(g=>`<option value="${g}" ${s.genre===g?'selected':''}>${g}</option>`).join('')}
@@ -2709,8 +2769,9 @@ async function saveSeriesEdit(id, btn) {
   const newTitle=(form.querySelector('[id^="stitle_"]')?.value||'').trim();
   const kana=kataToHira((form.querySelector('[id^="sekana_"]')?.value||'').trim());
   const tags=(form.querySelector('[id^="setags_"]')?.value||'').split(/[,、]/).map(t=>t.trim()).filter(Boolean);
+  const mediaType=(form.querySelector('[id^="semedia_"]')?.value||'漫画');
   const oldTitle=seriesList[id]?.title||'';
-  const updateData={genre,completed,rating,author,publisher,label,magazine,coverUrl,kana,tags};
+  const updateData={genre,completed,rating,author,publisher,label,magazine,coverUrl,kana,tags,mediaType};
   if(newTitle) updateData.title=newTitle;
   await dbSeriesRef.child(id).update(updateData);
   // タイトル変更時は登録済みの各巻データにもタイトルを反映（月別リスト等はvolume側のtitleを表示するため）
