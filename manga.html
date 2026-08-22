@@ -335,9 +335,9 @@ textarea{resize:vertical;min-height:60px}
 .font-size-btn{flex:1;padding:6px;border-radius:8px;border:1.5px solid var(--br);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
 .font-size-btn.active{background:var(--a1);border-color:var(--a1);color:#fff}
 .font-size-btn:hover:not(.active){border-color:var(--a1);color:var(--a1)}
-.section-order-btn{padding:6px 12px;border-radius:8px;border:1.5px solid var(--br);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
-.section-order-btn.active{background:var(--a1);border-color:var(--a1);color:#fff}
-.section-order-btn:hover:not(.active){border-color:var(--a1);color:var(--a1)}
+.section-order-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1.5px solid var(--br);border-radius:8px;margin-bottom:6px;background:var(--card)}
+.section-order-move{border:none;background:var(--cbg);color:var(--a1);border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:14px;font-family:inherit}
+.section-order-move:disabled{opacity:.3;cursor:default}
 </style>
 </head>
 <body>
@@ -640,12 +640,8 @@ textarea{resize:vertical;min-height:60px}
       </div>
     </div>
     <div class="form-group">
-      <label style="font-size:13px;color:var(--txt2);margin-bottom:8px;display:block">📑 月別ページの並び順</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="section-order-btn" data-order="unpurchased-first" onclick="setSectionOrder('unpurchased-first')">未購入リストが上</button>
-        <button class="section-order-btn" data-order="pending-first" onclick="setSectionOrder('pending-first')">発売日未定が上</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">発売リストは常に一番上に表示されます</div>
+      <label style="font-size:13px;color:var(--txt2);margin-bottom:8px;display:block">📑 月別ページの並び順（▲▼で自由に入れ替え）</label>
+      <div id="sectionOrderList"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-save" onclick="closeThemeModal()">閉じる</button>
@@ -954,7 +950,8 @@ function loadAppearance(){
     if(s.themeColor) applyThemeColor(s.themeColor,false);
     if(s.darkMode) document.body.classList.add('dark-mode');
     if(s.fontSize) applyFontSize(s.fontSize,false);
-    if(s.sectionOrder) _sectionOrder=s.sectionOrder;
+    if(Array.isArray(s.sectionOrder)&&s.sectionOrder.length===3) _sectionOrder=s.sectionOrder;
+    else if(s.sectionOrder==='pending-first') _sectionOrder=['release','pending','unpurchased']; // 旧形式からの移行
     syncAppearanceUI(s);
   }catch(e){}
 }
@@ -1024,17 +1021,27 @@ function syncAppearanceUI(s){
   document.querySelectorAll('.font-size-btn').forEach(b=>{
     b.classList.toggle('active',b.dataset.size===fs);
   });
-  const so=s.sectionOrder||'unpurchased-first';
-  document.querySelectorAll('.section-order-btn').forEach(b=>{
-    b.classList.toggle('active',b.dataset.order===so);
-  });
+  renderSectionOrderUI();
 }
-function setSectionOrder(order) {
-  _sectionOrder=order;
-  saveAppearance({sectionOrder:order});
-  document.querySelectorAll('.section-order-btn').forEach(b=>{
-    b.classList.toggle('active',b.dataset.order===order);
-  });
+const SECTION_LABELS={release:'📖 発売リスト',unpurchased:'🛒 未購入リスト',pending:'📋 発売日未定'};
+function renderSectionOrderUI() {
+  const el=document.getElementById('sectionOrderList');
+  if(!el)return;
+  el.innerHTML=_sectionOrder.map((key,i)=>`
+    <div class="section-order-item">
+      <span style="font-size:13px">${SECTION_LABELS[key]||key}</span>
+      <div style="display:flex;gap:4px">
+        <button class="section-order-move" onclick="moveSectionOrder(${i},-1)" ${i===0?'disabled':''}>▲</button>
+        <button class="section-order-move" onclick="moveSectionOrder(${i},1)" ${i===_sectionOrder.length-1?'disabled':''}>▼</button>
+      </div>
+    </div>`).join('');
+}
+function moveSectionOrder(idx,dir) {
+  const newIdx=idx+dir;
+  if(newIdx<0||newIdx>=_sectionOrder.length)return;
+  [_sectionOrder[idx],_sectionOrder[newIdx]]=[_sectionOrder[newIdx],_sectionOrder[idx]];
+  saveAppearance({sectionOrder:_sectionOrder});
+  renderSectionOrderUI();
   render();
 }
 
@@ -1208,8 +1215,6 @@ function setView(mode) {
 // ── メインレンダリング ──
 function render() {
   document.getElementById('currentMonthLabel').textContent=`${currentYear}年${currentMonth}月`;
-  const ps=document.getElementById('pendingSection');if(ps)ps.remove();
-  const us=document.getElementById('unpurchasedSection');if(us)us.remove();
   if(viewMode==='graph')    { renderGraph();    return; }
   if(viewMode==='calendar') { renderCalendar(); return; }
   if(viewMode==='history')  { renderHistory();  return; }
@@ -1221,19 +1226,16 @@ function render() {
 let _pendingOpen=false;
 function togglePendingSection() {
   _pendingOpen=!_pendingOpen;
-  renderPendingSection();
+  render();
 }
-function renderPendingSection() {
+function buildPendingSectionHtml() {
   const pending=Object.entries(volumesList).map(([id,v])=>({id,...v})).filter(v=>!v.releaseDate&&!isPurchased(v));
-  const container=document.getElementById('viewArea');
-  let el=document.getElementById('pendingSection');
-  if(pending.length===0){if(el)el.remove();return;}
-  if(!el){el=document.createElement('div');el.id='pendingSection';container.appendChild(el);}
+  if(pending.length===0){return '';}
   const arrow=_pendingOpen?'▲':'▼';
   const lastCheck=parseInt(localStorage.getItem('pendingDateLastCheck')||'0');
   const daysAgo=lastCheck?Math.floor((Date.now()-lastCheck)/(1000*60*60*24)):-1;
   const lastCheckLabel=daysAgo<0?'未チェック':daysAgo===0?'今日チェック済み':`${daysAgo}日前にチェック`;
-  el.innerHTML=`<div class="card pending-card">
+  return `<div class="card pending-card">
     <div class="card-header" style="cursor:pointer;user-select:none">
       <h2 onclick="togglePendingSection()">📋 発売日未定（${pending.length}件）<span style="font-size:12px;color:var(--a1);margin-left:8px">${arrow}</span></h2>
       <div style="display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
@@ -1266,22 +1268,19 @@ function renderPendingSection() {
 
 // ── 未購入リスト（全期間・発売日が過去のものも含む） ──
 let _unpurchasedOpen=true;
-let _sectionOrder='unpurchased-first';
+let _sectionOrder=['release','unpurchased','pending'];
 function toggleUnpurchasedSection() {
   _unpurchasedOpen=!_unpurchasedOpen;
-  renderUnpurchasedSection();
+  render();
 }
-function renderUnpurchasedSection() {
+function buildUnpurchasedSectionHtml() {
   const list=Object.entries(volumesList).map(([id,v])=>({id,...v}))
     .filter(v=>v.releaseDate&&!isPurchased(v))
     .sort((a,b)=>a.releaseDate.localeCompare(b.releaseDate));
-  const container=document.getElementById('viewArea');
-  let el=document.getElementById('unpurchasedSection');
-  if(list.length===0){if(el)el.remove();return;}
-  if(!el){el=document.createElement('div');el.id='unpurchasedSection';container.appendChild(el);}
+  if(list.length===0){return '';}
   const arrow=_unpurchasedOpen?'▲':'▼';
   const totalAmt=list.reduce((s,v)=>s+(v.price||0),0);
-  el.innerHTML=`<div class="card pending-card">
+  return `<div class="card pending-card">
     <div class="card-header" style="cursor:pointer;user-select:none">
       <h2 onclick="toggleUnpurchasedSection()">🛒 未購入リスト（全期間・${list.length}件）<span style="font-size:12px;color:var(--a1);margin-left:8px">${arrow}</span></h2>
       <div style="font-size:12px;color:var(--muted)">合計 ¥${totalAmt.toLocaleString('ja-JP')}</div>
@@ -1377,7 +1376,7 @@ async function checkAllPendingDates() {
   // 最終チェック日を更新
   localStorage.setItem('pendingDateLastCheck', String(Date.now()));
   if(btn){ btn.disabled=false; btn.textContent='🔄 発売日チェック'; }
-  renderPendingSection();
+  render();
 
   if(found.length === 0){ alert('新しい発売日情報は見つかりませんでした'); return; }
 
@@ -1466,7 +1465,7 @@ function renderMonthly() {
   document.getElementById('searchHint').textContent=isSearch?(vols.length>0?`${vols.length}件ヒット`:'該当なし'):'';
   const title=isSearch?`🔍 「${searchQuery}」の検索結果`:`📖 ${currentYear}年${currentMonth}月 発売リスト`;
   const today=new Date(); today.setHours(0,0,0,0);
-  document.getElementById('viewArea').innerHTML=`
+  const releaseHtml=`
     <div class="card">
       <div class="card-header">
         <h2>${escHtml(title)}</h2>
@@ -1489,11 +1488,11 @@ function renderMonthly() {
       </div>
       ${vols.length===0?`<div class="empty-state"><div class="icon">📭</div><p>${isSearch?`「${escHtml(searchQuery)}」に一致する作品はありません`:'この月の登録はありません<br>右下の＋ボタンで追加してください'}</p></div>`:''}
     </div>`;
-  if(!isSearch){
-    if(_sectionOrder==='pending-first'){ renderPendingSection(); renderUnpurchasedSection(); }
-    else { renderUnpurchasedSection(); renderPendingSection(); }
+  if(isSearch){
+    document.getElementById('viewArea').innerHTML=releaseHtml+buildPendingSectionHtml();
   } else {
-    renderPendingSection();
+    const blocks={release:releaseHtml,unpurchased:buildUnpurchasedSectionHtml(),pending:buildPendingSectionHtml()};
+    document.getElementById('viewArea').innerHTML=_sectionOrder.map(key=>blocks[key]||'').join('');
   }
 }
 
