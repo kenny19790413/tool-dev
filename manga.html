@@ -4,25 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#553c9a">
+<meta name="theme-color" content="#a0522d">
 <title>Ma Bibliothèque</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
 :root{
-  --a1:#553c9a;--a2:#b94bd8;
-  --bg:#f5f0ff;--br:#e9e0ff;--cbg:#f8f5ff;--card:#fff;
-  --txt:#2d2d3a;--txt2:#4a4a6a;--muted:#718096;
-  --sha-1:rgba(85,60,154,.1);--sha-08:rgba(85,60,154,.08);
-  --sha-2:rgba(85,60,154,.2);--sha-5:rgba(85,60,154,.5);
-  --sha-6:rgba(85,60,154,.6);--sha-95:rgba(85,60,154,.95);
-  --sha-97:rgba(85,60,154,.97);
+  --a1:#a0522d;--a2:#cd8b56;
+  --bg:#fdf6ec;--br:#e8dcc8;--cbg:#faf3e6;--card:#fffdf8;
+  --txt:#3a2f24;--txt2:#6b5a47;--muted:#7a6a54;
+  --sha-1:rgba(160,82,45,.1);--sha-08:rgba(160,82,45,.08);
+  --sha-2:rgba(160,82,45,.2);--sha-5:rgba(160,82,45,.5);
+  --sha-6:rgba(160,82,45,.6);--sha-95:rgba(160,82,45,.95);
+  --sha-97:rgba(160,82,45,.97);
   --fs:1rem;
 }
 body.dark-mode{
-  --bg:#1a1a2e;--br:#2d2d5a;--cbg:#16213e;--card:#1e1e3d;
-  --txt:#e2e8f0;--txt2:#b0bec5;--muted:#94a3b8;
+  --bg:#2b2117;--br:#4a3b2a;--cbg:#241a10;--card:#2f2416;
+  --txt:#f0e6d6;--txt2:#c9b8a0;--muted:#a08e76;
   --sha-1:rgba(0,0,0,.2);--sha-08:rgba(0,0,0,.15);
   --sha-2:rgba(0,0,0,.3);--sha-5:rgba(0,0,0,.4);
   --sha-6:rgba(0,0,0,.5);--sha-95:rgba(0,0,0,.95);
@@ -31,11 +31,11 @@ body.dark-mode{
 body.dark-mode .card,body.dark-mode .graph-wrap,body.dark-mode .cal-wrap{background:var(--card);color:var(--txt)}
 body.dark-mode table{color:var(--txt)}
 body.dark-mode tbody tr:hover{background:rgba(255,255,255,.05)}
-body.dark-mode .modal{background:#1e1e3d;color:var(--txt)}
-body.dark-mode input,body.dark-mode select,body.dark-mode textarea{background:#16213e;color:var(--txt);border-color:var(--br)}
+body.dark-mode .modal{background:var(--card);color:var(--txt)}
+body.dark-mode input,body.dark-mode select,body.dark-mode textarea{background:var(--cbg);color:var(--txt);border-color:var(--br)}
 body.dark-mode .series-item{background:var(--cbg)}
 body.dark-mode .book-result-item{background:var(--cbg);border-color:var(--br);color:var(--txt)}
-body.dark-mode .login-box{background:#1e1e3d;color:var(--txt)}
+body.dark-mode .login-box{background:var(--card);color:var(--txt)}
 body.dark-mode .nav-tabs{background:var(--card);border-bottom-color:var(--br)}
 body.dark-mode .btn-cancel{background:var(--cbg);color:var(--txt);border-color:var(--br)}
 body.dark-mode .summary-card{background:var(--card)}
@@ -96,7 +96,7 @@ body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic Pro','Meiryo',sans
 .summary-card.total .amount{color:var(--a1)}
 .summary-card.bought .amount{color:#38a169}
 .summary-card.unbought .amount{color:#e53e3e}
-.summary-card.total4 .amount{color:#6b46c1}
+.summary-card.total4 .amount{color:var(--a1)}
 @media(max-width:600px){.summary-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:480px){.summary-card .amount{font-size:16px}.summary-card .label{font-size:11px}}
 
@@ -150,7 +150,7 @@ tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
 .genre-少女{background:#fce7f3;color:#be185d}
 .genre-青年{background:#dcfce7;color:#15803d}
 .genre-女性{background:#fef3c7;color:#92400e}
-.genre-全年齢{background:#f3e8ff;color:#7c3aed}
+.genre-全年齢{background:#f3e8ff;color:var(--a1)}
 .completed-badge{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle;background:#e2e8f0;color:#4a5568}
 
 /* ─── 星評価 ─── */
@@ -177,7 +177,7 @@ tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
 .graph-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;position:relative}
 .graph-bar{width:100%;border-radius:6px 6px 0 0;transition:height .4s;min-height:2px;position:relative}
 .graph-bar.this-month{background:linear-gradient(180deg,var(--a2),var(--a1))}
-.graph-bar.past{background:#c4b5fd}
+.graph-bar.past{background:var(--br)}
 .graph-bar-val{font-size:9px;color:var(--a1);font-weight:700;text-align:center;white-space:nowrap}
 .graph-bar-label{font-size:10px;color:#718096;white-space:nowrap}
 .graph-budget-line{position:absolute;left:0;right:0;border-top:2px dashed #e53e3e;pointer-events:none}
@@ -197,7 +197,7 @@ tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
 .cal-dow{text-align:center;font-size:11px;font-weight:700;color:#718096;padding:4px 0}
 .cal-day{min-height:64px;border-radius:8px;padding:4px;background:var(--cbg);cursor:default;position:relative}
 .cal-day.other-month{background:#fafafa;opacity:.5}
-.cal-day.today{background:#ede9fe;border:2px solid var(--a1)}
+.cal-day.today{background:var(--cbg);border:2px solid var(--a1)}
 .cal-day-num{font-size:12px;font-weight:700;color:#4a4a6a;margin-bottom:3px}
 .cal-day.today .cal-day-num{color:var(--a1)}
 .cal-release{font-size:9px;background:var(--a1);color:#fff;border-radius:3px;padding:1px 4px;margin-bottom:2px;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
@@ -248,8 +248,8 @@ textarea{resize:vertical;min-height:60px}
 .series-item-title{font-size:13px;font-weight:700}
 .series-item-sub{font-size:11px;color:#718096;margin-top:2px}
 .series-item-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.tag-chip{font-size:10px;padding:1px 8px;border-radius:10px;background:#f0e6ff;color:#6b46c1;white-space:nowrap}
-.tag-chip.active{background:#6b46c1;color:#fff}
+.tag-chip{font-size:10px;padding:1px 8px;border-radius:10px;background:var(--cbg);color:var(--a1);white-space:nowrap}
+.tag-chip.active{background:var(--a1);color:#fff}
 .series-edit-form{margin-top:10px;padding-top:10px;border-top:1px solid var(--br);display:none}
 .series-empty{text-align:center;padding:20px;color:#a0aec0;font-size:13px}
 
@@ -267,7 +267,7 @@ textarea{resize:vertical;min-height:60px}
 .btn-search-go:hover{opacity:.85}
 .book-results{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto}
 .book-result-item{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:8px;border:1.5px solid var(--br);background:#fdf9ff;cursor:pointer;transition:all .15s}
-.book-result-item:hover{background:#e9d8fd;border-color:var(--a1)}
+.book-result-item:hover{background:var(--br);border-color:var(--a1)}
 .book-result-thumb{width:40px;height:56px;object-fit:cover;border-radius:4px;flex-shrink:0;background:var(--br)}
 .book-result-thumb-placeholder{width:40px;height:56px;border-radius:4px;flex-shrink:0;background:var(--br);display:flex;align-items:center;justify-content:center;font-size:20px}
 .book-result-info{flex:1;min-width:0}
@@ -275,8 +275,8 @@ textarea{resize:vertical;min-height:60px}
 .book-result-sub{font-size:11px;color:#718096;margin-top:3px}
 .book-search-status{text-align:center;padding:20px;color:#a0aec0;font-size:13px}
 .book-search-btn-wrap{margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
-.btn-open-book-search{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--cbg);color:var(--a1);border:1.5px solid #c4b5fd;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
-.btn-open-book-search:hover{background:#ede9fe}
+.btn-open-book-search{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--cbg);color:var(--a1);border:1.5px solid var(--br);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-open-book-search:hover{background:var(--cbg)}
 
 /* ─── 発見（新刊ランキング） ─── */
 .discover-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;padding:16px}
@@ -296,24 +296,24 @@ textarea{resize:vertical;min-height:60px}
 .budget-warning.show{display:block}
 
 /* ─── 発売日検索 ─── */
-.btn-search-release{padding:8px 10px;background:var(--cbg);border:1.5px solid #c4b5fd;border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s;flex-shrink:0}
-.btn-search-release:hover{background:#ede9fe;border-color:var(--a1)}
+.btn-search-release{padding:8px 10px;background:var(--cbg);border:1.5px solid var(--br);border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s;flex-shrink:0}
+.btn-search-release:hover{background:var(--cbg);border-color:var(--a1)}
 .release-date-results{margin-top:6px;display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto}
 .release-date-item{padding:7px 10px;border-radius:6px;border:1.5px solid var(--br);background:#fdf9ff;cursor:pointer;font-size:12px;transition:all .15s}
-.release-date-item:hover{background:#e9d8fd;border-color:var(--a1)}
+.release-date-item:hover{background:var(--br);border-color:var(--a1)}
 .rdi-date{color:var(--a1);font-weight:700}
 .rdi-title{color:#718096;font-size:11px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ─── 発売日未定カード ─── */
-.pending-card{border:2px dashed #c4b5fd}
-.pending-card .card-header h2{color:#7c3aed}
+.pending-card{border:2px dashed var(--br)}
+.pending-card .card-header h2{color:var(--a1)}
 .pending-card .card-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.btn-check-pending{background:linear-gradient(135deg,#7c3aed,var(--a1));color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;white-space:nowrap}
+.btn-check-pending{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;white-space:nowrap}
 .btn-check-pending:disabled{opacity:.6;cursor:not-allowed}
 /* ─── 発売日チェック促進バナー ─── */
-.pending-reminder-banner{display:none;align-items:center;gap:10px;background:#fdf4ff;border:1px solid #d6bcfa;border-radius:10px;padding:10px 14px;margin:8px 16px;font-size:13px;color:var(--a1)}
+.pending-reminder-banner{display:none;align-items:center;gap:10px;background:var(--cbg);border:1px solid var(--br);border-radius:10px;padding:10px 14px;margin:8px 16px;font-size:13px;color:var(--a1)}
 .pending-reminder-banner button{border:none;cursor:pointer;border-radius:6px;padding:4px 10px;font-size:12px}
-.pending-reminder-banner .btn-remind-check{background:#7c3aed;color:#fff}
+.pending-reminder-banner .btn-remind-check{background:var(--a1);color:#fff}
 .pending-reminder-banner .btn-remind-close{background:none;color:#a0aec0;font-size:16px;padding:0 4px}
 
 /* ─── 保存インジケーター ─── */
@@ -369,9 +369,9 @@ textarea{resize:vertical;min-height:60px}
           oninput="onSeriesSearchInput()" onfocus="openSeriesDropdown()" style="flex:1">
         <button type="button" class="btn-open-book-search" style="white-space:nowrap" onclick="openBarcodeScanner()">📷</button>
       </div>
-      <div id="seriesDropdown" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid #d6bcfa;border-radius:8px;width:100%;max-height:380px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12);top:100%;left:0"></div>
+      <div id="seriesDropdown" style="display:none;position:absolute;z-index:200;background:#fff;border:1px solid var(--br);border-radius:8px;width:100%;max-height:380px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12);top:100%;left:0"></div>
       <div id="seriesRenameHint" style="display:none;margin-top:4px;font-size:11px;color:#718096">
-        シリーズ名を変更する場合は <button type="button" onclick="renameCurrentSeries()" style="border:none;background:none;color:#7c3aed;cursor:pointer;font-size:11px;text-decoration:underline;padding:0">シリーズ名を変更</button>
+        シリーズ名を変更する場合は <button type="button" onclick="renameCurrentSeries()" style="border:none;background:none;color:var(--a1);cursor:pointer;font-size:11px;text-decoration:underline;padding:0">シリーズ名を変更</button>
       </div>
       <select id="seriesSelect" style="display:none">
         <option value="">──</option>
@@ -480,7 +480,7 @@ textarea{resize:vertical;min-height:60px}
     <div id="apiRefetchStatus" style="display:none;font-size:12px;color:#718096;margin-bottom:8px;text-align:center;white-space:pre-line"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddModal()">キャンセル</button>
-      <button id="btnApiRefetch" style="font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer" onclick="refetchBookInfo()">🔄 自動入力</button>
+      <button id="btnApiRefetch" style="font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid var(--a1);background:var(--cbg);color:var(--a1);cursor:pointer" onclick="refetchBookInfo()">🔄 自動入力</button>
       <button class="btn-save" onclick="saveVolume()">保存する</button>
     </div>
   </div>
@@ -533,7 +533,7 @@ textarea{resize:vertical;min-height:60px}
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
       <input type="text" id="seriesTextFilterInput" placeholder="🔍 作品名・作者名で絞り込み" autocomplete="off" oninput="setSeriesTextFilter(this.value)" style="flex:1">
-      <button onclick="bulkFillKana()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer;white-space:nowrap" title="ふりがな未入力の作品にまとめて読み仮名を取得（五十音順ソート用）">🈁 ふりがな一括取得</button>
+      <button onclick="bulkFillKana()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--a1);background:var(--cbg);color:var(--a1);cursor:pointer;white-space:nowrap" title="ふりがな未入力の作品にまとめて読み仮名を取得（五十音順ソート用）">🈁 ふりがな一括取得</button>
     </div>
     <div id="seriesMediaTypeFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
     <div id="seriesGenreFilterOuter">
@@ -589,7 +589,8 @@ textarea{resize:vertical;min-height:60px}
     <div class="form-group">
       <label style="font-weight:700;font-size:13px;color:var(--txt2);margin-bottom:10px;display:block">🎨 テーマカラー</label>
       <div id="themeColorPicker" style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="theme-color-btn" data-c1="#553c9a" data-c2="#b94bd8" data-bg="#f5f0ff" data-br="#e9e0ff" data-cbg="#f8f5ff" style="background:linear-gradient(135deg,#553c9a,#b94bd8)" title="パープル（デフォルト）"></button>
+        <button class="theme-color-btn" data-c1="#a0522d" data-c2="#cd8b56" data-bg="#fdf6ec" data-br="#e8dcc8" data-cbg="#faf3e6" style="background:linear-gradient(135deg,#a0522d,#cd8b56)" title="テラコッタ（デフォルト）"></button>
+        <button class="theme-color-btn" data-c1="#553c9a" data-c2="#b94bd8" data-bg="#f5f0ff" data-br="#e9e0ff" data-cbg="#f8f5ff" style="background:linear-gradient(135deg,#553c9a,#b94bd8)" title="パープル"></button>
         <button class="theme-color-btn" data-c1="#2563eb" data-c2="#3b82f6" data-bg="#eff6ff" data-br="#dbeafe" data-cbg="#f0f7ff" style="background:linear-gradient(135deg,#2563eb,#3b82f6)" title="ブルー"></button>
         <button class="theme-color-btn" data-c1="#059669" data-c2="#34d399" data-bg="#f0fdf4" data-br="#bbf7d0" data-cbg="#f0fdf6" style="background:linear-gradient(135deg,#059669,#34d399)" title="グリーン"></button>
         <button class="theme-color-btn" data-c1="#db2777" data-c2="#f472b6" data-bg="#fdf2f8" data-br="#fbcfe8" data-cbg="#fdf4fb" style="background:linear-gradient(135deg,#db2777,#f472b6)" title="ピンク"></button>
@@ -681,7 +682,7 @@ textarea{resize:vertical;min-height:60px}
     <button onclick="changeMonth(-1)">&#8249;</button>
     <div class="current-month" id="currentMonthLabel"></div>
     <button onclick="changeMonth(1)">&#8250;</button>
-    <button id="goTodayBtn" onclick="goToCurrentMonth()" title="今月に戻る" style="margin-left:8px;width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(135deg,#9b59b6,#6b46c1);color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(107,70,193,.35);flex-shrink:0">⌂</button>
+    <button id="goTodayBtn" onclick="goToCurrentMonth()" title="今月に戻る" style="margin-left:8px;width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px var(--sha-5);flex-shrink:0">⌂</button>
     <button id="searchToggleBtn" onclick="toggleSearchBar()" title="作品名・作者名で検索" style="margin-left:8px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.25);color:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0">🔍</button>
   </div>
 </div>
@@ -1162,7 +1163,7 @@ function renderPendingSection() {
   const lastCheckLabel=daysAgo<0?'未チェック':daysAgo===0?'今日チェック済み':`${daysAgo}日前にチェック`;
   el.innerHTML=`<div class="card pending-card">
     <div class="card-header" style="cursor:pointer;user-select:none">
-      <h2 onclick="togglePendingSection()">📋 発売日未定（${pending.length}件）<span style="font-size:12px;color:#9b59b6;margin-left:8px">${arrow}</span></h2>
+      <h2 onclick="togglePendingSection()">📋 発売日未定（${pending.length}件）<span style="font-size:12px;color:var(--a1);margin-left:8px">${arrow}</span></h2>
       <div style="display:flex;align-items:center;gap:8px" onclick="event.stopPropagation()">
         <span style="font-size:11px;color:#a0aec0">${lastCheckLabel}</span>
         <button id="btnCheckPending" class="btn-check-pending" onclick="checkAllPendingDates()">🔄 発売日チェック</button>
@@ -1279,10 +1280,10 @@ function showPendingCheckModal() {
   document.getElementById('pendingCheckCount').textContent = `📅 ${_pendingCheckResults.length}件で発売日が確定${warnCount?` ⚠️ ${warnCount}件要確認`:''}`;
   document.getElementById('pendingCheckBody').innerHTML = _pendingCheckResults.map((r,i) => `
     <label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid ${r._warn?'#fed7aa':'#f0e9ff'};cursor:pointer;background:${r._warn?'#fffbeb':'transparent'}">
-      <input type="checkbox" id="pcc_${i}" ${r._warn?'':'checked'} style="width:16px;height:16px;accent-color:#7c3aed">
+      <input type="checkbox" id="pcc_${i}" ${r._warn?'':'checked'} style="width:16px;height:16px;accent-color:var(--a1)">
       <div style="flex:1">
         <div style="font-weight:600;font-size:14px">${escHtml(r.title)}${r.volume?' 第'+r.volume+'巻':''}</div>
-        <div style="color:${r._warn?'#d97706':'#7c3aed'};font-size:13px;margin-top:2px">📅 ${r.label} <span style="font-size:10px;color:#a0aec0;margin-left:4px">${r._src}</span></div>
+        <div style="color:${r._warn?'#d97706':'var(--a1)'};font-size:13px;margin-top:2px">📅 ${r.label} <span style="font-size:10px;color:#a0aec0;margin-left:4px">${r._src}</span></div>
         ${r.foundTitle?`<div style="font-size:11px;color:#718096;margin-top:2px">検索ヒット：${escHtml(r.foundTitle)}</div>`:''}
         ${r._warn?`<div style="font-size:11px;color:#b45309;margin-top:3px;font-weight:600">⚠️ 同シリーズに同じ発売日の巻が存在します。同日発売か誤検出か確認してください。</div>`:''}
       </div>
@@ -1566,7 +1567,7 @@ function renderDiscover() {
   document.getElementById('summaryCard4').style.display='none';
   const genreTabs=DISCOVER_GENRES.map(g=>{
     const active=_discoverGenreId===g.id;
-    return `<button style="padding:5px 12px;border-radius:20px;border:1px solid ${active?'#9b59b6':'#e2d9f3'};background:${active?'#9b59b6':'#faf5ff'};color:${active?'#fff':'#6b46c1'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}" onclick="setDiscoverGenre('${g.id}')">${g.label}</button>`;
+    return `<button style="padding:5px 12px;border-radius:20px;border:1px solid ${active?'var(--a1)':'var(--br)'};background:${active?'var(--a1)':'var(--cbg)'};color:${active?'#fff':'var(--a1)'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}" onclick="setDiscoverGenre('${g.id}')">${g.label}</button>`;
   }).join('');
   document.getElementById('viewArea').innerHTML=`
     <div class="card">
@@ -1697,7 +1698,7 @@ function getSearchVolumes() {
 }
 function highlight(text,query) {
   if(!query)return escHtml(text);
-  return escHtml(text).replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark style="background:#e9d8fd;color:var(--a1);border-radius:3px;padding:0 2px">${m}</mark>`);
+  return escHtml(text).replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<mark style="background:var(--br);color:var(--a1);border-radius:3px;padding:0 2px">${m}</mark>`);
 }
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -1814,7 +1815,7 @@ function filterSeriesDropdown() {
   let html=filtered.map(([id,s])=>`<div style="${st}" onmousedown="selectSeriesItem('${id}','${s.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${escHtml(s.title)}${s.completed?' <span style="font-size:11px;color:#a0aec0">[完結]</span>':''}${s.author?` <span style="font-size:11px;color:#a0aec0">／ ${escHtml(s.author)}</span>`:''}</div>`).join('');
   const cur=(document.getElementById('seriesSearchInput').value||'').trim();
   const newLabel=cur?`＋「${escHtml(cur)}」を新しく登録`:'＋ 新しい作品を登録';
-  html+=`<div style="${st};color:#6b46c1;font-weight:600" onmousedown="selectSeriesItem('__new__','')">${newLabel}</div>`;
+  html+=`<div style="${st};color:var(--a1);font-weight:600" onmousedown="selectSeriesItem('__new__','')">${newLabel}</div>`;
   html+='<div id="seriesApiSection"></div>';
   dd.innerHTML=html;
   dd.style.display='';
@@ -1873,7 +1874,7 @@ async function searchBooksInline(q){
     return;
   }
   const st2='padding:8px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0ebff;display:flex;gap:8px;align-items:flex-start';
-  let h='<div style="padding:5px 14px;font-size:11px;color:#9b59b6;background:#faf5ff;font-weight:600;border-top:2px solid var(--br)">── 書籍データベース ──</div>';
+  let h='<div style="padding:5px 14px;font-size:11px;color:var(--a1);background:var(--cbg);font-weight:600;border-top:2px solid var(--br)">── 書籍データベース ──</div>';
   window._inlineResults.forEach((item,i)=>{
     const badge=item._src==='amazon'
       ?'<span style="font-size:9px;background:#fff8e1;color:#e07b00;border-radius:3px;padding:1px 4px">Amazon</span>'
@@ -2570,7 +2571,7 @@ function toggleSeriesTagFilter(t) {
 function renderSeriesList() {
   const el=document.getElementById('seriesListEl');
   const all=Object.values(seriesList);
-  const tabStyle=(active)=>`padding:4px 10px;border-radius:20px;border:1px solid ${active?'#9b59b6':'#e2d9f3'};background:${active?'#9b59b6':'#faf5ff'};color:${active?'#fff':'#6b46c1'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}`;
+  const tabStyle=(active)=>`padding:4px 10px;border-radius:20px;border:1px solid ${active?'var(--a1)':'var(--br)'};background:${active?'var(--a1)':'var(--cbg)'};color:${active?'#fff':'var(--a1)'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}`;
   // 媒体タイプフィルタータブ生成
   const mediaTypes=['漫画','小説','単行本','新書','文庫'];
   const mediaCounts={};
@@ -2638,7 +2639,7 @@ function renderSeriesList() {
           ${sub?`<div class="series-item-sub">${escHtml(sub)}</div>`:''}
           ${(s.tags||[]).length?`<div class="series-item-tags">${(s.tags||[]).map(t=>`<span class="tag-chip">${escHtml(t)}</span>`).join('')}</div>`:''}
         </div>
-        <button class="btn-icon" onclick="openNextVolumeFromSeries('${id}')" title="次巻を追加" style="color:#6b46c1;font-size:16px;font-weight:700">＋</button>
+        <button class="btn-icon" onclick="openNextVolumeFromSeries('${id}')" title="次巻を追加" style="color:var(--a1);font-size:16px;font-weight:700">＋</button>
         <button class="btn-icon edit" onclick="toggleSeriesEdit('${id}')" title="編集">✎</button>
         <button class="btn-icon" onclick="deleteSeries('${id}')" title="削除">✕</button>
       </div>
