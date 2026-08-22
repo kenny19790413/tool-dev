@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#553c9a">
-<title>漫画発売リスト</title>
+<title>Ma Bibliothèque</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -89,13 +89,15 @@ body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic Pro','Meiryo',sans
 .container{max-width:900px;margin:0 auto;padding:16px 16px 100px}
 
 /* ─── サマリーカード ─── */
-.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
 .summary-card{background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:0 2px 8px var(--sha-1)}
 .summary-card .label{font-size:12px;color:#718096;margin-bottom:6px}
 .summary-card .amount{font-size:22px;font-weight:700}
 .summary-card.total .amount{color:var(--a1)}
 .summary-card.bought .amount{color:#38a169}
 .summary-card.unbought .amount{color:#e53e3e}
+.summary-card.total4 .amount{color:#6b46c1}
+@media(max-width:600px){.summary-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:480px){.summary-card .amount{font-size:16px}.summary-card .label{font-size:11px}}
 
 /* ─── メインカード ─── */
@@ -339,8 +341,8 @@ textarea{resize:vertical;min-height:60px}
 <div id="loginOverlay" class="login-overlay">
   <div class="login-box">
     <div class="logo">📚</div>
-    <h2>漫画発売リスト</h2>
-    <p>欲しい漫画の発売スケジュールを<br>月ごとに管理します</p>
+    <h2>Ma Bibliothèque</h2>
+    <p>欲しい本の購入・発売スケジュールを<br>月ごとに管理します</p>
     <div id="googleSignInDiv"></div>
     <div class="auth-status" id="authStatus"></div>
   </div>
@@ -363,7 +365,7 @@ textarea{resize:vertical;min-height:60px}
     <div class="form-group" style="position:relative">
       <label>作品名 <span style="color:#e53e3e">*</span></label>
       <div style="display:flex;gap:6px;align-items:center">
-        <input type="text" id="seriesSearchInput" placeholder="タイトルを入力…（自動で書籍検索）" autocomplete="off"
+        <input type="text" id="seriesSearchInput" placeholder="作品名・筆者で検索…" autocomplete="off"
           oninput="onSeriesSearchInput()" onfocus="openSeriesDropdown()" style="flex:1">
         <button type="button" class="btn-open-book-search" style="white-space:nowrap" onclick="openBarcodeScanner()">📷</button>
       </div>
@@ -673,8 +675,8 @@ textarea{resize:vertical;min-height:60px}
     <button onclick="openThemeModal()">🎨 テーマ</button>
     <button onclick="signOut()">サインアウト</button>
   </div>
-  <h1>📚 漫画発売リスト</h1>
-  <div class="subtitle">欲しい漫画の発売スケジュール管理</div>
+  <h1>📚 Ma Bibliothèque</h1>
+  <div class="subtitle">欲しい本の購入・発売スケジュール管理</div>
   <div class="month-nav" id="monthNav">
     <button onclick="changeMonth(-1)">&#8249;</button>
     <div class="current-month" id="currentMonthLabel"></div>
@@ -732,6 +734,10 @@ textarea{resize:vertical;min-height:60px}
     <div class="summary-card unbought">
       <div class="label" id="summaryLabel3">未購入合計</div>
       <div class="amount" id="unboughtTotal">¥0</div>
+    </div>
+    <div class="summary-card total4" id="summaryCard4">
+      <div class="label" id="summaryLabel4">合計金額</div>
+      <div class="amount" id="totalAmount">¥0</div>
     </div>
   </div>
 
@@ -885,7 +891,7 @@ function checkNotifications(uid) {
     let msg=null;
     if(diff===0) msg=`本日発売！「${v.title}${v.volume?' 第'+v.volume+'巻':''}」`;
     else if(diff===1) msg=`明日発売！「${v.title}${v.volume?' 第'+v.volume+'巻':''}」`;
-    if(msg){ new Notification('📚 漫画発売リスト',{body:msg}); notified.push(id); }
+    if(msg){ new Notification('📚 Ma Bibliothèque',{body:msg}); notified.push(id); }
   });
   localStorage.setItem(key,JSON.stringify(notified));
 }
@@ -1326,12 +1332,14 @@ function renderMonthly() {
   const isSearch=searchQuery!=='';
   const rawVols=isSearch?getSearchVolumes():getMonthVolumes();
   const vols=sortVolumes(rawVols);
-  document.getElementById('summaryLabel1').textContent=isSearch?'検索件数':'今月の発売冊数';
+  document.getElementById('summaryLabel1').textContent=isSearch?'検索件数':'購入予定冊数';
   document.getElementById('summaryLabel2').textContent='購入済み合計';
   document.getElementById('summaryLabel3').textContent='未購入合計';
   document.getElementById('totalCount').textContent=`${vols.length}冊`;
   document.getElementById('boughtTotal').textContent=`¥${vols.filter(v=>isPurchased(v)).reduce((s,v)=>s+(v.price||0),0).toLocaleString('ja-JP')}`;
   document.getElementById('unboughtTotal').textContent=`¥${vols.filter(v=>!isPurchased(v)).reduce((s,v)=>s+(v.price||0),0).toLocaleString('ja-JP')}`;
+  document.getElementById('summaryCard4').style.display='';
+  document.getElementById('totalAmount').textContent=`¥${vols.reduce((s,v)=>s+(v.price||0),0).toLocaleString('ja-JP')}`;
   document.getElementById('searchHint').textContent=isSearch?(vols.length>0?`${vols.length}件ヒット`:'該当なし'):'';
   const title=isSearch?`🔍 「${searchQuery}」の検索結果`:`📖 ${currentYear}年${currentMonth}月 発売リスト`;
   const today=new Date(); today.setHours(0,0,0,0);
@@ -1412,6 +1420,7 @@ function renderHistory() {
   document.getElementById('totalCount').textContent=`${all.length}冊`;
   document.getElementById('boughtTotal').textContent=`¥${totalAmt.toLocaleString('ja-JP')}`;
   document.getElementById('unboughtTotal').textContent=`${all.filter(v=>getStatus(v)==='read').length}冊`;
+  document.getElementById('summaryCard4').style.display='none';
   if(all.length===0){
     document.getElementById('viewArea').innerHTML='<div class="empty-state"><div class="icon">📭</div><p>まだ購入済みの作品がありません</p></div>';
     return;
@@ -1471,6 +1480,7 @@ function renderGraph() {
   document.getElementById('totalCount').textContent=`¥${totalAll.toLocaleString('ja-JP')}`;
   document.getElementById('boughtTotal').textContent=`¥${avgM.toLocaleString('ja-JP')}`;
   document.getElementById('unboughtTotal').textContent=`¥${(thisMonthData?thisMonthData.total:0).toLocaleString('ja-JP')}`;
+  document.getElementById('summaryCard4').style.display='none';
   const budgetLineHtml=budget?`<div class="graph-budget-line" style="bottom:${(budget/maxVal*100).toFixed(1)}%"><span class="graph-budget-text">予算¥${budget.toLocaleString()}</span></div>`:'';
   const barsHtml=monthData.map(d=>{
     const h=maxVal>0?(d.total/maxVal*100).toFixed(1):0;
@@ -1498,6 +1508,7 @@ function renderCalendar() {
   document.getElementById('totalCount').textContent=`${vols.length}冊`;
   document.getElementById('boughtTotal').textContent=`${vols.filter(v=>isPurchased(v)).length}冊`;
   document.getElementById('unboughtTotal').textContent=`${vols.filter(v=>!isPurchased(v)).length}冊`;
+  document.getElementById('summaryCard4').style.display='none';
   const byDay={};
   vols.forEach(v=>{const d=new Date(v.releaseDate).getDate();if(!byDay[d])byDay[d]=[];byDay[d].push(v);});
   const firstDay=new Date(calYear,calMonth-1,1).getDay();
@@ -1552,6 +1563,7 @@ function renderDiscover() {
   document.getElementById('totalCount').textContent='';
   document.getElementById('boughtTotal').textContent='';
   document.getElementById('unboughtTotal').textContent='';
+  document.getElementById('summaryCard4').style.display='none';
   const genreTabs=DISCOVER_GENRES.map(g=>{
     const active=_discoverGenreId===g.id;
     return `<button style="padding:5px 12px;border-radius:20px;border:1px solid ${active?'#9b59b6':'#e2d9f3'};background:${active?'#9b59b6':'#faf5ff'};color:${active?'#fff':'#6b46c1'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}" onclick="setDiscoverGenre('${g.id}')">${g.label}</button>`;
@@ -1797,9 +1809,9 @@ function filterSeriesDropdown() {
   const q=(document.getElementById('seriesSearchInput').value||'').trim().toLowerCase();
   const dd=document.getElementById('seriesDropdown');
   const sorted=Object.entries(seriesList).sort((a,b)=>a[1].title.localeCompare(b[1].title,'ja'));
-  const filtered=sorted.filter(([,s])=>!q||s.title.toLowerCase().includes(q));
+  const filtered=sorted.filter(([,s])=>!q||s.title.toLowerCase().includes(q)||(s.author||'').toLowerCase().includes(q));
   const st='padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0ebff';
-  let html=filtered.map(([id,s])=>`<div style="${st}" onmousedown="selectSeriesItem('${id}','${s.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${escHtml(s.title)}${s.completed?' <span style="font-size:11px;color:#a0aec0">[完結]</span>':''}</div>`).join('');
+  let html=filtered.map(([id,s])=>`<div style="${st}" onmousedown="selectSeriesItem('${id}','${s.title.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${escHtml(s.title)}${s.completed?' <span style="font-size:11px;color:#a0aec0">[完結]</span>':''}${s.author?` <span style="font-size:11px;color:#a0aec0">／ ${escHtml(s.author)}</span>`:''}</div>`).join('');
   const cur=(document.getElementById('seriesSearchInput').value||'').trim();
   const newLabel=cur?`＋「${escHtml(cur)}」を新しく登録`:'＋ 新しい作品を登録';
   html+=`<div style="${st};color:#6b46c1;font-weight:600" onmousedown="selectSeriesItem('__new__','')">${newLabel}</div>`;
@@ -1828,6 +1840,7 @@ async function searchBooksInline(q){
     fetch('https://itunes.apple.com/search?term='+qEnc+'&country=jp&media=ebook&limit=20').then(r=>r.json()),
     fetch('https://www.googleapis.com/books/v1/volumes?q='+gbEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
     fetch('https://iss.ndl.go.jp/api/opensearch?title='+qEnc+'&cnt=20').then(r=>r.text()),
+    fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&author=${qEnc}&booksGenreId=001001&hits=20`).then(r=>r.json()),
     ...(AMAZON_PA_WORKER_URL?[fetch(AMAZON_PA_WORKER_URL+'/search?keywords='+qEnc).then(r=>r.json())]:[] ),
   ]);
   const hanmotoItems=settled[0].status==='fulfilled'?(settled[0].value.books||[]).map(normHanmoto):[];
@@ -1835,10 +1848,11 @@ async function searchBooksInline(q){
   const itunesItems=settled[2].status==='fulfilled'?(settled[2].value.results||[]).map(normItunes).filter(it=>it.price>0||it.releaseDate):[];
   const gbItems2=settled[3].status==='fulfilled'?(settled[3].value.items||[]).map(normGbooks):[];
   const ndlItems=settled[4].status==='fulfilled'&&typeof settled[4].value==='string'?parseNdl(settled[4].value):[];
-  const amazonItems=AMAZON_PA_WORKER_URL&&settled[5]&&settled[5].status==='fulfilled'?((settled[5].value.SearchResult&&settled[5].value.SearchResult.Items)||[]).map(normAmazonPA):[];
+  const rakutenAuthorItems=settled[5].status==='fulfilled'&&Array.isArray(settled[5].value.Items)?settled[5].value.Items.map(x=>normRakuten(x.Item)):[];
+  const amazonItems=AMAZON_PA_WORKER_URL&&settled[6]&&settled[6].status==='fulfilled'?((settled[6].value.SearchResult&&settled[6].value.SearchResult.Items)||[]).map(normAmazonPA):[];
   const normKey=t=>t.replace(/[\s　\-－・【】「」]/g,'').toLowerCase();
   const seen={};const merged=[];
-  [...amazonItems,...hanmotoItems,...ndlItems,...gbItems1,...gbItems2,...itunesItems].forEach(item=>{
+  [...amazonItems,...rakutenAuthorItems,...hanmotoItems,...ndlItems,...gbItems1,...gbItems2,...itunesItems].forEach(item=>{
     const key=normKey(item.title).substring(0,25);
     if(!seen[key]){seen[key]=true;merged.push(item);}
   });
