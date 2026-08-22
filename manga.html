@@ -535,6 +535,7 @@ textarea{resize:vertical;min-height:60px}
       <input type="text" id="seriesTextFilterInput" placeholder="🔍 作品名・作者名で絞り込み" autocomplete="off" oninput="setSeriesTextFilter(this.value)" style="flex:1">
       <button onclick="bulkFillKana()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--a1);background:var(--cbg);color:var(--a1);cursor:pointer;white-space:nowrap" title="ふりがな未入力の作品にまとめて読み仮名を取得（五十音順ソート用）">🈁 ふりがな一括取得</button>
     </div>
+    <div id="followedAuthorsWrap" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:8px;padding:8px;background:var(--cbg);border-radius:8px"></div>
     <div id="seriesMediaTypeFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
     <div id="seriesGenreFilterOuter">
       <div id="seriesGenreFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
@@ -659,6 +660,13 @@ textarea{resize:vertical;min-height:60px}
   <button class="btn-remind-close" onclick="snoozeRakutenKeyExpiry()" title="7日間表示しない">✕</button>
 </div>
 
+<!-- フォロー中作家の新刊通知バナー -->
+<div id="followedAuthorNewReleaseBanner" class="pending-reminder-banner">
+  ⭐ <span id="followedAuthorNewReleaseMsg"></span>
+  <button class="btn-remind-check" onclick="document.getElementById('followedAuthorNewReleaseBanner').style.display='none';setView('discover');setDiscoverGenre('__followed__')">見る</button>
+  <button class="btn-remind-close" onclick="document.getElementById('followedAuthorNewReleaseBanner').style.display='none'" title="閉じる">✕</button>
+</div>
+
 <!-- 発売日チェック促進バナー -->
 <div id="pendingCheckBanner" class="pending-reminder-banner">
   ⚠️ 発売日未定リストを<strong id="pendingReminderDays"></strong>チェックしていません
@@ -766,7 +774,8 @@ const auth = firebase.auth();
 const database = firebase.database();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-let currentUser = null, dbSeriesRef = null, dbVolumesRef = null, dbSettingsRef = null, attachedUid = null;
+let currentUser = null, dbSeriesRef = null, dbVolumesRef = null, dbSettingsRef = null, dbFollowedAuthorsRef = null, attachedUid = null;
+let followedAuthorsList = {};
 // オーナー（アプリ管理者）のみ楽天Books APIキー設定を表示・編集できるようにする
 const OWNER_EMAIL = 'ken1979okabe@gmail.com';
 function isOwnerUser() { return !!(currentUser && currentUser.email === OWNER_EMAIL); }
@@ -818,6 +827,7 @@ function initSignInButton() {
 function attachDatabase(user) {
   if(attachedUid===user.uid && dbSeriesRef)return;
   if(dbSeriesRef) dbSeriesRef.off(); if(dbVolumesRef) dbVolumesRef.off(); if(dbSettingsRef) dbSettingsRef.off();
+  if(dbFollowedAuthorsRef) dbFollowedAuthorsRef.off();
   attachedUid=user.uid;
   dbSeriesRef=database.ref(`users/${user.uid}/manga_series`);
   dbSeriesRef.on('value', snap => { seriesList=snap.val()||{}; updateSeriesSelect(); render(); });
@@ -826,6 +836,9 @@ function attachDatabase(user) {
   dbVolumesRef.on('value', snap => { volumesList=snap.val()||{}; render(); checkNotifications(user.uid); if(!_reminderChecked){_reminderChecked=true;setTimeout(checkPendingDateReminder,1500);} });
   dbSettingsRef=database.ref(`users/${user.uid}/settings`);
   dbSettingsRef.on('value', snap => { userSettings=snap.val()||{budget:0}; updateNotifBtn(); checkRakutenKeyExpiry(); });
+  dbFollowedAuthorsRef=database.ref(`users/${user.uid}/followedAuthors`);
+  let _authorCheckDone=false;
+  dbFollowedAuthorsRef.on('value', snap => { followedAuthorsList=snap.val()||{}; render(); if(!_authorCheckDone){_authorCheckDone=true;setTimeout(checkFollowedAuthorsNewReleases,2000);} });
 }
 
 function showSaved() { const el=document.getElementById('savingIndicator'); if(!el)return; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),1500); }
@@ -1578,7 +1591,10 @@ function renderDiscover() {
   document.getElementById('boughtTotal').textContent='';
   document.getElementById('unboughtTotal').textContent='';
   document.getElementById('summaryCard4').style.display='none';
-  const genreTabs=DISCOVER_GENRES.map(g=>{
+  const allGenres=Object.keys(followedAuthorsList).length>0
+    ?[{id:'__followed__',label:'⭐ フォロー中'},...DISCOVER_GENRES]
+    :DISCOVER_GENRES;
+  const genreTabs=allGenres.map(g=>{
     const active=_discoverGenreId===g.id;
     return `<button style="padding:5px 12px;border-radius:20px;border:1px solid ${active?'var(--a1)':'var(--br)'};background:${active?'var(--a1)':'var(--cbg)'};color:${active?'#fff':'var(--a1)'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}" onclick="setDiscoverGenre('${g.id}')">${g.label}</button>`;
   }).join('');
@@ -1610,10 +1626,15 @@ async function loadDiscoverRanking(forceRefresh) {
   }
   listEl.textContent='🔄 楽天Booksから取得中…';
   try{
-    const url=`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&booksGenreId=${genreId}&sort=sales&hits=30`;
-    const data=await fetch(url).then(r=>r.json());
+    let items;
+    if(genreId==='__followed__'){
+      items=await fetchFollowedAuthorsItems();
+    } else {
+      const url=`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&booksGenreId=${genreId}&sort=sales&hits=30`;
+      const data=await fetch(url).then(r=>r.json());
+      items=(data.Items||[]).map(x=>normRakuten(x.Item)).filter(it=>it.cleanTitle);
+    }
     if(genreId!==_discoverGenreId) return; // 取得中にジャンルが切り替えられていたら破棄
-    const items=(data.Items||[]).map(x=>normRakuten(x.Item)).filter(it=>it.cleanTitle);
     if(items.length===0){ listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>取得できませんでした。時間をおいて「更新」をお試しください</p></div>'; return; }
     localStorage.setItem(cacheKey, JSON.stringify({items,fetchedAt:Date.now()}));
     renderDiscoverItems(items);
@@ -1622,6 +1643,55 @@ async function loadDiscoverRanking(forceRefresh) {
     listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>取得に失敗しました。時間をおいて「更新」をお試しください</p></div>';
   }
 }
+// ── フォロー中作家の書籍を並列取得 ──
+async function fetchFollowedAuthorsItems() {
+  const authors=Object.values(followedAuthorsList).map(f=>f.name).filter(Boolean);
+  if(authors.length===0) return [];
+  const settled=await Promise.allSettled(authors.map(name=>
+    fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&author=${encodeURIComponent(name)}&booksGenreId=001&sort=-releaseDate&hits=10`).then(r=>r.json())
+  ));
+  const items=[];
+  const seen={};
+  settled.forEach(r=>{
+    if(r.status!=='fulfilled'||!Array.isArray(r.value.Items))return;
+    r.value.Items.forEach(x=>{
+      const it=normRakuten(x.Item);
+      if(!it.cleanTitle)return;
+      const key=(it.isbn||it.cleanTitle+it.volume);
+      if(seen[key])return;
+      seen[key]=true;
+      items.push(it);
+    });
+  });
+  items.sort((a,b)=>(b.releaseDate||'').localeCompare(a.releaseDate||''));
+  return items;
+}
+
+// ── フォロー中作家の新刊を1日1回自動チェック ──
+const FOLLOWED_CHECK_KEY='mg_followed_last_check';
+async function checkFollowedAuthorsNewReleases() {
+  if(Object.keys(followedAuthorsList).length===0)return;
+  const last=parseInt(localStorage.getItem(FOLLOWED_CHECK_KEY)||'0');
+  if(Date.now()-last<24*60*60*1000)return;
+  try{
+    const items=await fetchFollowedAuthorsItems();
+    localStorage.setItem(FOLLOWED_CHECK_KEY,String(Date.now()));
+    const today=new Date(); today.setHours(0,0,0,0);
+    const cutoff=new Date(today); cutoff.setDate(cutoff.getDate()-60);
+    const newOnes=items.filter(it=>{
+      if(isDiscoverItemRegistered(it))return false;
+      if(!it.releaseDate)return false;
+      const d=new Date(it.releaseDate);
+      return d>=cutoff;
+    });
+    if(newOnes.length===0)return;
+    const banner=document.getElementById('followedAuthorNewReleaseBanner'); if(!banner)return;
+    document.getElementById('followedAuthorNewReleaseMsg').textContent=
+      `フォロー中の作家から新刊が${newOnes.length}件見つかりました`;
+    banner.style.display='flex';
+  }catch(e){}
+}
+
 function isDiscoverItemRegistered(item) {
   const nk=t=>(t||'').replace(/[\s　\-－・【】「」（）()]/g,'').toLowerCase();
   const nt=nk(item.cleanTitle);
@@ -1854,7 +1924,7 @@ async function searchBooksInline(q){
     fetch('https://itunes.apple.com/search?term='+qEnc+'&country=jp&media=ebook&limit=20').then(r=>r.json()),
     fetch('https://www.googleapis.com/books/v1/volumes?q='+gbEnc+'&country=JP&langRestrict=ja&maxResults=20').then(r=>r.json()),
     fetch('https://iss.ndl.go.jp/api/opensearch?title='+qEnc+'&cnt=20').then(r=>r.text()),
-    fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&author=${qEnc}&booksGenreId=001001&hits=20`).then(r=>r.json()),
+    fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&author=${qEnc}&booksGenreId=001&hits=20`).then(r=>r.json()),
     ...(AMAZON_PA_WORKER_URL?[fetch(AMAZON_PA_WORKER_URL+'/search?keywords='+qEnc).then(r=>r.json())]:[] ),
   ]);
   const hanmotoItems=settled[0].status==='fulfilled'?(settled[0].value.books||[]).map(normHanmoto):[];
@@ -2581,10 +2651,36 @@ function toggleSeriesTagFilter(t) {
   if(i>=0) _seriesTagFilter.splice(i,1); else _seriesTagFilter.push(t);
   renderSeriesList();
 }
+// ── お気に入り作家フォロー ──
+function isAuthorFollowed(authorName) {
+  if(!authorName)return false;
+  return Object.values(followedAuthorsList).some(f=>f.name===authorName);
+}
+async function toggleFollowAuthor(authorName) {
+  if(!currentUser||!dbFollowedAuthorsRef||!authorName)return;
+  const existing=Object.entries(followedAuthorsList).find(([,f])=>f.name===authorName);
+  if(existing){
+    await dbFollowedAuthorsRef.child(existing[0]).remove();
+  } else {
+    await dbFollowedAuthorsRef.push({name:authorName,followedAt:Date.now()});
+  }
+  showSaved(); renderSeriesList();
+}
 function renderSeriesList() {
   const el=document.getElementById('seriesListEl');
   const all=Object.values(seriesList);
   const tabStyle=(active)=>`padding:4px 10px;border-radius:20px;border:1px solid ${active?'var(--a1)':'var(--br)'};background:${active?'var(--a1)':'var(--cbg)'};color:${active?'#fff':'var(--a1)'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}`;
+  // フォロー中の作家一覧表示
+  const followedWrap=document.getElementById('followedAuthorsWrap');
+  if(followedWrap){
+    const entries=Object.entries(followedAuthorsList);
+    if(entries.length===0){ followedWrap.style.display='none'; }
+    else {
+      followedWrap.style.display='flex';
+      followedWrap.innerHTML=`<div style="width:100%;font-size:11px;color:var(--muted);margin-bottom:2px">⭐ フォロー中の作家（新刊があると自動で通知）</div>`+
+        entries.map(([fid,f])=>`<span class="tag-chip" style="cursor:pointer" onclick="toggleFollowAuthor('${(f.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" title="クリックでフォロー解除">${escHtml(f.name)} ✕</span>`).join('');
+    }
+  }
   // 媒体タイプフィルタータブ生成
   const mediaTypes=['漫画','小説','単行本','新書','文庫'];
   const mediaCounts={};
@@ -2644,6 +2740,9 @@ function renderSeriesList() {
     const starsHtml=`<span class="stars">${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</span>`;
     const completedBadge=s.completed?`<span class="completed-badge">完結</span>`:'';
     const mediaTypeBadge=(s.mediaType&&s.mediaType!=='漫画')?`<span class="tag-chip" style="margin-left:4px">${escHtml(s.mediaType)}</span>`:'';
+    const authorEsc=(s.author||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const followed=isAuthorFollowed(s.author);
+    const followBtn=s.author?`<button class="btn-icon" onclick="toggleFollowAuthor('${authorEsc}')" title="${followed?'作家のフォローを解除':'作家をフォローして新刊を自動チェック'}" style="color:${followed?'#dd9c00':'#cbd5e0'};font-size:16px">${followed?'⭐':'☆'}</button>`:'';
     return `<div class="series-item" id="si_${id}">
       <div class="series-item-row">
         <div class="series-item-info">
@@ -2652,6 +2751,7 @@ function renderSeriesList() {
           ${sub?`<div class="series-item-sub">${escHtml(sub)}</div>`:''}
           ${(s.tags||[]).length?`<div class="series-item-tags">${(s.tags||[]).map(t=>`<span class="tag-chip">${escHtml(t)}</span>`).join('')}</div>`:''}
         </div>
+        ${followBtn}
         <button class="btn-icon" onclick="openNextVolumeFromSeries('${id}')" title="次巻を追加" style="color:var(--a1);font-size:16px;font-weight:700">＋</button>
         <button class="btn-icon edit" onclick="toggleSeriesEdit('${id}')" title="編集">✎</button>
         <button class="btn-icon" onclick="deleteSeries('${id}')" title="削除">✕</button>
@@ -3194,7 +3294,7 @@ async function bulkRefetchBooks() {
         try {
           const nk3=t=>t.replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
           const ns3=nk3(seriesTitle);
-          const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(seriesTitle)}&booksGenreId=001001&hits=10`).then(r => r.json());
+          const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(seriesTitle)}&booksGenreId=001&hits=10`).then(r => r.json());
           for (const ri of (rkData.Items || []).map(i => i.Item)) {
             if (!nk3(ri.title || '').includes(ns3)) continue;
             if (ri.publisherName) { saves.publisher = ri.publisherName; break; }
@@ -3247,7 +3347,7 @@ async function bulkFillKana() {
       const ns = nk(s.title);
       let kana = '';
       try {
-        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(s.title)}&booksGenreId=001001&hits=10`).then(r => r.json());
+        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(s.title)}&booksGenreId=001&hits=10`).then(r => r.json());
         for (const ri of (rkData.Items || []).map(i => i.Item)) {
           if (!nk(ri.title).includes(ns)) continue;
           if (ri.titleKana) { kana = kataToHira(ri.titleKana); break; }
@@ -3357,7 +3457,7 @@ async function silentFillPricePublisher(volId, seriesId, seriesTitle, volumeNum,
     if (!newPub || (newPrice === 0 && currentPrice === 0)) {
       try {
         const q = volStr2 ? `${seriesTitle} ${volStr2}` : seriesTitle;
-        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(q)}&booksGenreId=001001&hits=10`).then(r => r.json());
+        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(q)}&booksGenreId=001&hits=10`).then(r => r.json());
         for (const ri of (rkData.Items || []).map(i => i.Item)) {
           if (!nkFn(ri.title || '').includes(ns)) continue;
           if (!newPub && ri.publisherName) newPub = ri.publisherName;
@@ -3436,7 +3536,7 @@ async function searchSeriesPublisher(seriesId) {
     try {
       const nk3 = t => t.replace(/[\s　\-・【】「」（）()]/g, '').toLowerCase();
       const ns3 = nk3(title);
-      const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(title)}&booksGenreId=001001&hits=10`).then(r => r.json());
+      const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(title)}&booksGenreId=001&hits=10`).then(r => r.json());
       for (const ri of (rkData.Items || []).map(i => i.Item)) {
         if (!nk3(ri.title || '').includes(ns3)) continue;
         const pub = (ri.publisherName || '').trim();
@@ -3598,7 +3698,7 @@ async function checkAllPricesPublishers() {
     if (!newPub || !newPrice) {
       try {
         const q4 = encodeURIComponent(volStr ? `${seriesTitle} ${volStr}` : seriesTitle);
-        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${q4}&booksGenreId=001001&hits=10`).then(r => r.json());
+        const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${q4}&booksGenreId=001&hits=10`).then(r => r.json());
         for (const ri of (rkData.Items || []).map(i => i.Item)) {
           if (!nk(ri.title || '').includes(nk(seriesTitle))) continue;
           if (!newPub && ri.publisherName) newPub = ri.publisherName;
