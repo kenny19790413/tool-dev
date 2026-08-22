@@ -335,6 +335,9 @@ textarea{resize:vertical;min-height:60px}
 .font-size-btn{flex:1;padding:6px;border-radius:8px;border:1.5px solid var(--br);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
 .font-size-btn.active{background:var(--a1);border-color:var(--a1);color:#fff}
 .font-size-btn:hover:not(.active){border-color:var(--a1);color:var(--a1)}
+.section-order-btn{padding:6px 12px;border-radius:8px;border:1.5px solid var(--br);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.section-order-btn.active{background:var(--a1);border-color:var(--a1);color:#fff}
+.section-order-btn:hover:not(.active){border-color:var(--a1);color:var(--a1)}
 </style>
 </head>
 <body>
@@ -635,6 +638,14 @@ textarea{resize:vertical;min-height:60px}
         <button class="font-size-btn" data-size="lg" onclick="setFontSize('lg')">大</button>
         <button class="font-size-btn" data-size="xl" onclick="setFontSize('xl')">特大</button>
       </div>
+    </div>
+    <div class="form-group">
+      <label style="font-size:13px;color:var(--txt2);margin-bottom:8px;display:block">📑 月別ページの並び順</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="section-order-btn" data-order="unpurchased-first" onclick="setSectionOrder('unpurchased-first')">未購入リストが上</button>
+        <button class="section-order-btn" data-order="pending-first" onclick="setSectionOrder('pending-first')">発売日未定が上</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">発売リストは常に一番上に表示されます</div>
     </div>
     <div class="modal-actions">
       <button class="btn-save" onclick="closeThemeModal()">閉じる</button>
@@ -943,6 +954,7 @@ function loadAppearance(){
     if(s.themeColor) applyThemeColor(s.themeColor,false);
     if(s.darkMode) document.body.classList.add('dark-mode');
     if(s.fontSize) applyFontSize(s.fontSize,false);
+    if(s.sectionOrder) _sectionOrder=s.sectionOrder;
     syncAppearanceUI(s);
   }catch(e){}
 }
@@ -1012,6 +1024,18 @@ function syncAppearanceUI(s){
   document.querySelectorAll('.font-size-btn').forEach(b=>{
     b.classList.toggle('active',b.dataset.size===fs);
   });
+  const so=s.sectionOrder||'unpurchased-first';
+  document.querySelectorAll('.section-order-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.order===so);
+  });
+}
+function setSectionOrder(order) {
+  _sectionOrder=order;
+  saveAppearance({sectionOrder:order});
+  document.querySelectorAll('.section-order-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.order===order);
+  });
+  render();
 }
 
 // ── 設定 ──
@@ -1242,6 +1266,7 @@ function renderPendingSection() {
 
 // ── 未購入リスト（全期間・発売日が過去のものも含む） ──
 let _unpurchasedOpen=true;
+let _sectionOrder='unpurchased-first';
 function toggleUnpurchasedSection() {
   _unpurchasedOpen=!_unpurchasedOpen;
   renderUnpurchasedSection();
@@ -1464,8 +1489,12 @@ function renderMonthly() {
       </div>
       ${vols.length===0?`<div class="empty-state"><div class="icon">📭</div><p>${isSearch?`「${escHtml(searchQuery)}」に一致する作品はありません`:'この月の登録はありません<br>右下の＋ボタンで追加してください'}</p></div>`:''}
     </div>`;
-  if(!isSearch) renderUnpurchasedSection();
-  renderPendingSection();
+  if(!isSearch){
+    if(_sectionOrder==='pending-first'){ renderPendingSection(); renderUnpurchasedSection(); }
+    else { renderUnpurchasedSection(); renderPendingSection(); }
+  } else {
+    renderPendingSection();
+  }
 }
 
 function volumeRow(v, isSearch, today) {
