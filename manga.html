@@ -519,8 +519,9 @@ textarea{resize:vertical;min-height:60px}
       <h3 style="margin:0">📚 作品の管理</h3>
       <button onclick="closeSeriesModal()" style="font-size:20px;line-height:1;background:none;border:none;color:#a0aec0;cursor:pointer;padding:2px 6px">✕</button>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-      <button onclick="bulkFillKana()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer" title="ふりがな未入力の作品にまとめて読み仮名を取得（五十音順ソート用）">🈁 ふりがな一括取得</button>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input type="text" id="seriesTextFilterInput" placeholder="🔍 作品名・作者名で絞り込み" autocomplete="off" oninput="setSeriesTextFilter(this.value)" style="flex:1">
+      <button onclick="bulkFillKana()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #9b59b6;background:var(--cbg);color:#6b46c1;cursor:pointer;white-space:nowrap" title="ふりがな未入力の作品にまとめて読み仮名を取得（五十音順ソート用）">🈁 ふりがな一括取得</button>
     </div>
     <div id="seriesGenreFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
     <div id="seriesTagFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
@@ -2507,9 +2508,11 @@ async function saveVolume() {
 // ── 作品管理モーダル ──
 let _seriesGenreFilter='';
 let _seriesTagFilter=[];
-function openSeriesModal() { _seriesGenreFilter=''; _seriesTagFilter=[]; renderSeriesList(); document.getElementById('seriesModal').classList.remove('hidden'); }
+let _seriesTextFilter='';
+function openSeriesModal() { _seriesGenreFilter=''; _seriesTagFilter=[]; _seriesTextFilter=''; const _stf=document.getElementById('seriesTextFilterInput'); if(_stf)_stf.value=''; renderSeriesList(); document.getElementById('seriesModal').classList.remove('hidden'); }
 function closeSeriesModal() { document.getElementById('seriesModal').classList.add('hidden'); }
 function setSeriesGenreFilter(g) { _seriesGenreFilter=g; renderSeriesList(); }
+function setSeriesTextFilter(q) { _seriesTextFilter=q.trim().toLowerCase(); renderSeriesList(); }
 function toggleSeriesTagFilter(t) {
   const i=_seriesTagFilter.indexOf(t);
   if(i>=0) _seriesTagFilter.splice(i,1); else _seriesTagFilter.push(t);
@@ -2544,6 +2547,7 @@ function renderSeriesList() {
     }).join('');
   }
   const filtered=Object.entries(seriesList).filter(([,s])=>{
+    if(_seriesTextFilter && !((s.title||'')+' '+(s.author||'')).toLowerCase().includes(_seriesTextFilter)) return false;
     if(_seriesTagFilter.length && !_seriesTagFilter.every(t=>(s.tags||[]).includes(t))) return false;
     if(_seriesGenreFilter==='')return true;
     if(_seriesGenreFilter==='__none__')return !s.genre;
@@ -2551,7 +2555,7 @@ function renderSeriesList() {
   });
   const sortKey=s=>kataToHira(s.kana||s.title);
   const sorted=filtered.sort((a,b)=>sortKey(a[1]).localeCompare(sortKey(b[1]),'ja'));
-  if(sorted.length===0){el.innerHTML=`<div class="series-empty">${_seriesGenreFilter?'該当する作品がありません':'登録作品がありません'}</div>`;return;}
+  if(sorted.length===0){el.innerHTML=`<div class="series-empty">${(_seriesGenreFilter||_seriesTagFilter.length||_seriesTextFilter)?'該当する作品がありません':'登録作品がありません'}</div>`;return;}
   el.innerHTML=sorted.map(([id,s])=>{
     const sub=[s.author,s.publisher,s.genre,s.price?`¥${Number(s.price).toLocaleString()}`:''].filter(Boolean).join(' · ');
     const rating=s.rating||0;
