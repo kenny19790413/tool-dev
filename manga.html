@@ -46,8 +46,9 @@ body.dark-mode thead th{background:var(--cbg);color:var(--muted)}
 body.dark-mode tbody tr{border-bottom-color:var(--br)}
 body.dark-mode .sort-btn{background:var(--card);color:var(--muted);border-color:var(--br)}
 body.dark-mode .genre-chip{background:var(--card);color:var(--muted);border-color:var(--br)}
-body.font-sm{--fs:.875rem}
-body.font-lg{--fs:1.125rem}
+body.font-sm{zoom:.85}
+body.font-lg{zoom:1.25}
+body.font-xl{zoom:1.6}
 body{font-size:var(--fs)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic Pro','Meiryo',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
@@ -119,9 +120,10 @@ tbody tr:hover{background:#fdf9ff}
 tbody tr.status-read{opacity:.5}
 tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
 .td-date{white-space:nowrap;color:var(--a1);font-weight:600}
-.td-title{font-weight:700}
-.td-title-inner{display:flex;flex-direction:column;gap:3px}
+.td-title{font-weight:700;display:flex;gap:8px;align-items:flex-start}
+.td-title-inner{display:flex;flex-direction:column;gap:3px;min-width:0}
 .td-memo{font-size:11px;color:#718096;word-break:break-all}
+.td-thumb{width:32px;height:44px;object-fit:cover;border-radius:3px;flex-shrink:0;background:var(--br)}
 .td-vol{color:#718096;white-space:nowrap}
 .td-pub{color:#718096;font-size:12px;white-space:nowrap}
 .td-price{font-weight:700;color:#2d2d3a;white-space:nowrap}
@@ -531,9 +533,12 @@ textarea{resize:vertical;min-height:60px}
       <h3 style="margin:0">📚 作品の管理</h3>
       <button onclick="closeSeriesModal()" style="font-size:20px;line-height:1;background:none;border:none;color:#a0aec0;cursor:pointer;padding:2px 6px">✕</button>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input type="text" id="seriesTextFilterInput" placeholder="🔍 作品名・作者名で絞り込み" autocomplete="off" oninput="setSeriesTextFilter(this.value)" style="flex:1">
+    <div style="margin-bottom:8px">
+      <input type="text" id="seriesTextFilterInput" placeholder="🔍 作品名・作者名で絞り込み" autocomplete="off" oninput="setSeriesTextFilter(this.value)" style="width:100%">
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <button onclick="bulkFillKana()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--a1);background:var(--cbg);color:var(--a1);cursor:pointer;white-space:nowrap" title="ふりがな未入力の作品にまとめて読み仮名を取得（五十音順ソート用）">🈁 ふりがな一括取得</button>
+      <button onclick="bulkFillCovers()" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid var(--a1);background:var(--cbg);color:var(--a1);cursor:pointer;white-space:nowrap" title="表紙画像未取得の作品にまとめて表紙を取得">🖼️ 表紙一括取得</button>
     </div>
     <div id="followedAuthorsWrap" style="display:none;flex-wrap:wrap;gap:6px;margin-bottom:8px;padding:8px;background:var(--cbg);border-radius:8px"></div>
     <div id="seriesMediaTypeFilterWrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
@@ -544,6 +549,20 @@ textarea{resize:vertical;min-height:60px}
     <div class="series-list" id="seriesListEl"></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeSeriesModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 作者別書籍一覧モーダル -->
+<div id="authorBooksModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:600px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <h3 style="margin:0" id="authorBooksModalTitle">✍️ 作者の作品</h3>
+      <button onclick="closeAuthorBooksModal()" style="font-size:20px;line-height:1;background:none;border:none;color:#a0aec0;cursor:pointer;padding:2px 6px">✕</button>
+    </div>
+    <div id="authorBooksList" style="max-height:60vh;overflow-y:auto;text-align:center;color:var(--muted);padding:20px">読み込み中…</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAuthorBooksModal()">閉じる</button>
     </div>
   </div>
 </div>
@@ -614,6 +633,7 @@ textarea{resize:vertical;min-height:60px}
         <button class="font-size-btn" data-size="sm" onclick="setFontSize('sm')">小</button>
         <button class="font-size-btn" data-size="md" onclick="setFontSize('md')">中</button>
         <button class="font-size-btn" data-size="lg" onclick="setFontSize('lg')">大</button>
+        <button class="font-size-btn" data-size="xl" onclick="setFontSize('xl')">特大</button>
       </div>
     </div>
     <div class="modal-actions">
@@ -962,9 +982,10 @@ function applyThemeColor(t,save=true){
   });
 }
 function applyFontSize(size,save=true){
-  document.body.classList.remove('font-sm','font-lg');
+  document.body.classList.remove('font-sm','font-lg','font-xl');
   if(size==='sm') document.body.classList.add('font-sm');
   if(size==='lg') document.body.classList.add('font-lg');
+  if(size==='xl') document.body.classList.add('font-xl');
   if(save) saveAppearance({fontSize:size});
   document.querySelectorAll('.font-size-btn').forEach(b=>{
     b.classList.toggle('active',b.dataset.size===size||(size==='md'&&b.dataset.size==='md'));
@@ -1164,6 +1185,7 @@ function setView(mode) {
 function render() {
   document.getElementById('currentMonthLabel').textContent=`${currentYear}年${currentMonth}月`;
   const ps=document.getElementById('pendingSection');if(ps)ps.remove();
+  const us=document.getElementById('unpurchasedSection');if(us)us.remove();
   if(viewMode==='graph')    { renderGraph();    return; }
   if(viewMode==='calendar') { renderCalendar(); return; }
   if(viewMode==='history')  { renderHistory();  return; }
@@ -1211,6 +1233,55 @@ function renderPendingSection() {
             
             <button class="btn-icon edit" onclick="openEditModal('${v.id}')" title="発売日を入力">✎</button>
             <button class="btn-icon" onclick="deleteVolume('${v.id}')" title="削除">✕</button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`:''}
+  </div>`;
+}
+
+// ── 未購入リスト（全期間・発売日が過去のものも含む） ──
+let _unpurchasedOpen=true;
+function toggleUnpurchasedSection() {
+  _unpurchasedOpen=!_unpurchasedOpen;
+  renderUnpurchasedSection();
+}
+function renderUnpurchasedSection() {
+  const list=Object.entries(volumesList).map(([id,v])=>({id,...v}))
+    .filter(v=>v.releaseDate&&!isPurchased(v))
+    .sort((a,b)=>a.releaseDate.localeCompare(b.releaseDate));
+  const container=document.getElementById('viewArea');
+  let el=document.getElementById('unpurchasedSection');
+  if(list.length===0){if(el)el.remove();return;}
+  if(!el){el=document.createElement('div');el.id='unpurchasedSection';container.prepend(el);}
+  const arrow=_unpurchasedOpen?'▲':'▼';
+  const totalAmt=list.reduce((s,v)=>s+(v.price||0),0);
+  el.innerHTML=`<div class="card pending-card">
+    <div class="card-header" style="cursor:pointer;user-select:none">
+      <h2 onclick="toggleUnpurchasedSection()">🛒 未購入リスト（全期間・${list.length}件）<span style="font-size:12px;color:var(--a1);margin-left:8px">${arrow}</span></h2>
+      <div style="font-size:12px;color:var(--muted)">合計 ¥${totalAmt.toLocaleString('ja-JP')}</div>
+    </div>
+    ${_unpurchasedOpen?`<div class="table-wrap"><table>
+      <thead><tr><th>発売日</th><th>タイトル</th><th>巻数</th><th>出版社</th><th style="text-align:right">価格</th><th></th></tr></thead>
+      <tbody>${list.map(v=>{
+        const d=new Date(v.releaseDate);
+        const dateStr=d.toLocaleDateString('ja-JP',{year:'numeric',month:'numeric',day:'numeric'});
+        const volStr=v.volume?`第${v.volume}巻`:'─';
+        const priceStr=v.price?`¥${Number(v.price).toLocaleString('ja-JP')}`:'─';
+        const series=seriesList[v.seriesId];
+        const genre=series&&series.genre?series.genre:'';
+        const genreBadge=genre?`<span class="genre-badge genre-${escHtml(genre)}">${escHtml(genre)}</span>`:'';
+        const coverUrl=(series&&series.coverUrl)||'';
+        const thumbHtml=coverUrl?`<img class="td-thumb" src="${escHtml(coverUrl)}" loading="lazy" onerror="this.remove()">`:'';
+        return `<tr>
+          <td class="td-date">${dateStr}</td>
+          <td class="td-title">${thumbHtml}${escHtml(v.title)}${genreBadge}</td>
+          <td class="td-vol">${volStr}</td>
+          <td class="td-pub">${escHtml(v.publisher||'─')}</td>
+          <td class="td-price" style="text-align:right">${priceStr}</td>
+          <td class="td-actions">
+            <a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a>
+            <button class="status-btn ${getStatus(v)}" onclick="cycleStatus('${v.id}')">${STATUS_LABEL[getStatus(v)]}</button>
           </td>
         </tr>`;
       }).join('')}</tbody>
@@ -1394,6 +1465,7 @@ function renderMonthly() {
       ${vols.length===0?`<div class="empty-state"><div class="icon">📭</div><p>${isSearch?`「${escHtml(searchQuery)}」に一致する作品はありません`:'この月の登録はありません<br>右下の＋ボタンで追加してください'}</p></div>`:''}
     </div>`;
   renderPendingSection();
+  if(!isSearch) renderUnpurchasedSection();
 }
 
 function volumeRow(v, isSearch, today) {
@@ -1413,13 +1485,15 @@ function volumeRow(v, isSearch, today) {
   const memoHtml=v.memo?`<div class="td-memo">💬 ${escHtml(v.memo)}</div>`:'';
   const reviewHtml=(v.review||v.rating)?`<div class="td-memo">📝 ${v.rating?('★'.repeat(v.rating)+'☆'.repeat(5-v.rating)+' '):''}${escHtml(v.review||'')}</div>`:'';
   const titleHtml=isSearch?highlight(v.title,searchQuery):escHtml(v.title);
+  const coverUrl=(series&&series.coverUrl)||'';
+  const thumbHtml=coverUrl?`<img class="td-thumb" src="${escHtml(coverUrl)}" loading="lazy" onerror="this.remove()">`:'';
   let dateMark='';
   if(d){const rd=new Date(d);rd.setHours(0,0,0,0);const diff=(rd-today)/86400000;if(diff===0)dateMark=' 🔴';else if(diff===1)dateMark=' 🟡';}
   const gcalUrl=gcalLink(v);
   return `<tr class="${status==='read'?'status-read':''}" id="row_${v.id}">
     <td class="td-date">${dateStr}${dateMark}</td>
     <td class="td-vol" ${isSearch?'':'style="display:none"'}>${monthStr}</td>
-    <td class="td-title"><div class="td-title-inner">
+    <td class="td-title">${thumbHtml}<div class="td-title-inner">
       <div>${titleHtml}${genreBadge}${completedBadge}${ratingHtml}</div>${memoHtml}${reviewHtml}
     </div></td>
     <td class="td-vol">${volStr}</td>
@@ -1473,8 +1547,10 @@ function renderHistory() {
       const completedBadge=completed?`<span class="completed-badge">完結</span>`:'';
       const memoHtml=v.memo?`<div class="td-memo">💬 ${escHtml(v.memo)}</div>`:'';
       const reviewHtml=(v.review||v.rating)?`<div class="td-memo">📝 ${v.rating?('★'.repeat(v.rating)+'☆'.repeat(5-v.rating)+' '):''}${escHtml(v.review||'')}</div>`:'';
+      const coverUrl=(series&&series.coverUrl)||'';
+      const thumbHtml=coverUrl?`<img class="td-thumb" src="${escHtml(coverUrl)}" loading="lazy" onerror="this.remove()">`:'';
       html+=`<tr class="${status==='read'?'status-read':''}"><td class="td-date">${dateStr}</td>
-        <td class="td-title"><div class="td-title-inner"><div>${escHtml(v.title)}${genreBadge}${completedBadge}</div>${memoHtml}${reviewHtml}</div></td>
+        <td class="td-title">${thumbHtml}<div class="td-title-inner"><div>${escHtml(v.title)}${genreBadge}${completedBadge}</div>${memoHtml}${reviewHtml}</div></td>
         <td class="td-vol">${volStr}</td><td class="td-pub">${escHtml(v.publisher||'─')}</td>
         <td class="td-price" style="text-align:right">${priceStr}</td>
         <td class="td-actions"><button class="status-btn ${status}" onclick="cycleStatus('${v.id}')">${STATUS_LABEL[status]}</button></td>
@@ -1700,13 +1776,8 @@ function isDiscoverItemRegistered(item) {
     return nk(v.title)===nt&&String(v.volume||'')===String(item.volume||'');
   });
 }
-function renderDiscoverItems(items) {
-  window._inlineResults=items; // selectBookInline()が参照する配列を共有利用
-  const listEl=document.getElementById('discoverList');
-  if(!listEl) return;
-  listEl.className='discover-grid';
-  listEl.style.cssText='';
-  listEl.innerHTML=items.map((it,idx)=>{
+function buildDiscoverCardsHtml(items) {
+  return items.map((it,idx)=>{
     const registered=isDiscoverItemRegistered(it);
     const priceStr=it.price?`¥${Number(it.price).toLocaleString('ja-JP')}`:'';
     const dateStr=it.releaseDate?new Date(it.releaseDate).toLocaleDateString('ja-JP',{year:'numeric',month:'numeric',day:'numeric'}):'';
@@ -1727,6 +1798,37 @@ function renderDiscoverItems(items) {
     </div>`;
   }).join('');
 }
+function renderDiscoverItems(items) {
+  window._inlineResults=items; // selectBookInline()が参照する配列を共有利用
+  const listEl=document.getElementById('discoverList');
+  if(!listEl) return;
+  listEl.className='discover-grid';
+  listEl.style.cssText='';
+  listEl.innerHTML=buildDiscoverCardsHtml(items);
+}
+// ── 作者別書籍一覧（タイトルの下の作者名クリックで開く） ──
+async function showAuthorBooks(authorName) {
+  if(!authorName)return;
+  document.getElementById('authorBooksModalTitle').textContent=`✍️ ${authorName} の作品`;
+  document.getElementById('authorBooksModal').classList.remove('hidden');
+  const listEl=document.getElementById('authorBooksList');
+  listEl.className='';
+  listEl.style.cssText='max-height:60vh;overflow-y:auto;text-align:center;color:var(--muted);padding:20px';
+  listEl.textContent='🔄 楽天Booksから取得中…';
+  try{
+    const url=`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&author=${encodeURIComponent(authorName)}&booksGenreId=001&sort=-releaseDate&hits=30`;
+    const data=await fetch(url).then(r=>r.json());
+    const items=(data.Items||[]).map(x=>normRakuten(x.Item)).filter(it=>it.cleanTitle);
+    if(items.length===0){ listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>見つかりませんでした</p></div>'; return; }
+    window._inlineResults=items;
+    listEl.className='discover-grid';
+    listEl.style.cssText='max-height:60vh;overflow-y:auto';
+    listEl.innerHTML=buildDiscoverCardsHtml(items);
+  }catch(e){
+    listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>取得に失敗しました</p></div>';
+  }
+}
+function closeAuthorBooksModal() { document.getElementById('authorBooksModal').classList.add('hidden'); }
 function addDiscoverItem(idx) {
   openAddModal();
   selectBookInline(idx);
@@ -2735,7 +2837,7 @@ function renderSeriesList() {
   const sorted=filtered.sort((a,b)=>sortKey(a[1]).localeCompare(sortKey(b[1]),'ja'));
   if(sorted.length===0){el.innerHTML=`<div class="series-empty">${(_seriesGenreFilter||_seriesTagFilter.length||_seriesTextFilter||_seriesMediaTypeFilter)?'該当する作品がありません':'登録作品がありません'}</div>`;return;}
   el.innerHTML=sorted.map(([id,s])=>{
-    const sub=[s.author,s.publisher,s.genre,s.price?`¥${Number(s.price).toLocaleString()}`:''].filter(Boolean).join(' · ');
+    const restSub=[s.publisher,s.genre,s.price?`¥${Number(s.price).toLocaleString()}`:''].filter(Boolean).join(' · ');
     const rating=s.rating||0;
     const starsHtml=`<span class="stars">${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</span>`;
     const completedBadge=s.completed?`<span class="completed-badge">完結</span>`:'';
@@ -2743,12 +2845,15 @@ function renderSeriesList() {
     const authorEsc=(s.author||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const followed=isAuthorFollowed(s.author);
     const followBtn=s.author?`<button class="btn-icon" onclick="toggleFollowAuthor('${authorEsc}')" title="${followed?'作家のフォローを解除':'作家をフォローして新刊を自動チェック'}" style="color:${followed?'#dd9c00':'#cbd5e0'};font-size:16px">${followed?'⭐':'☆'}</button>`:'';
+    const authorLink=s.author?`<span onclick="showAuthorBooks('${authorEsc}')" style="color:var(--a1);text-decoration:underline;cursor:pointer" title="この作家の他の作品を見る">${escHtml(s.author)}</span>`:'';
+    const subHtml=[authorLink,escHtml(restSub)].filter(Boolean).join(' · ');
+    const titleLink=getRakutenLink({title:s.title});
     return `<div class="series-item" id="si_${id}">
       <div class="series-item-row">
         <div class="series-item-info">
-          <div class="series-item-title">${escHtml(s.title)}${completedBadge}${mediaTypeBadge}</div>
+          <a href="${escHtml(titleLink)}" target="_blank" rel="noopener sponsored" class="series-item-title" style="text-decoration:none;color:inherit;display:inline-block" title="商品ページを見る">${escHtml(s.title)}${completedBadge}${mediaTypeBadge}</a>
           <div class="star-inline" id="sti_${id}">${[1,2,3,4,5].map(n=>`<span id="istar_${id}_${n}" class="${n<=rating?'on':''}" onclick="setInlineRating('${id}',${n})" title="${n}★">${n<=rating?'★':'☆'}</span>`).join('')}</div>
-          ${sub?`<div class="series-item-sub">${escHtml(sub)}</div>`:''}
+          ${subHtml?`<div class="series-item-sub">${subHtml}</div>`:''}
           ${(s.tags||[]).length?`<div class="series-item-tags">${(s.tags||[]).map(t=>`<span class="tag-chip">${escHtml(t)}</span>`).join('')}</div>`:''}
         </div>
         ${followBtn}
@@ -3374,6 +3479,44 @@ async function bulkFillKana() {
   banner.textContent = msg;
   setTimeout(() => { banner.style.display = 'none'; banner.style.whiteSpace=''; }, 10000);
   renderSeriesList();
+}
+
+// ── 既存作品への一括表紙画像取得 ──
+async function bulkFillCovers() {
+  const targets = Object.entries(seriesList).filter(([,s]) => !s.coverUrl);
+  if (targets.length === 0) { alert('表紙画像未取得の作品はありません'); return; }
+  if (!confirm(`表紙画像未取得の ${targets.length} 件を取得しますか？`)) return;
+
+  const banner = document.getElementById('bulkRefetchBanner');
+  banner.style.display = '';
+  let done = 0, updated = 0;
+  const notFound = [];
+  const nk = t => (t||'').replace(/[\s　\-－・【】「」（）()\.・]/g,'').toLowerCase();
+
+  for (const [id, s] of targets) {
+    done++;
+    banner.textContent = `🖼️ 表紙取得中… ${done} / ${targets.length} 件`;
+    try {
+      const ns = nk(s.title);
+      let thumb = '';
+      const rkData = await fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&title=${encodeURIComponent(s.title)}&booksGenreId=001&hits=10`).then(r => r.json());
+      for (const ri of (rkData.Items || []).map(i => i.Item)) {
+        if (!nk(ri.title).includes(ns)) continue;
+        const img=(ri.largeImageUrl||ri.mediumImageUrl||'').replace('http://','https://');
+        if (img) { thumb = img; break; }
+      }
+      if (thumb) { await dbSeriesRef.child(id).update({coverUrl:thumb}); updated++; }
+      else notFound.push(s.title);
+    } catch(e) { notFound.push(s.title); }
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  let msg = `✅ ${updated} 件の表紙画像を取得しました（全 ${targets.length} 件処理完了）`;
+  if (notFound.length > 0) msg += `\n⚠️ 見つからなかった作品（作品管理で手動入力してください）:\n${notFound.join('、')}`;
+  banner.style.whiteSpace = 'pre-wrap';
+  banner.textContent = msg;
+  setTimeout(() => { banner.style.display = 'none'; banner.style.whiteSpace=''; }, 10000);
+  renderSeriesList(); render();
 }
 
 // ── 誤入力発売日リセット（現在表示月の巻で -01 固定のもの） ──
