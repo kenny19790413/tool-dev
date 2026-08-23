@@ -2936,7 +2936,7 @@ function renderSeriesList() {
     return `<div class="series-item" id="si_${id}">
       <div class="series-item-row">
         <div class="series-item-info">
-          <a href="${escHtml(titleLink)}" target="_blank" rel="noopener sponsored" class="series-item-title" style="text-decoration:none;color:inherit;display:inline-block" title="商品ページを見る">${escHtml(s.title)}${completedBadge}${mediaTypeBadge}</a>
+          <a href="${escHtml(titleLink)}" target="_blank" rel="noopener sponsored" class="series-item-title" style="text-decoration:underline;text-underline-offset:2px;color:inherit;display:inline-block" title="商品ページを見る">${escHtml(s.title)}</a>${completedBadge}${mediaTypeBadge}
           <div class="star-inline" id="sti_${id}">${[1,2,3,4,5].map(n=>`<span id="istar_${id}_${n}" class="${n<=rating?'on':''}" onclick="setInlineRating('${id}',${n})" title="${n}★">${n<=rating?'★':'☆'}</span>`).join('')}</div>
           ${subHtml?`<div class="series-item-sub">${subHtml}</div>`:''}
           ${(s.tags||[]).length?`<div class="series-item-tags">${(s.tags||[]).map(t=>`<span class="tag-chip">${escHtml(t)}</span>`).join('')}</div>`:''}
