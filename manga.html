@@ -934,7 +934,8 @@ function closeTutorialModal(markSeen) {
 // ── 表紙拡大表示 ──
 function showCoverLightbox(url) {
   if(!url)return;
-  document.getElementById('coverLightboxImg').src=url;
+  const bigUrl=url.replace(/_ex=\d+x\d+/,'_ex=600x600'); // 一覧用の小サイズ(200x200)から高解像度版に差し替え
+  document.getElementById('coverLightboxImg').src=bigUrl;
   document.getElementById('coverLightbox').classList.remove('hidden');
 }
 function closeCoverLightbox() {
