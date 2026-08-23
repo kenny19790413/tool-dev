@@ -123,7 +123,7 @@ tbody td{padding:10px 12px;font-size:13px;vertical-align:middle}
 .td-title{font-weight:700;display:flex;gap:8px;align-items:flex-start}
 .td-title-inner{display:flex;flex-direction:column;gap:3px;min-width:0}
 .td-memo{font-size:11px;color:#718096;word-break:break-all}
-.td-thumb{width:32px;height:44px;object-fit:cover;border-radius:3px;flex-shrink:0;background:var(--br)}
+.td-thumb{width:32px;height:44px;object-fit:cover;border-radius:3px;flex-shrink:0;background:var(--br);cursor:zoom-in}
 .td-vol{color:#718096;white-space:nowrap}
 .td-pub{color:#718096;font-size:12px;white-space:nowrap}
 .td-price{font-weight:700;color:#2d2d3a;white-space:nowrap}
@@ -570,6 +570,11 @@ textarea{resize:vertical;min-height:60px}
   </div>
 </div>
 
+<!-- 表紙拡大表示 -->
+<div id="coverLightbox" class="modal-overlay hidden" onclick="closeCoverLightbox()" style="z-index:10000;background:rgba(0,0,0,.85);cursor:zoom-out">
+  <img id="coverLightboxImg" src="" style="max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)">
+</div>
+
 <!-- チュートリアルモーダル -->
 <div id="tutorialModal" class="modal-overlay hidden">
   <div class="modal" style="max-width:420px">
@@ -924,6 +929,17 @@ function tutorialStep(dir) {
 function closeTutorialModal(markSeen) {
   document.getElementById('tutorialModal').classList.add('hidden');
   if(markSeen) localStorage.setItem('mg_tutorial_seen','1');
+}
+
+// ── 表紙拡大表示 ──
+function showCoverLightbox(url) {
+  if(!url)return;
+  document.getElementById('coverLightboxImg').src=url;
+  document.getElementById('coverLightbox').classList.remove('hidden');
+}
+function closeCoverLightbox() {
+  document.getElementById('coverLightbox').classList.add('hidden');
+  document.getElementById('coverLightboxImg').src='';
 }
 
 function onUserSignedIn(user) {
@@ -1353,7 +1369,7 @@ function buildUnpurchasedSectionHtml() {
         const genre=series&&series.genre?series.genre:'';
         const genreBadge=genre?`<span class="genre-badge genre-${escHtml(genre)}">${escHtml(genre)}</span>`:'';
         const coverUrl=(series&&series.coverUrl)||'';
-        const thumbHtml=coverUrl?`<img class="td-thumb" src="${escHtml(coverUrl)}" loading="lazy" onerror="this.remove()">`:'';
+        const thumbHtml=coverUrl?`<img class="td-thumb" src="${escHtml(coverUrl)}" loading="lazy" onerror="this.remove()" onclick="event.stopPropagation();showCoverLightbox('${escHtml(coverUrl)}')">`:'';
         return `<tr>
           <td class="td-date">${dateStr}</td>
           <td class="td-title">${thumbHtml}${escHtml(v.title)}${genreBadge}</td>
@@ -1571,7 +1587,7 @@ function volumeRow(v, isSearch, today) {
   const reviewHtml=(v.review||v.rating)?`<div class="td-memo">📝 ${v.rating?('★'.repeat(v.rating)+'☆'.repeat(5-v.rating)+' '):''}${escHtml(v.review||'')}</div>`:'';
   const titleHtml=isSearch?highlight(v.title,searchQuery):escHtml(v.title);
   const coverUrl=(series&&series.coverUrl)||'';
-  const thumbHtml=coverUrl?`<img class="td-thumb" src="${escHtml(coverUrl)}" loading="lazy" onerror="this.remove()">`:'';
+  const thumbHtml=coverUrl?`<img class="td-thumb" src="${escHtml(coverUrl)}" loading="lazy" onerror="this.remove()" onclick="event.stopPropagation();showCoverLightbox('${escHtml(coverUrl)}')">`:'';
   let dateMark='';
   if(d){const rd=new Date(d);rd.setHours(0,0,0,0);const diff=(rd-today)/86400000;if(diff===0)dateMark=' 🔴';else if(diff===1)dateMark=' 🟡';}
   const gcalUrl=gcalLink(v);
@@ -1633,7 +1649,7 @@ function renderHistory() {
       const memoHtml=v.memo?`<div class="td-memo">💬 ${escHtml(v.memo)}</div>`:'';
       const reviewHtml=(v.review||v.rating)?`<div class="td-memo">📝 ${v.rating?('★'.repeat(v.rating)+'☆'.repeat(5-v.rating)+' '):''}${escHtml(v.review||'')}</div>`:'';
       const coverUrl=(series&&series.coverUrl)||'';
-      const thumbHtml=coverUrl?`<img class="td-thumb" src="${escHtml(coverUrl)}" loading="lazy" onerror="this.remove()">`:'';
+      const thumbHtml=coverUrl?`<img class="td-thumb" src="${escHtml(coverUrl)}" loading="lazy" onerror="this.remove()" onclick="event.stopPropagation();showCoverLightbox('${escHtml(coverUrl)}')">`:'';
       html+=`<tr class="${status==='read'?'status-read':''}"><td class="td-date">${dateStr}</td>
         <td class="td-title">${thumbHtml}<div class="td-title-inner"><div>${escHtml(v.title)}${genreBadge}${completedBadge}</div>${memoHtml}${reviewHtml}</div></td>
         <td class="td-vol">${volStr}</td><td class="td-pub">${escHtml(v.publisher||'─')}</td>
