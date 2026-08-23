@@ -34,6 +34,12 @@
       { "source": "/bibliotheque",   "destination": "/manga.html" },
       { "source": "/bucket-list",    "destination": "/bucket-list.html" }
     ],
+    "headers": [
+      {
+        "source": "/manga.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ],
     "cleanUrls": true
   },
   "database": {
