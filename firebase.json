@@ -36,6 +36,10 @@
     ],
     "headers": [
       {
+        "source": "/bibliotheque",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
         "source": "/manga.html",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       }
