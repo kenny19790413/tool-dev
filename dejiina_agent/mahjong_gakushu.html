@@ -1,0 +1,2028 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麻雀ゼロから道場</title>
+<style>
+  html{font-size:18px;}
+  :root{
+    --felt:#0b5d3b;
+    --felt-dark:#073d27;
+    --gold:#e6b800;
+    --tile-bg:#fdfaf1;
+    --tile-border:#d8cfa8;
+    --tile-frame:#1c5c39;
+    --tile-frame-dark:#0d3320;
+    --ink:#222;
+    --red:#c0392b;
+    --blue:#1f4e9c;
+    --green2:#1e7a3c;
+    --danger:#e74c3c;
+    --ok:#2ecc71;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;
+    background:radial-gradient(circle at top, var(--felt) 0%, var(--felt-dark) 100%);
+    color:#fff;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:16px;
+  }
+  .wrap{width:100%;max-width:720px;}
+  header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:16px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  h1{font-size:1.3rem;margin:0;letter-spacing:1px;}
+  .level-badge{
+    background:linear-gradient(135deg,var(--gold),#fff3c4);
+    color:#5a4200;
+    padding:6px 14px;
+    border-radius:20px;
+    font-weight:bold;
+    font-size:0.85rem;
+    box-shadow:0 2px 6px rgba(0,0,0,.3);
+    white-space:nowrap;
+  }
+  .card{
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:16px;
+    padding:20px;
+    margin-bottom:16px;
+    backdrop-filter:blur(2px);
+  }
+  .stage-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+  @media (max-width:480px){ .stage-grid{grid-template-columns:1fr;} }
+  .stage-btn{
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.25);
+    border-radius:12px;
+    padding:14px;
+    color:#fff;
+    text-align:left;
+    cursor:pointer;
+    transition:.15s;
+  }
+  .stage-btn:hover{background:rgba(255,255,255,0.18); transform:translateY(-2px);}
+  .stage-btn .num{
+    display:inline-block;
+    width:26px;height:26px;line-height:26px;
+    text-align:center;
+    background:var(--gold);
+    color:#3a2c00;
+    border-radius:50%;
+    font-weight:bold;
+    margin-right:8px;
+    font-size:.85rem;
+  }
+  .stage-btn .title{font-weight:bold;font-size:1rem;}
+  .stage-btn .master-badge{font-size:.9rem;margin-left:2px;}
+  .stage-btn .desc{font-size:.78rem;opacity:.8;margin-top:4px;}
+  .locked{opacity:.4; cursor:not-allowed;}
+  .locked:hover{transform:none;background:rgba(255,255,255,0.08);}
+
+  .level-progress-wrap{margin-top:10px;}
+  .level-progressbar{
+    width:100%;height:8px;background:rgba(255,255,255,0.15);
+    border-radius:4px;overflow:hidden;
+  }
+  .level-progressbar-fill{height:100%;background:var(--gold);transition:width .3s;}
+
+  .progressbar{
+    width:100%;height:8px;background:rgba(255,255,255,0.15);
+    border-radius:4px;overflow:hidden;margin-bottom:16px;
+  }
+  .progressbar-fill{height:100%;background:var(--gold);transition:width .3s;}
+
+  .tiles-row{
+    display:flex;justify-content:center;gap:10px;flex-wrap:wrap;
+    margin:24px 0;
+  }
+  .tile{
+    position:relative;
+    width:64px;height:86px;
+    padding:4px;
+    background:var(--tile-frame);
+    border-radius:12px;
+    box-shadow:0 3px 0 var(--tile-frame-dark), 0 5px 9px rgba(0,0,0,.4);
+    user-select:none;
+  }
+  .tile.small{width:46px;height:62px;padding:3px;}
+  .tile-face{
+    position:relative;
+    width:100%;height:100%;
+    background:var(--tile-bg);
+    border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.6rem;font-weight:bold;
+    color:var(--ink);
+  }
+  .tile.small .tile-face{font-size:1.1rem;}
+  .tile-img{width:82%;height:82%;object-fit:contain;pointer-events:none;}
+  ruby{ruby-position:over;}
+  rt{font-size:.55em;opacity:.75;user-select:none;}
+
+  .question-text{
+    text-align:center;
+    font-size:1.15rem;
+    font-weight:bold;
+    margin-bottom:8px;
+  }
+  .sub-text{
+    text-align:center;
+    font-size:.85rem;
+    opacity:.75;
+    margin-bottom:8px;
+  }
+  .choices{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+    margin-top:20px;
+  }
+  @media (max-width:480px){ .choices{grid-template-columns:1fr;} }
+  .choice-btn{
+    background:#fff;
+    color:#222;
+    border:none;
+    border-radius:10px;
+    padding:14px;
+    font-size:1rem;
+    font-weight:bold;
+    cursor:pointer;
+    transition:.12s;
+    box-shadow:0 3px 0 #b8b8b8;
+  }
+  .choice-btn:hover:not(:disabled){background:#fff8dd;}
+  .choice-btn:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #b8b8b8;}
+  .choice-btn.correct{background:var(--ok)!important;color:#fff;box-shadow:0 3px 0 #1c9c53;}
+  .choice-btn.wrong{background:var(--danger)!important;color:#fff;box-shadow:0 3px 0 #a83226;}
+  .choice-btn.missed{background:#f5d97a!important;color:#3a2c00;box-shadow:0 3px 0 #c9a244;}
+  .tile-choice-btn{background:none;border:none;padding:3px;cursor:pointer;border-radius:14px;transition:.15s;}
+  .tile-choice-btn:hover:not(:disabled){transform:translateY(-5px);}
+  .tile-choice-btn:disabled{cursor:default;}
+  .tile-choice-btn.correct{box-shadow:0 0 0 3px var(--ok);background:rgba(46,204,113,.15);}
+  .tile-choice-btn.wrong{box-shadow:0 0 0 3px var(--danger);background:rgba(231,76,60,.15);}
+  .tile-choice-btn.dim{opacity:.35;}
+  .choice-btn.multi.selected{box-shadow:0 0 0 3px var(--gold) inset, 0 3px 0 #b8b8b8;background:#fff8dd;}
+  .choice-btn:disabled{cursor:default;}
+  .hand-row{row-gap:10px;}
+  .hand-group{display:inline-flex;flex-wrap:wrap;gap:2px;margin:0 8px 8px 0;max-width:100%;}
+  .quiz-topbar{display:flex;justify-content:flex-end;margin-bottom:4px;}
+  .quit-btn{
+    background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;
+    border-radius:14px;padding:8px 14px;font-size:.75rem;cursor:pointer;opacity:.8;
+    min-height:36px;
+  }
+  .quit-btn:hover{opacity:1;background:rgba(255,255,255,.1);}
+  .quit-btn.armed{background:var(--danger);border-color:var(--danger);color:#fff;opacity:1;font-weight:bold;}
+  .name-input{
+    width:100%;padding:12px;border-radius:10px;border:none;font-size:1rem;
+    margin-top:12px;background:var(--tile-bg);color:var(--ink);box-sizing:border-box;
+  }
+  .name-input:focus{outline:2px solid var(--gold);}
+  .name-err{color:#ff9d9d;font-size:.8rem;text-align:center;margin-top:6px;min-height:1em;}
+  .user-chip{
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;
+    border-radius:14px;padding:6px 12px;font-size:.75rem;cursor:pointer;display:none;
+  }
+  .user-chip:hover{background:rgba(255,255,255,.22);}
+  .refresh-chip{
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);color:#fff;
+    border-radius:14px;padding:6px 10px;font-size:.85rem;cursor:pointer;line-height:1;
+  }
+  .refresh-chip:hover{background:rgba(255,255,255,.22);}
+  .refresh-chip:active{transform:scale(.92);}
+  .user-pick-btn{
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:10px;
+    padding:10px;color:#fff;cursor:pointer;text-align:left;font-size:.85rem;
+  }
+  .user-pick-btn:hover{background:rgba(255,255,255,.18);}
+  .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .yaku-list{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+  .yaku-row{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px 12px;}
+  .yaku-row-head{display:flex;align-items:center;gap:8px;font-size:.95rem;}
+  .yaku-han-chip{background:var(--gold);color:#3a2c00;font-size:.7rem;font-weight:bold;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+  .yaku-han-chip.yakuman{background:var(--danger);color:#fff;}
+  .yaku-row-desc{font-size:.78rem;opacity:.8;margin-top:4px;}
+  .example-tiles{display:flex;gap:3px;flex-wrap:wrap;margin-top:8px;}
+  .example-hand{justify-content:flex-start;margin:0;}
+  .dora-line{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px;font-size:.8rem;opacity:.85;}
+  .yaku-row.not-quizzed{opacity:.6;}
+  .not-quizzed-badge{
+    font-size:.65rem;border:1px solid rgba(255,255,255,.4);border-radius:8px;
+    padding:1px 6px;opacity:.85;white-space:nowrap;
+  }
+  .fu-rule-list{margin:12px 0 0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;font-size:.85rem;line-height:1.4;}
+  .link-btn{
+    background:none;border:none;color:var(--gold);text-decoration:underline;
+    font-size:.82rem;cursor:pointer;padding:0;
+  }
+
+  .feedback{
+    text-align:center;
+    margin-top:14px;
+    font-weight:bold;
+    min-height:22px;
+    font-size:.95rem;
+  }
+  .feedback.ok{color:#7bffb0;}
+  .feedback.ng{color:#ff9d9d;}
+
+  .btn-row{display:flex;justify-content:center;gap:10px;margin-top:18px;}
+  body.has-next-bar{padding-bottom:70px;}
+  .next-fixed-bar{
+    position:fixed;
+    right:16px;bottom:calc(16px + env(safe-area-inset-bottom));
+    z-index:50;
+  }
+  .next-fixed-bar .btn{
+    font-size:.85rem;
+    padding:10px 18px;
+    border-radius:22px;
+    box-shadow:0 3px 10px rgba(0,0,0,.5);
+  }
+  .btn{
+    background:var(--gold);
+    color:#3a2c00;
+    border:none;
+    padding:10px 22px;
+    border-radius:20px;
+    font-weight:bold;
+    cursor:pointer;
+    font-size:.9rem;
+  }
+  .btn.ghost{
+    background:transparent;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.4);
+  }
+  .stat-row{
+    display:flex;justify-content:space-around;
+    text-align:center;margin:10px 0 4px;
+  }
+  .stat-row div{font-size:.8rem;opacity:.8;}
+  .stat-row b{display:block;font-size:1.3rem;color:var(--gold);}
+  .result-title{text-align:center;font-size:1.4rem;margin-bottom:4px;}
+  .result-sub{text-align:center;opacity:.8;font-size:.9rem;margin-bottom:16px;}
+  .levelup-banner{
+    text-align:center;background:linear-gradient(135deg,#fff3c4,#ffd452);
+    color:#5a4200;border-radius:12px;padding:12px;margin:14px 0;
+    font-weight:bold;
+    animation:pop .4s ease;
+  }
+  @keyframes pop{from{transform:scale(.8);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .hint{font-size:.75rem;opacity:.65;text-align:center;margin-top:10px;}
+  .wait-note{font-size:1rem;opacity:.9;text-align:center;margin-top:12px;line-height:1.6;font-weight:bold;}
+  footer{opacity:.5;font-size:.7rem;margin-top:10px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🀄 麻雀ゼロから道場</h1>
+    <div class="header-right">
+      <button class="refresh-chip" id="refreshChipBtn" title="最新版を確認">🔄</button>
+      <button class="user-chip" id="userChipBtn"></button>
+      <div class="level-badge" id="levelBadge">Lv.1 牌の見習い</div>
+    </div>
+  </header>
+
+  <div id="app"></div>
+  <footer>ランダム出題・レベル判定つき麻雀入門トレーニング</footer>
+</div>
+
+<script>
+/* ==================== 最新版の自動確認 ==================== */
+// URLにキャッシュ回避用のクエリが無ければ、一度だけ強制的に読み込み直して最新版を取得する。
+// localStorage（ニックネームごとの経験値・進捗）はクエリ文字列に関係なく同一オリジンで保持されるため、
+// この更新処理で経験値が消えることはない。
+function forceRefresh(){
+  try{
+    const url = new URL(location.href);
+    url.searchParams.set("_v", Date.now().toString());
+    location.replace(url.toString());
+  }catch(e){
+    location.reload();
+  }
+}
+(function(){
+  try{
+    const url = new URL(location.href);
+    if(!url.searchParams.has("_v")) forceRefresh();
+  }catch(e){}
+})();
+
+/* ==================== データ定義 ==================== */
+// 34種の牌: 萬子(m)1-9, 筒子(p)1-9, 索子(s)1-9, 字牌(z)1-7
+const SUIT_NAME = {m:"萬子", p:"筒子", s:"索子", z:"字牌"};
+const Z_LABEL = {1:"東",2:"南",3:"西",4:"北",5:"白",6:"發",7:"中"};
+const Z_YOMI  = {1:"とん",2:"なん",3:"しゃー",4:"ぺー",5:"はく",6:"はつ",7:"ちゅん"};
+const KANSUJI = {1:"一",2:"二",3:"三",4:"四",5:"五",6:"六",7:"七",8:"八",9:"九"};
+
+function allTiles(){
+  const arr=[];
+  ["m","p","s"].forEach(suit=>{
+    for(let r=1;r<=9;r++) arr.push({suit, rank:r});
+  });
+  for(let r=1;r<=7;r++) arr.push({suit:"z", rank:r});
+  return arr;
+}
+const TILES = allTiles();
+
+function tileEqual(a,b){ return a.suit===b.suit && a.rank===b.rank; }
+
+function tileLabel(t){
+  if(t.suit==="z") return Z_LABEL[t.rank];
+  return KANSUJI[t.rank];
+}
+function tileSuitMark(t){
+  if(t.suit==="m") return "萬";
+  if(t.suit==="p") return "筒";
+  if(t.suit==="s") return "索";
+  return "";
+}
+function tileFullName(t){
+  if(t.suit==="z") return Z_LABEL[t.rank] + "(" + Z_YOMI[t.rank] + ")";
+  return KANSUJI[t.rank] + SUIT_NAME[t.suit] + "（" + t.rank + t.suit + "）";
+}
+
+// 牌の絵柄はフリー素材（CC0 / public domain, FluffyStuff/riichi-mahjong-tiles）の実物イラストを使用
+const TILE_FILE = {
+  m:{1:"Man1.svg",2:"Man2.svg",3:"Man3.svg",4:"Man4.svg",5:"Man5.svg",6:"Man6.svg",7:"Man7.svg",8:"Man8.svg",9:"Man9.svg"},
+  p:{1:"Pin1.svg",2:"Pin2.svg",3:"Pin3.svg",4:"Pin4.svg",5:"Pin5.svg",6:"Pin6.svg",7:"Pin7.svg",8:"Pin8.svg",9:"Pin9.svg"},
+  s:{1:"Sou1.svg",2:"Sou2.svg",3:"Sou3.svg",4:"Sou4.svg",5:"Sou5.svg",6:"Sou6.svg",7:"Sou7.svg",8:"Sou8.svg",9:"Sou9.svg"},
+  z:{1:"Ton.svg",2:"Nan.svg",3:"Shaa.svg",4:"Pei.svg",5:"Haku.svg",6:"Hatsu.svg",7:"Chun.svg"},
+};
+function renderTile(t, size=""){
+  const cls = "tile " + t.suit + (size?" "+size:"");
+  const file = TILE_FILE[t.suit][t.rank];
+  return `<div class="${cls}"><div class="tile-face"><img class="tile-img" src="tiles/${file}" alt="${tileFullName(t)}" draggable="false"></div></div>`;
+}
+
+// ふりがな（読めなくても選べるが、用語を覚える助けとして併記）
+function rb(kanji, reading){ return `<ruby>${kanji}<rt>${reading}</rt></ruby>`; }
+const RUBY_MAP = {
+  "順子": rb("順子","しゅんつ"),
+  "刻子": rb("刻子","コーツ"),
+  "対子": rb("対子","トイツ"),
+  "バラバラ（面子にならない）": `バラバラ（${rb("面子","メンツ")}にならない）`,
+  "タンヤオ（2〜8の数牌だけ）": "タンヤオ（2〜8の数牌だけ）",
+  "役牌（中/發/白のいずれかの刻子）": `${rb("役牌","やくはい")}（中/發/白のいずれかの${rb("刻子","コーツ")}）`,
+  "混一色（ホンイツ：1種類の数牌＋字牌）": `${rb("混一色","ホンイツ")}（1種類の数牌＋${rb("字牌","じはい")}）`,
+  "清一色（チンイツ：1種類の数牌だけ）": `${rb("清一色","チンイツ")}（1種類の数牌だけ）`,
+  "七対子（同じ牌のペアを7組そろえる役）": `${rb("七対子","チートイツ")}（同じ牌のペアを7組そろえる役）`,
+  "タンヤオ": "タンヤオ",
+  "立直": rb("立直","リーチ"),
+  "対々和": rb("対々和","トイトイ"),
+  "一盃口": rb("一盃口","イーペーコー"),
+  "混一色": rb("混一色","ホンイツ"),
+  "清一色": rb("清一色","チンイツ"),
+  "混老頭": rb("混老頭","ホンロウトウ"),
+  "混全帯幺九（チャンタ）": rb("混全帯幺九","チャンタ"),
+  "七対子": rb("七対子","チートイツ"),
+  "役なし": "役なし",
+  "役牌（東）": `${rb("役牌","やくはい")}（東）`,
+  "役牌（南）": `${rb("役牌","やくはい")}（南）`,
+  "役牌（西）": `${rb("役牌","やくはい")}（西）`,
+  "役牌（北）": `${rb("役牌","やくはい")}（北）`,
+  "役牌（白）": `${rb("役牌","やくはい")}（白）`,
+  "役牌（發）": `${rb("役牌","やくはい")}（發）`,
+  "役牌（中）": `${rb("役牌","やくはい")}（中）`,
+  "国士無双【役満】": `${rb("国士無双","こくしむそう")}【役満】`,
+  "大三元【役満】": `${rb("大三元","だいさんげん")}【役満】`,
+  "小四喜【役満】": `${rb("小四喜","しょうすーしー")}【役満】`,
+  "大四喜【役満】": `${rb("大四喜","だいすーしー")}【役満】`,
+  "字一色【役満】": `${rb("字一色","つーいーそー")}【役満】`,
+  "清老頭【役満】": `${rb("清老頭","ちんろうとう")}【役満】`,
+  "緑一色【役満】": `${rb("緑一色","りゅーいーそー")}【役満】`,
+};
+// 牌の名前（例:「二萬子」）にもマンズ/ピンズ/ソーズのふりがなを自動で追加する
+const SUIT_READING = {m:"マンズ", p:"ピンズ", s:"ソーズ"};
+TILES.forEach(t=>{
+  if(t.suit==="z") return;
+  const plain = tileFullName(t).split("（")[0];
+  const suitKanji = SUIT_NAME[t.suit];
+  RUBY_MAP[plain] = plain.replace(suitKanji, rb(suitKanji, SUIT_READING[t.suit]));
+});
+function displayHtml(choice){ return RUBY_MAP[choice] || choice; }
+
+function randTile(){ return {...TILES[Math.floor(Math.random()*TILES.length)]}; }
+function randSuitedTile(){ // 数牌のみ(順子生成用)
+  const suits=["m","p","s"];
+  const suit=suits[Math.floor(Math.random()*3)];
+  const rank=1+Math.floor(Math.random()*9);
+  return {suit,rank};
+}
+function shuffle(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function pickN(arr,n){ return shuffle(arr).slice(0,n); }
+
+/* ==================== 出題重複防止 ==================== */
+const recentHistory = {1:[],2:[],3:[],4:[],5:[],6:[],7:[],8:[]};
+function pushHistory(stage,key){
+  const h=recentHistory[stage];
+  h.push(key);
+  if(h.length>8) h.shift();
+}
+function isRecent(stage,key){ return recentHistory[stage].includes(key); }
+
+/* ==================== レベル・XPシステム ==================== */
+const LEVELS = [
+  {lv:1,  xp:0,   name:"牌の見習い"},
+  {lv:2,  xp:60,  name:"牌が読める人"},
+  {lv:3,  xp:150, name:"面子の卵"},
+  {lv:4,  xp:280, name:"面子マスター見習い"},
+  {lv:5,  xp:450, name:"手牌組み立て職人"},
+  {lv:6,  xp:660, name:"役を覚え始めた人"},
+  {lv:7,  xp:920, name:"基本役マスター"},
+  {lv:8,  xp:1230,name:"雀卓デビュー目前"},
+  {lv:9,  xp:1600,name:"初心者卒業"},
+  {lv:10, xp:2050,name:"入門道場・免許皆伝"},
+];
+// Googleログイン等の実際の認証はここでは使わず(公開ページの仕組み上ログイン用スクリプトを読み込めないため)、
+// ニックネームで人ごとに記録を分ける方式にしている。同じ端末を複数人で使っても記録が混ざらない。
+const USERS_KEY="mahjong_gakushu_users_v1";
+const CURRENT_KEY="mahjong_gakushu_current_v1";
+const LEGACY_KEY="mahjong_gakushu_progress_v1"; // 旧バージョン(名前なし)の記録の引き継ぎ用
+
+function freshProgress(){
+  const stageStats={};
+  for(let i=1;i<=8;i++) stageStats[i]={c:0,t:0};
+  return {xp:0, correct:0, total:0, stageStats, missed:[], tutorialSeen:false, recentResults:[]};
+}
+function normalizeProgress(p){
+  if(!p) return freshProgress();
+  if(typeof p.xp!=="number") p.xp=0;
+  if(typeof p.correct!=="number") p.correct=0;
+  if(typeof p.total!=="number") p.total=0;
+  if(!p.stageStats) p.stageStats={};
+  for(let i=1;i<=8;i++){ if(!p.stageStats[i]) p.stageStats[i]={c:0,t:0}; }
+  if(!Array.isArray(p.missed)) p.missed=[];
+  if(typeof p.tutorialSeen!=="boolean"){
+    p.tutorialSeen = (p.xp>0 || p.total>0); // 既に活動している人には初回チュートリアルを出さない
+  }
+  if(!Array.isArray(p.recentResults)) p.recentResults=[];
+  return p;
+}
+const RECENT_WINDOW = 20; // 「直近の正答率」の集計対象問題数
+function pushRecent(isCorrect){
+  if(!progress.recentResults) progress.recentResults=[];
+  progress.recentResults.push(isCorrect);
+  if(progress.recentResults.length>RECENT_WINDOW) progress.recentResults.shift();
+}
+function recentAccuracy(){
+  const arr = progress.recentResults||[];
+  if(arr.length===0) return null;
+  return Math.round(arr.filter(Boolean).length/arr.length*100);
+}
+function loadUsers(){
+  try{
+    const raw=localStorage.getItem(USERS_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return {};
+}
+function saveUsers(){ localStorage.setItem(USERS_KEY, JSON.stringify(users)); }
+
+let users = loadUsers();
+let currentUser = localStorage.getItem(CURRENT_KEY);
+
+// 旧バージョンの記録(名前なし)がこの端末にあれば「ゲスト」として自動的に引き継ぐ
+if(!currentUser){
+  try{
+    const legacyRaw = localStorage.getItem(LEGACY_KEY);
+    if(legacyRaw){
+      const legacy = normalizeProgress(JSON.parse(legacyRaw));
+      if(legacy.xp>0 || legacy.total>0){
+        users["ゲスト"] = legacy;
+        currentUser = "ゲスト";
+        saveUsers();
+        localStorage.setItem(CURRENT_KEY, currentUser);
+      }
+    }
+  }catch(e){}
+}
+
+let progress = currentUser ? normalizeProgress(users[currentUser]) : freshProgress();
+function saveProgress(){
+  if(!currentUser) return;
+  users[currentUser] = progress;
+  saveUsers();
+}
+function switchUser(name){
+  currentUser = name;
+  localStorage.setItem(CURRENT_KEY, name);
+  if(!users[name]) users[name] = freshProgress();
+  progress = normalizeProgress(users[name]);
+  saveProgress();
+  updateLevelBadge();
+  updateUserChip();
+  go(progress.tutorialSeen ? "home" : "tutorial");
+}
+
+function levelInfo(xp){
+  let cur=LEVELS[0];
+  for(const l of LEVELS){ if(xp>=l.xp) cur=l; }
+  const idx=LEVELS.indexOf(cur);
+  const next=LEVELS[idx+1]||null;
+  return {cur,next};
+}
+function updateLevelBadge(){
+  const {cur}=levelInfo(progress.xp);
+  document.getElementById("levelBadge").textContent = `Lv.${cur.lv} ${cur.name}`;
+}
+function updateUserChip(){
+  const chip = document.getElementById("userChipBtn");
+  if(currentUser){
+    chip.style.display="inline-block";
+    chip.textContent = `👤 ${currentUser}`;
+    chip.onclick = ()=>go("userSwitch");
+  } else {
+    chip.style.display="none";
+  }
+}
+if(currentUser) updateLevelBadge();
+updateUserChip();
+{
+  const refreshBtn = document.getElementById("refreshChipBtn");
+  if(refreshBtn) refreshBtn.onclick = forceRefresh;
+}
+
+/* ==================== 画面状態管理 ==================== */
+const app = document.getElementById("app");
+let state = { screen: currentUser ? (progress.tutorialSeen ? "home" : "tutorial") : "nameEntry" };
+
+function go(screen, opts={}){
+  state = {screen, ...opts};
+  render();
+}
+
+/* ==================== 初回チュートリアル ==================== */
+function renderTutorial(){
+  app.innerHTML = `
+    <div class="card">
+      <div class="result-title">ようこそ、麻雀ゼロから道場へ！</div>
+      <div class="result-sub">はじめる前に、かんたんな使い方をご紹介します</div>
+      <ol class="fu-rule-list">
+        <li>ステージは①から順番に進めるのがおすすめです。番号が進むほど内容が難しくなります</li>
+        <li>各ステージは8問1セット。正解すると累計XPがたまり、レベルが上がっていきます</li>
+        <li>XPがたまると新しいステージが自動で解放されます（🔒マークが外れます）</li>
+        <li>わからない言葉が出てきたら、ホーム画面の「用語解説・役の早見表」でいつでも確認できます</li>
+        <li>間違えた問題は自動で記録され、あとで「苦手を復習する」からまとめて解き直せます</li>
+      </ol>
+      <div class="btn-row"><button class="btn" id="tutorialStartBtn">さっそくはじめる</button></div>
+    </div>
+  `;
+  document.getElementById("tutorialStartBtn").onclick=()=>{
+    progress.tutorialSeen = true;
+    saveProgress();
+    go("home");
+  };
+}
+
+/* ==================== 名前入力・ユーザー切り替え画面 ==================== */
+function renderNameEntry(){
+  const isSwitch = state.screen==="userSwitch";
+  const existingNames = Object.keys(users);
+  app.innerHTML = `
+    <div class="card">
+      <div class="result-title">${isSwitch ? "ユーザーを切り替え" : "ようこそ！"}</div>
+      <div class="result-sub">${isSwitch ? "この端末に保存されている名前を選ぶか、新しい名前ではじめられます。" : "お名前（ニックネーム）を入力してください。この端末に、名前ごとに記録が保存されます。"}</div>
+      ${existingNames.length ? '<div class="stage-grid" id="existingUsersGrid" style="margin-bottom:16px;"></div>' : ""}
+      <input id="nameInput" type="text" maxlength="12" placeholder="新しい名前を入力" class="name-input">
+      <div class="name-err" id="nameErr"></div>
+      <div class="btn-row">
+        <button class="btn" id="nameGoBtn">${isSwitch ? "この名前ではじめる" : "はじめる"}</button>
+        ${isSwitch ? '<button class="btn ghost" id="nameCancelBtn">戻る</button>' : ""}
+      </div>
+    </div>
+  `;
+  const grid = document.getElementById("existingUsersGrid");
+  if(grid){
+    existingNames.forEach(name=>{
+      const p = normalizeProgress(users[name]);
+      const {cur} = levelInfo(p.xp);
+      const b=document.createElement("button");
+      b.className="user-pick-btn";
+      b.textContent = `👤 ${name}（Lv.${cur.lv}・${p.xp}XP）`;
+      b.onclick=()=>switchUser(name);
+      grid.appendChild(b);
+    });
+  }
+  document.getElementById("nameGoBtn").onclick=()=>{
+    const val = document.getElementById("nameInput").value.trim();
+    if(!val){ document.getElementById("nameErr").textContent="お名前を入力してください"; return; }
+    if(val.length>12){ document.getElementById("nameErr").textContent="12文字以内で入力してください"; return; }
+    switchUser(val);
+  };
+  document.getElementById("nameInput").onkeydown=(e)=>{ if(e.key==="Enter") document.getElementById("nameGoBtn").click(); };
+  if(isSwitch){
+    document.getElementById("nameCancelBtn").onclick=()=>go("home");
+  }
+}
+
+/* ==================== ホーム画面 ==================== */
+const STAGE_DEF = [
+  {id:1, title:"牌の名前を覚える", desc:"表示された牌の名前を4択でこたえよう", unlockXp:0},
+  {id:2, title:`${rb("面子","メンツ")}を見分ける`, desc:`${rb("順子","しゅんつ")}・${rb("刻子","コーツ")}・${rb("対子","トイツ")}・バラバラを見分けよう`, unlockXp:0},
+  {id:3, title:"欠けた形を見抜く", desc:`あと1枚で完成する${rb("面子","メンツ")}の待ち牌をこたえよう`, unlockXp:60},
+  {id:4, title:"役を当てよう", desc:"本番と同じ14枚の手から、当てはまる役をすべて選ぼう（複数・役なしもあり）", unlockXp:280},
+  {id:6, title:"役満を見抜こう", desc:"国士無双・大三元・字一色などの役満を見分けよう", unlockXp:660},
+  {id:7, title:"何切る？", desc:"14枚の手牌から、今切るべき牌を見抜こう（実践編）", unlockXp:920},
+  {id:8, title:"危険度を見抜く", desc:"相手の捨て牌を見て、絶対に安全な牌（現物）を見抜こう（中級編）", unlockXp:1230},
+  {id:5, title:"総合レベル診断", desc:"全ジャンルからランダム出題。正答率でレベル判定", unlockXp:0},
+];
+
+function renderHome(){
+  const {cur,next}=levelInfo(progress.xp);
+  const nextText = next ? `次のレベルまで あと${next.xp - progress.xp}XP` : "最高レベル到達！";
+  const levelPct = next ? Math.min(100, Math.max(0, Math.round((progress.xp-cur.xp)/(next.xp-cur.xp)*100))) : 100;
+  const recentAcc = recentAccuracy();
+  const recentN = (progress.recentResults||[]).length;
+  app.innerHTML = `
+    <div class="card">
+      <div class="stat-row">
+        <div><b>${progress.xp}</b>累計XP</div>
+        <div><b>${recentAcc!==null? recentAcc+"%":"—"}</b>直近${recentN?`${recentN}問`:""}の正答率</div>
+        <div><b>Lv.${cur.lv}</b>${cur.name}</div>
+      </div>
+      <div class="level-progress-wrap">
+        <div class="level-progressbar"><div class="level-progressbar-fill" style="width:${levelPct}%"></div></div>
+        <div class="hint" style="margin-top:4px;">${nextText}</div>
+      </div>
+      <div class="hint" style="margin-top:8px;"><button class="link-btn" id="yakuTableBtn">📖 用語解説・役の早見表を見る</button></div>
+      <div class="hint" style="margin-top:6px;">
+        ${(progress.missed||[]).length>0
+          ? `<button class="link-btn" id="reviewBtn">🔁 苦手を復習する（${progress.missed.length}問）</button>`
+          : `<span style="opacity:.5;">🔁 苦手はまだありません</span>`}
+      </div>
+      <div class="hint" style="margin-top:6px;"><a class="link-btn" href="mahjong_score_scanner.html">📷 実際の手牌を写真で点数計算する</a></div>
+    </div>
+    <div class="card">
+      <div class="stage-grid" id="stageGrid"></div>
+    </div>
+  `;
+  document.getElementById("yakuTableBtn").onclick=()=>go("yakuTable");
+  if((progress.missed||[]).length>0){
+    document.getElementById("reviewBtn").onclick=()=>startReview();
+  }
+  const grid = document.getElementById("stageGrid");
+  STAGE_DEF.forEach(s=>{
+    const locked = progress.xp < s.unlockXp;
+    const stat = progress.stageStats[s.id];
+    const rate = stat.t? Math.round(stat.c/stat.t*100) : null;
+    const mastered = stat.t>=MASTER_MIN_ATTEMPTS && rate!==null && rate>=MASTER_RATE;
+    const btn = document.createElement("div");
+    btn.className = "stage-btn"+(locked?" locked":"");
+    btn.innerHTML = `<span class="num">${s.id}</span><span class="title">${s.title}${mastered? ` <span class="master-badge" title="習熟済み（正答率${MASTER_RATE}%以上）">🏅</span>`:""}</span>
+      <div class="desc">${s.desc}</div>
+      <div class="desc">${locked? `🔒 Lv到達で解放（必要XP:${s.unlockXp}）` : (rate!==null? `これまでの正答率: ${rate}%`:"まだ挑戦していません")}</div>`;
+    if(!locked){
+      btn.onclick=()=>startStage(s.id);
+    }
+    grid.appendChild(btn);
+  });
+}
+
+/* ==================== 問題生成: ステージ1 牌の名前 ==================== */
+function genQ1(){
+  let t, key;
+  do{
+    t = randTile();
+    key = t.suit+t.rank;
+  }while(isRecent(1,key));
+  pushHistory(1,key);
+
+  const correct = tileFullName(t).split("（")[0]; // 表示名だけ
+  // 誤答: 同じsuitの別rank優先で紛らわしく
+  const distractorsPool = TILES.filter(x=>!tileEqual(x,t));
+  const sameSuit = distractorsPool.filter(x=>x.suit===t.suit);
+  const others = distractorsPool.filter(x=>x.suit!==t.suit);
+  const picks = pickN(sameSuit, Math.min(2,sameSuit.length)).concat(pickN(others,3));
+  const wrongNames = pickN(picks,3).map(x=>tileFullName(x).split("（")[0]);
+  const choices = shuffle([correct, ...wrongNames]);
+
+  return {
+    stage:1,
+    question:"この牌の名前は？",
+    render: `<div class="tiles-row">${renderTile(t)}</div>`,
+    choices,
+    answer: correct,
+  };
+}
+
+/* ==================== 問題生成: ステージ2 面子判定 ==================== */
+function genMentsuGroup(){
+  // typeを決めてから牌を生成
+  const roll = Math.random();
+  if(roll<0.28){
+    // 順子
+    const t=randSuitedTile();
+    const maxStart = Math.min(t.rank,7);
+    const start = Math.max(1, Math.min(t.rank, 7));
+    const s = 1+Math.floor(Math.random()*7);
+    const tiles=[{suit:t.suit,rank:s},{suit:t.suit,rank:s+1},{suit:t.suit,rank:s+2}];
+    return {tiles, type:"順子"};
+  } else if(roll<0.56){
+    // 刻子
+    const t=randTile();
+    return {tiles:[{...t},{...t},{...t}], type:"刻子"};
+  } else if(roll<0.78){
+    // 対子(2枚)
+    const t=randTile();
+    return {tiles:[{...t},{...t}], type:"対子"};
+  } else {
+    // バラバラ
+    let tiles;
+    let tries=0;
+    do{
+      tiles = [randTile(), randTile(), randTile()];
+      tries++;
+    }while(tries<10 && isValidSet(tiles));
+    return {tiles, type:"バラバラ"};
+  }
+}
+function isValidSet(tiles){
+  // 順子や刻子になってしまっていないかの簡易チェック
+  if(tiles[0].suit===tiles[1].suit && tiles[1].suit===tiles[2].suit){
+    const ranks = tiles.map(t=>t.rank).sort((a,b)=>a-b);
+    if(ranks[0]===ranks[1] && ranks[1]===ranks[2]) return true;
+    if(tiles[0].suit!=="z" && ranks[1]-ranks[0]===1 && ranks[2]-ranks[1]===1) return true;
+  }
+  return false;
+}
+function genQ2(){
+  let g, key;
+  do{
+    g = genMentsuGroup();
+    key = g.type + g.tiles.map(t=>t.suit+t.rank).join(",");
+  }while(isRecent(2,key));
+  pushHistory(2,key);
+
+  const choices = shuffle(["順子","刻子","対子","バラバラ（面子にならない）"]);
+  const answer = g.type==="バラバラ" ? "バラバラ（面子にならない）" : g.type;
+
+  return {
+    stage:2,
+    question:"この組み合わせは何？",
+    render: `<div class="tiles-row">${g.tiles.map(t=>renderTile(t)).join("")}</div>`,
+    choices,
+    answer,
+  };
+}
+
+/* ==================== 問題生成: ステージ3 待ち牌 ==================== */
+// フリテン判定のミニ出題：待ちの形＋捨て牌を見せて「今ロンできるか」を答えさせる
+function genFuritenCheck(){
+  let payload, key;
+  do{
+    const suit = ["m","p","s"][Math.floor(Math.random()*3)];
+    const isKanchan = Math.random()<0.35;
+    if(isKanchan){
+      const r1 = 1+Math.floor(Math.random()*7);
+      payload = {shown:[{suit,rank:r1},{suit,rank:r1+2}], waits:[{suit,rank:r1+1}]};
+    } else {
+      const r1 = 1+Math.floor(Math.random()*8);
+      const waits=[];
+      if(r1-1>=1) waits.push({suit,rank:r1-1});
+      if(r1+2<=9) waits.push({suit,rank:r1+2});
+      payload = {shown:[{suit,rank:r1},{suit,rank:r1+1}], waits};
+    }
+    key = "furiten|"+payload.shown.map(t=>t.suit+t.rank).join(",");
+  }while(isRecent(3,key));
+  pushHistory(3,key);
+
+  const waits = payload.waits;
+  const isFuriten = Math.random()<0.5;
+  const usedKeys = [...payload.shown, ...waits].map(t=>t.suit+t.rank);
+  let discards;
+  if(isFuriten){
+    const furitenTile = waits[Math.floor(Math.random()*waits.length)];
+    const others = pickN(TILES.filter(t=>!usedKeys.includes(t.suit+t.rank)), 2);
+    discards = shuffle([furitenTile, ...others]);
+  } else {
+    discards = pickN(TILES.filter(t=>!usedKeys.includes(t.suit+t.rank)), 3);
+  }
+
+  const waitNames = waits.map(t=>displayHtml(tileFullName(t).split("（")[0])).join("」「");
+  const correct = isFuriten ? "ロンできない（フリテン）" : "ロンできる";
+  const choices = shuffle(["ロンできる", "ロンできない（フリテン）"]);
+  const note = isFuriten
+    ? `豆知識：捨て牌の中に自分の待ち牌（「${waitNames}」）が含まれているため、フリテンとなりロンできません（ツモなら上がれます）`
+    : `豆知識：捨て牌の中に自分の待ち牌（「${waitNames}」）は含まれていないので、ロンできます`;
+
+  return {
+    stage:3,
+    question:`この形は「${waitNames}」待ちです。捨て牌を見て、今ロンできるか答えよう`,
+    render: `<div class="tiles-row">${payload.shown.map(t=>renderTile(t)).join("")}${renderWaitPlaceholder()}</div><div class="hint" style="margin-top:10px;">あなたの捨て牌</div><div class="tiles-row" style="margin-top:2px;">${discards.map(t=>renderTile(t,"small")).join("")}</div>`,
+    choices,
+    answer: correct,
+    note,
+  };
+}
+function genQ3(){
+  if(Math.random()<0.3) return genFuritenCheck();
+  // 2枚を見せて「あと1枚で面子が完成する牌」を当てる
+  // 両面待ち（例：4-5 なら 3 でも 6 でも完成）の場合は、正解として採用しなかった側の牌を
+  // 選択肢からも除外することで「本当は正解なのに不正解扱いになる」事故を防ぐ
+  let payload, key;
+  do{
+    const isKotsu = Math.random()<0.35;
+    if(isKotsu){
+      const t=randTile();
+      payload = {shown:[{...t},{...t}], waits:[{...t}], mode:"kotsu"};
+    } else {
+      const suit = ["m","p","s"][Math.floor(Math.random()*3)];
+      const isKanchan = Math.random()<0.35;
+      if(isKanchan){
+        // 嵌張(カンチャン)待ち: 例 4-6 なら 5 の1種類のみ
+        const r1 = 1+Math.floor(Math.random()*7); // 1..7 (r1, r1+2 が範囲内に収まる)
+        payload = {shown:[{suit,rank:r1},{suit,rank:r1+2}], waits:[{suit,rank:r1+1}], mode:"kanchan"};
+      } else {
+        // 両面/辺張待ち: 例 4-5 なら 3・6 の2種類、1-2なら3のみ、8-9なら7のみ
+        const r1 = 1+Math.floor(Math.random()*8); // 1..8 (r1, r1+1)
+        const waits=[];
+        if(r1-1>=1) waits.push({suit,rank:r1-1});
+        if(r1+2<=9) waits.push({suit,rank:r1+2});
+        payload = {shown:[{suit,rank:r1},{suit,rank:r1+1}], waits, mode:"ryanmen"};
+      }
+    }
+    key = payload.mode+payload.shown.map(t=>t.suit+t.rank).join(",");
+  }while(isRecent(3,key));
+  pushHistory(3,key);
+
+  const shown = payload.shown;
+  const waits = payload.waits;
+  const waitKeys = waits.map(t=>t.suit+t.rank);
+  const correctTile = waits[Math.floor(Math.random()*waits.length)];
+  const correct = tileFullName(correctTile).split("（")[0];
+
+  // もう片方の正解牌も含めて、待ち牌は誤答候補から完全に除外する
+  const pool = TILES.filter(x=>!waitKeys.includes(x.suit+x.rank));
+  const sameSuit = pool.filter(x=>x.suit===correctTile.suit);
+  const wrongTiles = pickN(sameSuit.length>=3?sameSuit:pool, 3);
+  const choices = shuffle([correct, ...wrongTiles.map(t=>tileFullName(t).split("（")[0])]);
+
+  let note;
+  if(waits.length>1){
+    note = `豆知識：この形は${waits.map(t=>displayHtml(tileFullName(t).split("（")[0])).join("」「")}のどちらでも完成する「${rb("両面待ち","リャンメン")}」です`;
+  } else if(payload.mode==="kanchan"){
+    note = `豆知識：順子の真ん中が抜けているこの形は「${rb("嵌張待ち","カンチャン")}」です`;
+  } else if(payload.mode==="ryanmen"){
+    // waits.length===1のときは、1・2や8・9のような端の順子（辺張＝ペンチャン）
+    note = `豆知識：端に寄ったこの形は「${rb("辺張待ち","ペンチャン")}」です（0や10の牌は無いので、待ちは1種類だけ）`;
+  } else {
+    note = null;
+  }
+
+  return {
+    stage:3,
+    question:`あと1枚そろえば${rb("面子","メンツ")}完成！ 待っている牌は？`,
+    render: `<div class="tiles-row">${shown.map(t=>renderTile(t)).join("")}${renderWaitPlaceholder()}</div>`,
+    choices,
+    answer: correct,
+    note,
+  };
+}
+
+/* ==================== 役判定エンジン（本番と同じ14枚：4面子+雀頭 or 7対子 or 国士無双） ==================== */
+function isHonorTile(t){ return t.suit==="z"; }
+function isTerminalTile(t){ return t.suit!=="z" && (t.rank===1 || t.rank===9); }
+function isTermOrHonor(t){ return isHonorTile(t) || isTerminalTile(t); }
+function isGreenTile(t){ return (t.suit==="s" && [2,3,4,6,8].includes(t.rank)) || (t.suit==="z" && t.rank===6); }
+
+function flattenHand(groups, pair){
+  const tiles=[];
+  groups.forEach(g=>{
+    if(g.kind==="shuntsu") tiles.push({suit:g.suit,rank:g.rank},{suit:g.suit,rank:g.rank+1},{suit:g.suit,rank:g.rank+2});
+    else tiles.push({suit:g.suit,rank:g.rank},{suit:g.suit,rank:g.rank},{suit:g.suit,rank:g.rank});
+  });
+  if(pair) tiles.push({suit:pair.suit,rank:pair.rank},{suit:pair.suit,rank:pair.rank});
+  return tiles;
+}
+
+// tiles: 14枚のフラットな配列 / groups・pairは4面子+雀頭の形のときだけ渡す(七対子・国士無双はnull)
+// shapeKind: "standard" | "chiitoi" | "kokushi"
+function computeYaku(tiles, groups, pair, shapeKind){
+  if(shapeKind==="kokushi") return {regular:[], yakuman:["国士無双【役満】"]};
+
+  const regular=[];
+  const yakuman=[];
+  const numberSuits = new Set(tiles.filter(t=>t.suit!=="z").map(t=>t.suit));
+  const hasHonor = tiles.some(t=>t.suit==="z");
+
+  if(tiles.every(t=>t.suit!=="z" && t.rank>=2 && t.rank<=8)) regular.push("タンヤオ");
+  // 清一色/混一色は「数牌が1種類だけ」が共通条件。字牌の有無だけで両立しないように分ける
+  if(numberSuits.size===1 && hasHonor) regular.push("混一色");
+  if(numberSuits.size===1 && !hasHonor) regular.push("清一色");
+  if(tiles.every(isTermOrHonor)) regular.push("混老頭");
+
+  if(shapeKind==="chiitoi") regular.push("七対子");
+
+  if(shapeKind==="standard"){
+    groups.forEach(g=>{
+      if(g.kind==="kotsu" && g.suit==="z" && g.rank>=5) regular.push(`役牌（${Z_LABEL[g.rank]}）`);
+    });
+    if(groups.every(g=>g.kind==="kotsu")) regular.push("対々和");
+    const shuntsuKeys = groups.filter(g=>g.kind==="shuntsu").map(g=>g.suit+"-"+g.rank);
+    if(shuntsuKeys.some((k,i)=>shuntsuKeys.indexOf(k)!==i)) regular.push("一盃口");
+    const chanta = groups.every(g=> g.kind==="kotsu" ? isTermOrHonor({suit:g.suit,rank:g.rank}) : (g.rank===1||g.rank===7))
+      && isTermOrHonor(pair);
+    if(chanta) regular.push("混全帯幺九（チャンタ）");
+  }
+
+  // ===== 役満（形だけで判定できるものに限定） =====
+  if(tiles.every(t=>t.suit==="z")) yakuman.push("字一色【役満】");
+  if(tiles.every(t=>t.suit!=="z" && (t.rank===1||t.rank===9))) yakuman.push("清老頭【役満】");
+  if(tiles.every(isGreenTile)) yakuman.push("緑一色【役満】");
+  if(shapeKind==="standard"){
+    // 大三元/小四喜/大四喜は「3つの異なる種類」が揃っているかで判定する（同じ牌の刻子を重複カウントしない）
+    const dragonRanks = new Set(groups.filter(g=>g.kind==="kotsu"&&g.suit==="z"&&g.rank>=5).map(g=>g.rank));
+    if(dragonRanks.size===3) yakuman.push("大三元【役満】");
+    const windRanks = new Set(groups.filter(g=>g.kind==="kotsu"&&g.suit==="z"&&g.rank<=4).map(g=>g.rank));
+    if(windRanks.size===3 && pair.suit==="z" && pair.rank<=4 && !windRanks.has(pair.rank)) yakuman.push("小四喜【役満】");
+    if(windRanks.size===4) yakuman.push("大四喜【役満】");
+  }
+
+  // このアプリの点数計算は常に「面前ロン」を前提にしているため、役満でなければ
+  // 聴牌＋門前の条件を満たしており、リーチはいつでも宣言できる（＝常に成立する）
+  if(yakuman.length===0) regular.push("立直");
+
+  return {regular, yakuman};
+}
+
+const REGULAR_YAKU_POOL = ["立直","タンヤオ","対々和","一盃口","混一色","清一色","混老頭","混全帯幺九（チャンタ）","七対子","役牌（白）","役牌（發）","役牌（中）","役なし"];
+const YAKUMAN_POOL = ["国士無双【役満】","大三元【役満】","小四喜【役満】","大四喜【役満】","字一色【役満】","清老頭【役満】","緑一色【役満】"];
+const ALL_YAKU_POOL = REGULAR_YAKU_POOL.concat(YAKUMAN_POOL);
+
+/* ==================== 簡易点数計算（面前ロン・平和なしを仮定した目安） ==================== */
+const HAN_TABLE = {
+  "立直":1,
+  "タンヤオ":1, "対々和":2, "一盃口":1, "混一色":3, "清一色":6,
+  "混老頭":2, "混全帯幺九（チャンタ）":2, "七対子":2,
+  "役牌（東）":1,"役牌（南）":1,"役牌（西）":1,"役牌（北）":1,"役牌（白）":1,"役牌（發）":1,"役牌（中）":1,
+};
+// 符計算の内訳を返す（面前ロン・両面待ちを仮定した簡易計算）
+function computeFuDetail(shapeKind, groups, pair){
+  if(shapeKind==="chiitoi") return {fu:25, parts:["七対子は25符で固定"]};
+  if(shapeKind==="kokushi") return {fu:null, parts:[]};
+  const parts=[];
+  let fu = 20;
+  parts.push("基本20符");
+  fu += 10;
+  parts.push("面前ロン+10符");
+  groups.forEach(g=>{
+    if(g.kind==="kotsu"){
+      const th = isTermOrHonor({suit:g.suit, rank:g.rank});
+      const add = th?8:4;
+      fu += add;
+      const label = displayHtml(tileFullName({suit:g.suit,rank:g.rank}).split("（")[0]);
+      parts.push(`${label}の刻子+${add}符`);
+    }
+  });
+  if(pair.suit==="z" && pair.rank>=5){
+    fu += 2;
+    parts.push(`${Z_LABEL[pair.rank]}の雀頭+2符`);
+  }
+  const rounded = Math.ceil(fu/10)*10;
+  if(rounded!==fu) parts.push(`合計${fu}符 → 10の位に切り上げ`);
+  return {fu:rounded, parts};
+}
+// ドラ表示牌からドラそのものを求める（数牌は9→1、風牌は北→東、三元牌は中→白で1周する）
+function doraTileFromIndicator(ind){
+  if(ind.suit==="z"){
+    if(ind.rank<=4) return {suit:"z", rank: ind.rank===4?1:ind.rank+1};
+    return {suit:"z", rank: ind.rank===7?5:ind.rank+1};
+  }
+  return {suit:ind.suit, rank: ind.rank===9?1:ind.rank+1};
+}
+function countDora(tiles, doraTile){
+  return tiles.filter(t=>t.suit===doraTile.suit && t.rank===doraTile.rank).length;
+}
+function renderDoraLine(indicator, doraTile){
+  return `<div class="dora-line"><span>ドラ表示牌</span>${renderTile(indicator,"small")}<span>→ドラは</span>${renderTile(doraTile,"small")}</div>`;
+}
+function computeScoreInfo(correctSet, regular, yakuman, shapeKind, groups, pair, doraCount=0){
+  if(correctSet.length===1 && correctSet[0]==="役なし"){
+    return {text:"役なし → このままでは上がれません（あがるには役が最低1つ必要）"};
+  }
+  if(yakuman.length>0){
+    const base = 8000*yakuman.length;
+    const ron = base*4;
+    const label = yakuman.length>1 ? `役満×${yakuman.length}（ダブル役満）` : "役満";
+    return {text:`${label} → 子のロンで${ron.toLocaleString()}点（役満はドラを加算しません）`};
+  }
+  const baseHan = regular.reduce((sum,y)=>sum+(HAN_TABLE[y]||0),0);
+  const han = baseHan + doraCount;
+  const {fu, parts} = computeFuDetail(shapeKind, groups, pair);
+  let base;
+  let tierLabel="";
+  if(han>=13){ base=8000; tierLabel="役満"; }
+  else if(han>=11){ base=6000; tierLabel="三倍満"; }
+  else if(han>=8){ base=4000; tierLabel="倍満"; }
+  else if(han>=6){ base=3000; tierLabel="跳満"; }
+  else if(han>=5){ base=2000; tierLabel="満貫"; }
+  else{
+    base = fu * Math.pow(2, 2+han);
+    if(base>2000){ base=2000; tierLabel="満貫"; }
+  }
+  const ron = Math.ceil(base*4/100)*100;
+  const tierText = tierLabel ? `（${tierLabel}）` : "";
+  const doraText = doraCount>0 ? `（役${baseHan}翻+ドラ${doraCount}）` : "";
+  return {
+    text:`${han}翻${doraText}${fu}符${tierText} → 子のロンで${ron.toLocaleString()}点`,
+    fuBreakdown: `符の内訳：${parts.join("＋")}`,
+  };
+}
+
+/* ==================== 用語解説・役の早見表 ==================== */
+function T(suit,rank){ return {suit,rank}; }
+const WAIT = {wait:true}; // 「あと1枚」を表すプレースホルダー牌
+function renderWaitPlaceholder(size=""){
+  const cls = "tile" + (size?" "+size:"");
+  return `<div class="${cls}"><div class="tile-face" style="background:repeating-linear-gradient(45deg,#eee,#eee 4px,#ddd 4px,#ddd 8px);color:#999;">？</div></div>`;
+}
+
+const GLOSSARY_TILES = [
+  {name:"萬子", reading:"マンズ", desc:"「一萬〜九萬」の数牌。赤字の漢数字＋「萬」で書かれる（9種類すべて）", example:[T("m",1),T("m",2),T("m",3),T("m",4),T("m",5),T("m",6),T("m",7),T("m",8),T("m",9)]},
+  {name:"筒子", reading:"ピンズ", desc:"「一筒〜九筒」の数牌。丸（ドット）の絵柄で書かれる（9種類すべて）", example:[T("p",1),T("p",2),T("p",3),T("p",4),T("p",5),T("p",6),T("p",7),T("p",8),T("p",9)]},
+  {name:"索子", reading:"ソーズ", desc:"「一索〜九索」の数牌。竹（棒）の絵柄で書かれる（9種類すべて）", example:[T("s",1),T("s",2),T("s",3),T("s",4),T("s",5),T("s",6),T("s",7),T("s",8),T("s",9)]},
+  {name:"数牌", reading:"すうはい", desc:"萬子・筒子・索子の総称。1〜9の数字がある牌のこと", example:[T("m",5),T("p",5),T("s",5)]},
+  {name:"字牌", reading:"じはい", desc:"東・南・西・北（風牌）と白・發・中（三元牌）の7種類すべて", example:[T("z",1),T("z",2),T("z",3),T("z",4),T("z",5),T("z",6),T("z",7)]},
+  {name:"三元牌", reading:"さんげんぱい", desc:"白・發・中の3種類。誰が持っていても、対子・刻子にすれば常に役牌になる", example:[T("z",5),T("z",6),T("z",7)]},
+  {name:"風牌", reading:"かぜはい", desc:"東・南・西・北の4種類。自分の風（自風）や場の風（場風）と同じ牌の刻子だけが役牌になる。それ以外の風牌は役につながらない", example:[T("z",1),T("z",2),T("z",3),T("z",4)]},
+  {name:"役牌", reading:"やくはい", desc:"対子・刻子にすると役になる字牌のこと。三元牌（白・發・中）は常に役牌、風牌（東南西北）は自風・場風と一致したときだけ役牌になる（7種類すべて）", example:[T("z",5),T("z",6),T("z",7),T("z",1),T("z",2),T("z",3),T("z",4)]},
+  {name:"老頭牌", reading:"ロウトウハイ", desc:"各数牌の1と9（端っこの牌）のこと", example:[T("m",1),T("p",9),T("s",1)]},
+];
+const GLOSSARY_SHAPES = [
+  {name:"順子", reading:"しゅんつ", desc:"同じ種類の数牌を3つ連続でそろえた面子（例：2・3・4）", example:[T("s",2),T("s",3),T("s",4)]},
+  {name:"刻子", reading:"コーツ", desc:"同じ牌を3枚そろえた面子", example:[T("m",7),T("m",7),T("m",7)]},
+  {name:"対子", reading:"トイツ", desc:"同じ牌2枚のペア", example:[T("p",6),T("p",6)]},
+  {name:"面子", reading:"メンツ", desc:"順子・刻子など、3枚1組でそろえたブロック", example:[T("m",3),T("m",4),T("m",5)]},
+  {name:"雀頭", reading:"ジャントウ", desc:"同じ牌2枚のペア。手牌の「頭」になる部分（対子と同じ形）", example:[T("s",9),T("s",9)]},
+];
+const GLOSSARY_WAITS = [
+  {name:"聴牌", reading:"テンパイ", desc:"あと1枚そろえば手が完成する状態のこと。「あがりの1つ手前」＝13枚の手牌がこの状態になる",
+    exampleChunks:[[T("m",2),T("m",3),T("m",4)],[T("p",4),T("p",5),T("p",6)],[T("s",6),T("s",7),T("s",8)],[T("m",6),T("m",7),WAIT],[T("p",9),T("p",9)]],
+    exampleLabel:"例（聴牌の形・13枚）"},
+  {name:"待ち", reading:"まち", desc:"あと1枚で手が完成する状態、またはその1枚のこと。待ちの形にはいくつか種類がある（下記）", example:[T("m",3),T("m",4),WAIT]},
+  {name:"両面待ち", reading:"リャンメン", desc:"2種類の牌のどちらが来ても面子が完成する待ち方（例：4・5なら3でも6でも良い）", example:[WAIT,T("s",4),T("s",5),WAIT]},
+  {name:"嵌張待ち", reading:"カンチャン", desc:"順子の真ん中が1枚抜けている待ち方（例：4・6なら5のみ）", example:[T("s",4),WAIT,T("s",6)]},
+  {name:"辺張待ち", reading:"ペンチャン", desc:"1・2や8・9のような、端に寄った順子を待つ形（例：1・2なら3のみ、0や10は存在しない）", example:[T("s",1),T("s",2),WAIT]},
+  {name:"単騎待ち", reading:"タンキ", desc:"雀頭がまだそろっておらず、最後の1枚だけを待つ形", example:[T("s",9),WAIT]},
+  {name:"シャンポン待ち", reading:"シャンポン", desc:"対子を2組持っていて、どちらかが刻子になれば上がれる待ち方", example:[T("s",4),T("s",4),T("p",7),T("p",7)]},
+];
+const GLOSSARY_ACTIONS = [
+  {name:"門前", reading:"メンゼン", desc:"ポン・チー・カンで牌をもらわず、自分の手だけで手牌を作っている状態"},
+  {name:"和了", reading:"ホーラ", desc:"手が完成して上がること。「あがり」とも言う"},
+  {name:"ロン", desc:"他の人が捨てた牌で手を完成させて上がること"},
+  {name:"ツモ", desc:"自分で引いた牌で手を完成させて上がること"},
+  {name:"ポン", desc:"他の人が捨てた牌をもらって刻子を作ること（誰からでもできる）", example:[T("m",7),T("m",7),T("m",7)]},
+  {name:"チー", desc:"自分の左どなりが捨てた牌をもらって順子を作ること（チーは左どなりからのみ）", example:[T("p",3),T("p",4),T("p",5)]},
+  {name:"カン", desc:"同じ牌を4枚そろえること", example:[T("z",6),T("z",6),T("z",6),T("z",6)]},
+  {name:"捨て牌", reading:"すてはい", desc:"使わないと判断して場に出した牌のこと"},
+  {name:"自風・場風", reading:"じかぜ・ばかぜ", desc:"自風は自分の座席の風、場風はその局全体の風。この風と同じ字牌の刻子も役牌になる", example:[T("z",1)]},
+  {name:"リーチ", desc:"門前（鳴いていない）で聴牌したときに宣言できる。1000点を場に出し、以降は手牌を変えられなくなる代わりに、他に役がなくてもリーチ自体が役になる"},
+  {name:"ドラ", desc:"めくられた「ドラ表示牌」の次の牌を持っていると、役ではないが持っている枚数だけ翻数が+1される（役が0のままドラだけでは上がれない）"},
+  {name:"フリテン", desc:"自分が捨てた牌、または見逃した待ち牌ではロンできなくなるルール。ツモならフリテンでも上がれる"},
+  {name:"現物", reading:"げんぶつ", desc:"ある人がすでに捨てた牌のこと。その人はフリテンになるため、現物を切っても絶対にロンされない（100%安全）"},
+  {name:"安全牌", reading:"あんぱい", desc:"ロンされる心配がない（低い）牌のこと。現物が最も確実な安全牌"},
+  {name:"危険牌", reading:"きけんぱい", desc:"まだ誰にも捨てられていない牌で、ロンされる可能性を否定できない牌のこと"},
+];
+const YAKU_REFERENCE = [
+  {name:"立直", reading:"リーチ", han:"1翻", desc:"門前で聴牌したときに宣言できる。他に役がなくても、これ自体が役になる（鳴いていたら宣言できない）。このアプリでは待ちの形を扱わないため出題対象外", quizzed:false,
+    example14:[[T("m",2),T("m",3),T("m",4)],[T("p",4),T("p",5),T("p",6)],[T("s",6),T("s",7),T("s",8)],[T("m",6),T("m",7),T("m",8)],[T("p",9),T("p",9)]]},
+  {name:"役牌", reading:"やくはい", han:"1翻", desc:"中・發・白、または自分の風・場の風の刻子（このアプリでは中/發/白のみ出題）",
+    example14:[[T("z",7),T("z",7),T("z",7)],[T("m",2),T("m",3),T("m",4)],[T("p",4),T("p",5),T("p",6)],[T("s",6),T("s",7),T("s",8)],[T("s",9),T("s",9)]]},
+  {name:"タンヤオ", reading:"たんやお", han:"1翻", desc:"2〜8の数牌だけで手を作る（字牌・老頭牌なし）",
+    example14:[[T("m",2),T("m",3),T("m",4)],[T("p",4),T("p",5),T("p",6)],[T("s",5),T("s",5),T("s",5)],[T("m",6),T("m",7),T("m",8)],[T("p",3),T("p",3)]]},
+  {name:"一盃口", reading:"イーペーコー", han:"1翻", desc:"同じ順子を2組そろえる（門前限定）",
+    example14:[[T("s",2),T("s",3),T("s",4)],[T("s",2),T("s",3),T("s",4)],[T("p",5),T("p",6),T("p",7)],[T("m",3),T("m",3),T("m",3)],[T("p",8),T("p",8)]]},
+  {name:"平和", reading:"ピンフ", han:"1翻", desc:"すべて順子＋役牌でない雀頭＋両面待ちでそろえる", quizzed:false,
+    example14:[[T("m",2),T("m",3),T("m",4)],[T("p",4),T("p",5),T("p",6)],[T("s",6),T("s",7),T("s",8)],[T("m",6),T("m",7),T("m",8)],[T("s",3),T("s",3)]]},
+  {name:"対々和", reading:"トイトイ", han:"2翻", desc:"4組すべて刻子（順子を使わない）",
+    example14:[[T("m",5),T("m",5),T("m",5)],[T("p",7),T("p",7),T("p",7)],[T("s",2),T("s",2),T("s",2)],[T("m",8),T("m",8),T("m",8)],[T("p",3),T("p",3)]]},
+  {name:"七対子", reading:"チートイツ", han:"2翻", desc:"同じ牌のペアを7組そろえる",
+    example14:[[T("m",2),T("m",2)],[T("p",4),T("p",4)],[T("s",6),T("s",6)],[T("z",1),T("z",1)],[T("z",5),T("z",5)],[T("m",8),T("m",8)],[T("s",9),T("s",9)]]},
+  {name:"混全帯幺九（チャンタ）", reading:"チャンタ", han:"2翻", desc:"すべての面子・雀頭に老頭牌か字牌を含む",
+    example14:[[T("m",1),T("m",2),T("m",3)],[T("p",7),T("p",8),T("p",9)],[T("s",9),T("s",9),T("s",9)],[T("z",1),T("z",1),T("z",1)],[T("z",5),T("z",5)]]},
+  {name:"混老頭", reading:"ホンロウトウ", han:"2翻", desc:"すべての牌が老頭牌か字牌",
+    example14:[[T("m",1),T("m",1),T("m",1)],[T("p",9),T("p",9),T("p",9)],[T("s",1),T("s",1),T("s",1)],[T("z",7),T("z",7),T("z",7)],[T("z",5),T("z",5)]]},
+  {name:"三色同順", reading:"サンショクドウジュン", han:"2翻", desc:"同じ数字の順子を萬子・筒子・索子の3種類でそろえる", quizzed:false,
+    example14:[[T("m",3),T("m",4),T("m",5)],[T("p",3),T("p",4),T("p",5)],[T("s",3),T("s",4),T("s",5)],[T("m",7),T("m",7),T("m",7)],[T("p",9),T("p",9)]]},
+  {name:"一気通貫", reading:"イッキツウカン", han:"2翻", desc:"同じ種類の数牌で123・456・789をそろえる", quizzed:false,
+    example14:[[T("s",1),T("s",2),T("s",3)],[T("s",4),T("s",5),T("s",6)],[T("s",7),T("s",8),T("s",9)],[T("m",5),T("m",5),T("m",5)],[T("m",2),T("m",2)]]},
+  {name:"三色同刻", reading:"サンショクドウコウ", han:"2翻", desc:"同じ数字の刻子を萬子・筒子・索子の3種類でそろえる", quizzed:false,
+    example14:[[T("m",5),T("m",5),T("m",5)],[T("p",5),T("p",5),T("p",5)],[T("s",5),T("s",5),T("s",5)],[T("p",2),T("p",3),T("p",4)],[T("s",8),T("s",8)]]},
+  {name:"三暗刻", reading:"サンアンコー", han:"2翻", desc:"面前の刻子を3組そろえる", quizzed:false,
+    example14:[[T("m",2),T("m",2),T("m",2)],[T("p",6),T("p",6),T("p",6)],[T("s",8),T("s",8),T("s",8)],[T("m",3),T("m",4),T("m",5)],[T("p",9),T("p",9)]]},
+  {name:"小三元", reading:"ショウサンゲン", han:"2翻", desc:"三元牌の刻子を2つ＋残り1種の三元牌を雀頭に", quizzed:false,
+    example14:[[T("z",5),T("z",5),T("z",5)],[T("z",6),T("z",6),T("z",6)],[T("m",3),T("m",4),T("m",5)],[T("p",5),T("p",6),T("p",7)],[T("z",7),T("z",7)]]},
+  {name:"混一色", reading:"ホンイツ", han:"3翻", desc:"1種類の数牌＋字牌だけで手を作る",
+    example14:[[T("s",1),T("s",2),T("s",3)],[T("s",5),T("s",5),T("s",5)],[T("s",7),T("s",8),T("s",9)],[T("z",2),T("z",2),T("z",2)],[T("z",4),T("z",4)]]},
+  {name:"二盃口", reading:"リャンペーコー", han:"3翻", desc:"一盃口を2組そろえる（門前限定）", quizzed:false,
+    example14:[[T("m",2),T("m",3),T("m",4)],[T("m",2),T("m",3),T("m",4)],[T("p",5),T("p",6),T("p",7)],[T("p",5),T("p",6),T("p",7)],[T("s",8),T("s",8)]]},
+  {name:"純全帯幺九", reading:"ジュンチャン", han:"3翻", desc:"チャンタから字牌を除いたもの（老頭牌のみ）", quizzed:false,
+    example14:[[T("m",1),T("m",2),T("m",3)],[T("p",7),T("p",8),T("p",9)],[T("s",9),T("s",9),T("s",9)],[T("s",1),T("s",1),T("s",1)],[T("m",9),T("m",9)]]},
+  {name:"清一色", reading:"チンイツ", han:"6翻", desc:"1種類の数牌だけで手を作る（字牌なし）",
+    example14:[[T("s",1),T("s",2),T("s",3)],[T("s",5),T("s",5),T("s",5)],[T("s",6),T("s",7),T("s",8)],[T("s",9),T("s",9),T("s",9)],[T("s",3),T("s",3)]]},
+];
+const YAKUMAN_REFERENCE = [
+  {name:"国士無双", reading:"こくしむそう", desc:"老頭牌・字牌の13種類を1枚ずつ＋そのうちどれか1枚を対に",
+    example14:[[T("m",1),T("m",9)],[T("p",1),T("p",9)],[T("s",1),T("s",9)],[T("z",1),T("z",2),T("z",3),T("z",4)],[T("z",5),T("z",6),T("z",7),T("z",1)]]},
+  {name:"四暗刻", reading:"スーアンコー", desc:"4組すべて面前の刻子", quizzed:false,
+    example14:[[T("m",2),T("m",2),T("m",2)],[T("p",6),T("p",6),T("p",6)],[T("s",8),T("s",8),T("s",8)],[T("z",4),T("z",4),T("z",4)],[T("m",9),T("m",9)]]},
+  {name:"大三元", reading:"だいさんげん", desc:"中・發・白すべての刻子をそろえる",
+    example14:[[T("z",5),T("z",5),T("z",5)],[T("z",6),T("z",6),T("z",6)],[T("z",7),T("z",7),T("z",7)],[T("m",3),T("m",4),T("m",5)],[T("p",8),T("p",8)]]},
+  {name:"小四喜", reading:"しょうすーしー", desc:"風牌の刻子を3つ＋残り1種の風牌を雀頭に",
+    example14:[[T("z",1),T("z",1),T("z",1)],[T("z",2),T("z",2),T("z",2)],[T("z",3),T("z",3),T("z",3)],[T("m",4),T("m",5),T("m",6)],[T("z",4),T("z",4)]]},
+  {name:"大四喜", reading:"だいすーしー", desc:"東南西北すべての刻子をそろえる",
+    example14:[[T("z",1),T("z",1),T("z",1)],[T("z",2),T("z",2),T("z",2)],[T("z",3),T("z",3),T("z",3)],[T("z",4),T("z",4),T("z",4)],[T("m",5),T("m",5)]]},
+  {name:"字一色", reading:"つーいーそー", desc:"すべての牌が字牌",
+    example14:[[T("z",1),T("z",1),T("z",1)],[T("z",3),T("z",3),T("z",3)],[T("z",5),T("z",5),T("z",5)],[T("z",7),T("z",7),T("z",7)],[T("z",6),T("z",6)]]},
+  {name:"清老頭", reading:"ちんろうとう", desc:"すべての牌が老頭牌（1・9）",
+    example14:[[T("m",1),T("m",1),T("m",1)],[T("m",9),T("m",9),T("m",9)],[T("p",1),T("p",1),T("p",1)],[T("p",9),T("p",9),T("p",9)],[T("s",1),T("s",1)]]},
+  {name:"緑一色", reading:"りゅーいーそー", desc:"索子の2・3・4・6・8と發だけで手を作る",
+    example14:[[T("s",2),T("s",3),T("s",4)],[T("s",6),T("s",6),T("s",6)],[T("s",8),T("s",8),T("s",8)],[T("z",6),T("z",6),T("z",6)],[T("s",4),T("s",4)]]},
+  {name:"九蓮宝燈", reading:"チュウレンポウトウ", desc:"1種類の数牌で1112345678999の形をそろえる", quizzed:false,
+    example14:[[T("m",1),T("m",1),T("m",1)],[T("m",2),T("m",3),T("m",4)],[T("m",5),T("m",5)],[T("m",6),T("m",7),T("m",8)],[T("m",9),T("m",9),T("m",9)]]},
+  {name:"四槓子", reading:"スーカンツ", desc:"カンを4回する（このアプリではカンを扱わないため出題対象外。実際は14枚を超える手になる）", quizzed:false},
+];
+// 1つの手に複数の役が同時に成立する例（併用できる）と、条件が矛盾していて絶対に両立しない組み合わせ（併用できない）
+const YAKU_COMPATIBLE_EXAMPLES = [
+  {combo:["立直","ツモ","タンヤオ"], note:"リーチ（宣言）・ツモ（上がり方）・タンヤオ（手の中身の条件）はそれぞれ別のルールなので、同時に成立しても問題ない。翻数はすべて合計される"},
+  {combo:["立直","役牌（中）"], note:"リーチをかけたあとに役牌の刻子がそろえば、両方同時に成立する"},
+  {combo:["対々和","混老頭"], note:"刻子だけ（対々和）＋すべて老頭牌・字牌（混老頭）は両立しやすい定番の組み合わせ"},
+  {combo:["七対子","混老頭"], note:"対子7組がすべて老頭牌・字牌でそろえば、両方同時に成立する"},
+  {combo:["混一色","混全帯幺九（チャンタ）"], note:"1種類の数牌＋字牌（混一色）で、かつすべての面子・雀頭に老頭牌か字牌を含めれば（チャンタ）、両方同時に成立する"},
+];
+const YAKU_EXCLUSIVE_PAIRS = [
+  {pair:["混一色","清一色"], reason:"混一色は「字牌を含む」、清一色は「字牌を含まない」が条件なので、同じ手で両方成立することは絶対にない"},
+  {pair:["タンヤオ","混老頭"], reason:"タンヤオは「老頭牌・字牌を一切使わない」、混老頭は「老頭牌・字牌だけを使う」で、条件が正反対"},
+  {pair:["タンヤオ","混全帯幺九（チャンタ）"], reason:"タンヤオは老頭牌・字牌を一切含められないが、チャンタはすべての面子・雀頭に老頭牌か字牌を含める必要がある"},
+  {pair:["タンヤオ","役牌"], reason:"役牌は字牌の刻子が必要だが、タンヤオは字牌を一切使えない"},
+  {pair:["対々和","一盃口"], reason:"対々和は刻子だけで順子を使わない役、一盃口は同じ順子を2組そろえる役なので、手の形が矛盾する"},
+  {pair:["対々和","七対子"], reason:"対々和は「4面子＋雀頭」、七対子は「対子7組」という、そもそも別の手の形"},
+  {pair:["一盃口","七対子"], reason:"一盃口は「4面子＋雀頭」が前提の役なので、対子7組の七対子とは形が違う"},
+  {pair:["一盃口","混老頭"], reason:"一盃口には順子（連続した3枚）が必要だが、老頭牌（1・9）だけでは順子が作れない"},
+  {pair:["清一色","役牌"], reason:"清一色は字牌を一切使えないが、役牌は字牌の刻子が必要"},
+];
+const FU_RULES = [
+  "基本：20符",
+  "面前でロン上がり：+10符（ツモ上がりなら+2符）",
+  "刻子：数牌なら+4符、老頭牌・字牌なら+8符（鳴いた刻子は半分）",
+  "雀頭：三元牌（白・發・中）なら+2符",
+  "待ちの形：カンチャン・ペンチャン・単騎待ちは+2符（両面待ちは0符）",
+  "七対子は25符で固定（上の計算はしない）",
+  "最後に1の位を切り上げて10の位にする",
+];
+const ROUND_FLOW = [
+  "配牌：全員に13枚ずつ牌が配られる",
+  `起家（最初の人）から順番に、山から1枚引く（${rb("自摸","ツモ")}）。手牌が14枚になる`,
+  "いらない牌を1枚選んで場に捨てる（打牌）",
+  "他の人はその捨て牌がほしければ、ポン・チー・カンで鳴ける（鳴かなければ次の人の番へ）",
+  "これを繰り返し、誰かの手が完成したら「ロン」または「ツモ」で和了",
+  "山の牌がなくなっても誰も上がれなければ「流局」として1局終了",
+  "和了したら役と符を数えて点数を計算し、点棒をやり取りする",
+];
+const ADVANCED_ROADMAP = [
+  {title:"「何切る？」をたくさん練習する", desc:"このアプリの「何切る？」ステージを繰り返して、不要な牌を見抜く速さを鍛えよう"},
+  {title:"牌効率・受け入れ枚数を学ぶ", desc:"「牌効率」で検索すると、どの牌を残すとテンパイに近づきやすいかの考え方が学べる"},
+  {title:"オンライン対局アプリで実戦を積む", desc:"天鳳・雀魂などの初心者向けルームで、実際に他の人と対局してみる"},
+  {title:"守り方（オリ）を覚える", desc:"危険な牌を読んで、振り込み（放銃）を避ける判断力をつける"},
+  {title:"点数計算を素早くできるようにする", desc:"暗記と実践を繰り返して、符・翻からすぐ点数が言えるようにする"},
+  {title:"自分の得意な戦い方を見つける", desc:"速攻型・染め手重視・鳴き活用など、自分に合ったスタイルを探してみる"},
+];
+function nameWithReading(y){ return y.reading ? rb(y.name, y.reading) : y.name; }
+function exampleTilesHtml(example){
+  if(!example || !example.length) return "";
+  return `<div class="example-tiles">${example.map(t=> t.wait ? renderWaitPlaceholder("small") : renderTile(t,"small")).join("")}</div>`;
+}
+function glossarySectionHtml(terms){
+  return terms.map(y=>`
+    <div class="yaku-row">
+      <div class="yaku-row-head"><b>${nameWithReading(y)}</b></div>
+      <div class="yaku-row-desc">${y.desc}</div>
+      ${y.exampleChunks ? handChunksHtml(y.exampleChunks, y.exampleLabel||"例") : exampleTilesHtml(y.example)}
+    </div>`).join("");
+}
+// 面子・雀頭ごとにグループ化した手牌を表示する（役の早見表・聴牌の例などで共用）
+function handChunksHtml(chunks, label){
+  if(!chunks || !chunks.length) return "";
+  return `<div class="hint" style="margin-top:8px;margin-bottom:2px;">${label}</div><div class="tiles-row hand-row example-hand">${chunks.map(c=>`<span class="hand-group">${c.map(t=> t.wait ? renderWaitPlaceholder("small") : renderTile(t,"small")).join("")}</span>`).join("")}</div>`;
+}
+// 役の早見表用：完全な14枚の手（面子・雀頭ごとにグループ化）を表示する
+function example14Html(chunks){
+  if(!chunks || !chunks.length) return "";
+  const count = chunks.reduce((n,c)=>n+c.length,0);
+  const label = count>=14 ? "例（14枚の完成形）" : "例";
+  return handChunksHtml(chunks, label);
+}
+function renderYakuTable(){
+  const tilesRows = glossarySectionHtml(GLOSSARY_TILES);
+  const shapesRows = glossarySectionHtml(GLOSSARY_SHAPES);
+  const waitsRows = glossarySectionHtml(GLOSSARY_WAITS);
+  const actionsRows = glossarySectionHtml(GLOSSARY_ACTIONS);
+  const rows = YAKU_REFERENCE.map(y=>`
+    <div class="yaku-row${y.quizzed===false?" not-quizzed":""}">
+      <div class="yaku-row-head"><span class="yaku-han-chip">${y.han}</span><b>${nameWithReading(y)}</b>${y.quizzed===false?'<span class="not-quizzed-badge">出題対象外</span>':""}</div>
+      <div class="yaku-row-desc">${y.desc}</div>
+      ${example14Html(y.example14)}
+    </div>`).join("");
+  const ymRows = YAKUMAN_REFERENCE.map(y=>`
+    <div class="yaku-row${y.quizzed===false?" not-quizzed":""}">
+      <div class="yaku-row-head"><span class="yaku-han-chip yakuman">役満</span><b>${nameWithReading(y)}</b>${y.quizzed===false?'<span class="not-quizzed-badge">出題対象外</span>':""}</div>
+      <div class="yaku-row-desc">${y.desc}</div>
+      ${example14Html(y.example14)}
+    </div>`).join("");
+  const comboChips = names => names.map(n=>`<span class="yaku-han-chip">${n}</span>`).join(" + ");
+  const compatibleRows = YAKU_COMPATIBLE_EXAMPLES.map(c=>`
+    <div class="yaku-row">
+      <div class="yaku-row-head">✅ ${comboChips(c.combo)}</div>
+      <div class="yaku-row-desc">${c.note}</div>
+    </div>`).join("");
+  const exclusiveRows = YAKU_EXCLUSIVE_PAIRS.map(c=>`
+    <div class="yaku-row">
+      <div class="yaku-row-head">🚫 ${comboChips(c.pair)}</div>
+      <div class="yaku-row-desc">${c.reason}</div>
+    </div>`).join("");
+  const fuRows = FU_RULES.map(r=>`<li>${r}</li>`).join("");
+  const flowRows = ROUND_FLOW.map(r=>`<li>${r}</li>`).join("");
+  const roadmapRows = ADVANCED_ROADMAP.map((r,i)=>`
+    <div class="yaku-row">
+      <div class="yaku-row-head"><span class="yaku-han-chip">STEP${i+1}</span><b>${r.title}</b></div>
+      <div class="yaku-row-desc">${r.desc}</div>
+    </div>`).join("");
+
+  app.innerHTML = `
+    <div class="card">
+      <div class="result-title">用語解説</div>
+      <div class="result-sub">まずはこの基本用語から覚えましょう</div>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">1局の流れ</div>
+      <div class="result-sub">麻雀は基本的にこの流れをぐるぐる繰り返すゲーム</div>
+      <ol class="fu-rule-list">${flowRows}</ol>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">牌の種類</div>
+      <div class="yaku-list">${tilesRows}</div>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">手牌の形</div>
+      <div class="yaku-list">${shapesRows}</div>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">待ちの種類</div>
+      <div class="result-sub">「あと1枚」を表す牌は？マークで示しています</div>
+      <div class="yaku-list">${waitsRows}</div>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">進行・呼び方の用語</div>
+      <div class="yaku-list">${actionsRows}</div>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">役の早見表</div>
+      <div class="result-sub">「出題対象外」は参考情報として掲載しているだけで、このアプリのクイズには出ません</div>
+      <div class="yaku-list">${rows}</div>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">役満</div>
+      <div class="yaku-list">${ymRows}</div>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">役の併用（一緒に成立できる？できない？）</div>
+      <div class="result-sub">1つの手には複数の役が同時に成立することがよくあり、翻数はすべて合計されます</div>
+      <div class="yaku-list">${compatibleRows}</div>
+      <div class="result-sub" style="margin-top:14px;">一方で、そもそも条件が正反対だったり手の形自体が違うため、絶対に同時には成立しない組み合わせもあります</div>
+      <div class="yaku-list">${exclusiveRows}</div>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">符（フ）の数え方</div>
+      <div class="result-sub">「役を当てよう」の結果に出てくる内訳はこのルールで計算しています（面前ロン・両面待ちを仮定した簡易版。リーチ・ドラの加算は含みません）</div>
+      <ul class="fu-rule-list">${fuRows}</ul>
+      <div class="hint">5翻＝満貫(8000点) / 6〜7翻＝跳満(12000点) / 8〜10翻＝倍満(16000点) / 11〜12翻＝三倍満(24000点) / 13翻〜＝役満(32000点)　※子のロンの場合</div>
+    </div>
+    <div class="card">
+      <div class="result-title" style="font-size:1.1rem;">上級者への道しるべ</div>
+      <div class="result-sub">このアプリの内容が身についたら、次はこんなことに挑戦してみましょう</div>
+      <div class="yaku-list">${roadmapRows}</div>
+    </div>
+    <div class="btn-row"><button class="btn ghost" id="yakuTableBackBtn">ホームに戻る</button></div>
+  `;
+  document.getElementById("yakuTableBackBtn").onclick=()=>go("home");
+}
+
+function buildOptions(correctSet, pool, size){
+  const wrongPool = pool.filter(p=>!correctSet.includes(p));
+  const need = Math.max(0, size - correctSet.length);
+  const picks = pickN(wrongPool, Math.min(need, wrongPool.length));
+  return shuffle([...correctSet, ...picks]);
+}
+function randomBasicMeld(){
+  if(Math.random()<0.55){
+    const suit=["m","p","s"][Math.floor(Math.random()*3)];
+    const low=1+Math.floor(Math.random()*7);
+    return {kind:"shuntsu", suit, rank:low};
+  }
+  const t=randTile();
+  return {kind:"kotsu", suit:t.suit, rank:t.rank};
+}
+function randomPair(){ const t=randTile(); return {suit:t.suit, rank:t.rank}; }
+function pickSuit(){ return ["m","p","s"][Math.floor(Math.random()*3)]; }
+
+function renderHandGrouped(groups, pair){
+  const chunks = groups.map(g=>{
+    if(g.kind==="shuntsu") return [{suit:g.suit,rank:g.rank},{suit:g.suit,rank:g.rank+1},{suit:g.suit,rank:g.rank+2}];
+    return [{suit:g.suit,rank:g.rank},{suit:g.suit,rank:g.rank},{suit:g.suit,rank:g.rank}];
+  });
+  chunks.push([{suit:pair.suit,rank:pair.rank},{suit:pair.suit,rank:pair.rank}]);
+  return `<div class="tiles-row hand-row">${chunks.map(c=>`<span class="hand-group">${c.map(t=>renderTile(t,"small")).join("")}</span>`).join("")}</div>`;
+}
+function renderFlatHand(tiles){
+  return `<div class="tiles-row">${tiles.map(t=>renderTile(t,"small")).join("")}</div>`;
+}
+// 麻雀牌は同じ種類が4枚までしか存在しない。生成した手がそれを超えていないか確認する
+function exceedsFourCopies(tiles){
+  const counts={};
+  for(const t of tiles){
+    const k=t.suit+t.rank;
+    counts[k]=(counts[k]||0)+1;
+    if(counts[k]>4) return true;
+  }
+  return false;
+}
+
+/* ==================== 問題生成: ステージ4 役当て（本番と同じ14枚） ==================== */
+function genHand4(){
+  const roll = Math.random();
+  if(roll<0.10){
+    // 七対子
+    const used=[]; const pairs=[];
+    while(pairs.length<7){
+      const t=randTile(); const k=t.suit+t.rank;
+      if(used.includes(k)) continue;
+      used.push(k); pairs.push(t);
+    }
+    return {shapeKind:"chiitoi", tiles: pairs.flatMap(p=>[{...p},{...p}])};
+  } else if(roll<0.22){
+    // タンヤオ寄り
+    const groups=[];
+    for(let i=0;i<4;i++){
+      const suit=pickSuit();
+      groups.push(Math.random()<0.5 ? {kind:"shuntsu",suit,rank:2+Math.floor(Math.random()*5)} : {kind:"kotsu",suit,rank:2+Math.floor(Math.random()*7)});
+    }
+    const pair={suit:pickSuit(), rank:2+Math.floor(Math.random()*7)};
+    return {shapeKind:"standard", groups, pair};
+  } else if(roll<0.34){
+    // 役牌（中/發/白）
+    const yakuhai=[5,6,7][Math.floor(Math.random()*3)];
+    const groups=[{kind:"kotsu",suit:"z",rank:yakuhai}, randomBasicMeld(), randomBasicMeld(), randomBasicMeld()];
+    return {shapeKind:"standard", groups, pair:randomPair()};
+  } else if(roll<0.44){
+    // 対々和
+    const groups=[]; for(let i=0;i<4;i++){ const t=randTile(); groups.push({kind:"kotsu",suit:t.suit,rank:t.rank}); }
+    return {shapeKind:"standard", groups, pair:randomPair()};
+  } else if(roll<0.54){
+    // 一盃口
+    const suit=pickSuit(); const low=1+Math.floor(Math.random()*7);
+    const groups=[{kind:"shuntsu",suit,rank:low},{kind:"shuntsu",suit,rank:low}, randomBasicMeld(), randomBasicMeld()];
+    return {shapeKind:"standard", groups, pair:randomPair()};
+  } else if(roll<0.66){
+    // 混一色
+    const suit=pickSuit();
+    const groups=[]; for(let i=0;i<4;i++){
+      const r=Math.random();
+      if(r<0.3) groups.push({kind:"kotsu",suit:"z",rank:1+Math.floor(Math.random()*7)});
+      else if(r<0.65) groups.push({kind:"kotsu",suit,rank:1+Math.floor(Math.random()*9)});
+      else groups.push({kind:"shuntsu",suit,rank:1+Math.floor(Math.random()*7)});
+    }
+    const pair = Math.random()<0.4 ? {suit:"z",rank:1+Math.floor(Math.random()*7)} : {suit,rank:1+Math.floor(Math.random()*9)};
+    return {shapeKind:"standard", groups, pair};
+  } else if(roll<0.78){
+    // 清一色
+    const suit=pickSuit();
+    const groups=[]; for(let i=0;i<4;i++){
+      groups.push(Math.random()<0.5 ? {kind:"kotsu",suit,rank:1+Math.floor(Math.random()*9)} : {kind:"shuntsu",suit,rank:1+Math.floor(Math.random()*7)});
+    }
+    return {shapeKind:"standard", groups, pair:{suit,rank:1+Math.floor(Math.random()*9)}};
+  } else if(roll<0.87){
+    // 混老頭寄り（老頭牌・字牌の刻子中心）
+    const groups=[]; for(let i=0;i<4;i++){
+      groups.push(Math.random()<0.5 ? {kind:"kotsu",suit:"z",rank:1+Math.floor(Math.random()*7)} : {kind:"kotsu",suit:pickSuit(),rank:Math.random()<0.5?1:9});
+    }
+    const pair = Math.random()<0.5 ? {suit:"z",rank:1+Math.floor(Math.random()*7)} : {suit:pickSuit(),rank:Math.random()<0.5?1:9};
+    return {shapeKind:"standard", groups, pair};
+  } else if(roll<0.94){
+    // チャンタ寄り
+    const groups=[]; for(let i=0;i<4;i++){
+      const r=Math.random();
+      if(r<0.35) groups.push({kind:"kotsu",suit:"z",rank:1+Math.floor(Math.random()*7)});
+      else if(r<0.7) groups.push({kind:"kotsu",suit:pickSuit(),rank:Math.random()<0.5?1:9});
+      else groups.push({kind:"shuntsu",suit:pickSuit(),rank:Math.random()<0.5?1:7});
+    }
+    const pair = Math.random()<0.5 ? {suit:"z",rank:1+Math.floor(Math.random()*7)} : {suit:pickSuit(),rank:Math.random()<0.5?1:9};
+    return {shapeKind:"standard", groups, pair};
+  }
+  // 完全ランダム（役なしのことも多い。見抜く力を試す）
+  const groups=[]; for(let i=0;i<4;i++) groups.push(randomBasicMeld());
+  return {shapeKind:"standard", groups, pair:randomPair()};
+}
+
+function genQ4(){
+  let h, key, tiles;
+  while(true){
+    h = genHand4();
+    tiles = h.shapeKind==="chiitoi" ? h.tiles : flattenHand(h.groups, h.pair);
+    if(exceedsFourCopies(tiles)) continue; // 同じ牌が5枚以上になる物理的にありえない手はやり直す
+    key = h.shapeKind + "|" + (h.shapeKind==="chiitoi"
+      ? h.tiles.map(t=>t.suit+t.rank).sort().join(",")
+      : h.groups.map(g=>g.kind+g.suit+g.rank).join(",")+"|"+h.pair.suit+h.pair.rank);
+    if(isRecent(4,key)) continue;
+    break;
+  }
+  pushHistory(4,key);
+
+  const {regular, yakuman} = computeYaku(tiles, h.shapeKind==="standard"?h.groups:null, h.shapeKind==="standard"?h.pair:null, h.shapeKind);
+  let correctSet = yakuman.length ? yakuman : regular;
+  if(correctSet.length===0) correctSet=["役なし"];
+
+  const doraIndicator = randTile();
+  const doraTile = doraTileFromIndicator(doraIndicator);
+  const doraCount = yakuman.length===0 ? countDora(tiles, doraTile) : 0;
+
+  const options = buildOptions(correctSet, ALL_YAKU_POOL, 6);
+  const handRender = h.shapeKind==="standard" ? renderHandGrouped(h.groups, h.pair) : renderFlatHand(tiles);
+  const render = handRender + renderDoraLine(doraIndicator, doraTile);
+  const scoreInfo = computeScoreInfo(correctSet, regular, yakuman, h.shapeKind, h.groups, h.pair, doraCount);
+
+  return {
+    stage:4,
+    multi:true,
+    question:"この手に当てはまる役をすべて選んでください（複数のことも、役なしのこともあります）",
+    render,
+    options,
+    correctSet,
+    scoreInfo,
+  };
+}
+
+/* ==================== 問題生成: ステージ6 役満を見抜こう ==================== */
+function genHand6(){
+  const roll = Math.random();
+  if(roll<0.14){
+    // 国士無双: 老頭牌9種+字牌7種の13種類 + そのうち1種類が重複
+    const terms=[];
+    ["m","p","s"].forEach(suit=>{ terms.push({suit,rank:1}); terms.push({suit,rank:9}); });
+    for(let r=1;r<=7;r++) terms.push({suit:"z",rank:r});
+    const dup = terms[Math.floor(Math.random()*terms.length)];
+    return {shapeKind:"kokushi", tiles:[...terms, {...dup}]};
+  } else if(roll<0.28){
+    // 大三元: 中發白すべて刻子
+    const groups=[{kind:"kotsu",suit:"z",rank:5},{kind:"kotsu",suit:"z",rank:6},{kind:"kotsu",suit:"z",rank:7}, randomBasicMeld()];
+    return {shapeKind:"standard", groups, pair:randomPair()};
+  } else if(roll<0.42){
+    // 小四喜: 風牌3種の刻子＋残り1種の風牌が雀頭
+    const winds=shuffle([1,2,3,4]);
+    const groups=winds.slice(0,3).map(r=>({kind:"kotsu",suit:"z",rank:r})).concat([randomBasicMeld()]);
+    return {shapeKind:"standard", groups, pair:{suit:"z",rank:winds[3]}};
+  } else if(roll<0.50){
+    // 大四喜: 風牌4種すべて刻子
+    const groups=[1,2,3,4].map(r=>({kind:"kotsu",suit:"z",rank:r}));
+    return {shapeKind:"standard", groups, pair:randomPair()};
+  } else if(roll<0.64){
+    // 字一色: 字牌のみの刻子4組＋字牌の雀頭
+    const picks = pickN([1,2,3,4,5,6,7],4);
+    const groups = picks.map(r=>({kind:"kotsu",suit:"z",rank:r}));
+    const pr = [1,2,3,4,5,6,7][Math.floor(Math.random()*7)];
+    return {shapeKind:"standard", groups, pair:{suit:"z",rank:pr}};
+  } else if(roll<0.78){
+    // 清老頭: 老頭牌(1,9)のみの刻子4組＋老頭牌の雀頭
+    const groups=[]; for(let i=0;i<4;i++){ groups.push({kind:"kotsu",suit:pickSuit(),rank:Math.random()<0.5?1:9}); }
+    return {shapeKind:"standard", groups, pair:{suit:pickSuit(),rank:Math.random()<0.5?1:9}};
+  } else if(roll<0.90){
+    // 緑一色: 索子の2,3,4,6,8と發のみ
+    const greenRanks=[2,3,4,6,8];
+    const groups=[]; for(let i=0;i<4;i++){
+      const r=Math.random();
+      if(r<0.25) groups.push({kind:"kotsu",suit:"z",rank:6});
+      else if(r<0.55) groups.push({kind:"shuntsu",suit:"s",rank:2});
+      else groups.push({kind:"kotsu",suit:"s",rank:greenRanks[Math.floor(Math.random()*greenRanks.length)]});
+    }
+    const pair = Math.random()<0.25 ? {suit:"z",rank:6} : {suit:"s",rank:greenRanks[Math.floor(Math.random()*greenRanks.length)]};
+    return {shapeKind:"standard", groups, pair};
+  }
+  // 役満っぽく見えて実際は届いていない「ニアミス」の手（力試し）
+  const groups=[{kind:"kotsu",suit:"z",rank:5},{kind:"kotsu",suit:"z",rank:6}, randomBasicMeld(), randomBasicMeld()];
+  return {shapeKind:"standard", groups, pair:randomPair()};
+}
+
+function genQ6(){
+  let h, key, tiles;
+  while(true){
+    h = genHand6();
+    tiles = h.shapeKind==="kokushi" ? h.tiles : flattenHand(h.groups, h.pair);
+    if(exceedsFourCopies(tiles)) continue; // 同じ牌が5枚以上になる物理的にありえない手はやり直す
+    key = h.shapeKind + "|" + (h.shapeKind==="kokushi"
+      ? h.tiles.map(t=>t.suit+t.rank).sort().join(",")
+      : h.groups.map(g=>g.kind+g.suit+g.rank).join(",")+"|"+h.pair.suit+h.pair.rank);
+    if(isRecent(6,key)) continue;
+    break;
+  }
+  pushHistory(6,key);
+
+  const {regular, yakuman} = computeYaku(tiles, h.shapeKind==="standard"?h.groups:null, h.shapeKind==="standard"?h.pair:null, h.shapeKind);
+  let correctSet = yakuman.length ? yakuman : regular;
+  if(correctSet.length===0) correctSet=["役なし"];
+
+  const doraIndicator = randTile();
+  const doraTile = doraTileFromIndicator(doraIndicator);
+  const doraCount = yakuman.length===0 ? countDora(tiles, doraTile) : 0;
+
+  const options = buildOptions(correctSet, ALL_YAKU_POOL, 6);
+  const handRender = h.shapeKind==="standard" ? renderHandGrouped(h.groups, h.pair) : renderFlatHand(tiles);
+  const render = handRender + renderDoraLine(doraIndicator, doraTile);
+  const scoreInfo = computeScoreInfo(correctSet, regular, yakuman, h.shapeKind, h.groups, h.pair, doraCount);
+
+  return {
+    stage:6,
+    multi:true,
+    question:"この手は役満に当てはまりますか？当てはまる役をすべて選んでください",
+    render,
+    options,
+    correctSet,
+    scoreInfo,
+  };
+}
+
+/* ==================== 問題生成: ステージ7 何切る？（牌効率・実践） ==================== */
+function randomMeldTiles(){
+  if(Math.random()<0.5){
+    const suit=pickSuit(); const low=1+Math.floor(Math.random()*7);
+    return [T(suit,low),T(suit,low+1),T(suit,low+2)];
+  }
+  const t=randTile();
+  return [{...t},{...t},{...t}];
+}
+// 2面子+対子+塔子2つ+浮き牌2枚（中張牌1・老頭牌または字牌1）の14枚。
+// 「浮いている牌はどちらも要らないが、つながりの少ない老頭牌・字牌から先に切るべき」という
+// 実戦的な牌効率の考え方を、実際に牌をクリックして選ぶ形式で出題する。
+// シナリオを分けることで「字牌っぽい牌を切ればいい」という表面的なパターンだけでは解けないようにする。
+// タイプA: まん中の数牌 vs 老頭牌/風牌（数牌のつながりやすさを比べる）
+// タイプB: 三元牌 vs 風牌（同じ字牌同士でも、役牌になりうる三元牌の方が価値が高いことを比べる）
+function genQ7(){
+  // 「風牌を切れば正解」に偏りすぎないよう、タイプB(三元牌vs風牌、常に風牌が正解)は少なめの15%にする
+  const scenario = Math.random()<0.85 ? "middleVsEdge" : "dragonVsWind"; // ループ外で固定し、比率を安定させる
+  let group1,group2,pairTiles,taatsu1,taatsu2,floaterGood,floaterBad,key;
+  while(true){
+    group1=randomMeldTiles();
+    group2=randomMeldTiles();
+    const pt=randTile(); pairTiles=[{...pt},{...pt}];
+    const t1suit=pickSuit(); const t1low=1+Math.floor(Math.random()*7);
+    taatsu1=[T(t1suit,t1low),T(t1suit,t1low+1)];
+    const t2suit=pickSuit(); const t2low=1+Math.floor(Math.random()*7);
+    taatsu2=[T(t2suit,t2low),T(t2suit,t2low+1)];
+
+    if(scenario==="middleVsEdge"){
+      const goodSuit=pickSuit(); const goodRank=3+Math.floor(Math.random()*5); // 3〜7の中張牌
+      floaterGood=T(goodSuit,goodRank);
+      const badIsWind=Math.random()<0.2; // まん中の数牌の比較相手も、風牌より老頭牌を多めにする
+      floaterBad = badIsWind ? T("z",1+Math.floor(Math.random()*4)) : T(pickSuit(), Math.random()<0.5?1:9);
+    } else {
+      floaterGood = T("z", 5+Math.floor(Math.random()*3)); // 三元牌(白發中)
+      floaterBad = T("z", 1+Math.floor(Math.random()*4)); // 風牌(東南西北)
+    }
+
+    const allTiles=[...group1,...group2,...pairTiles,...taatsu1,...taatsu2,floaterGood,floaterBad];
+    if(exceedsFourCopies(allTiles)) continue;
+    const floaterKeys=[floaterGood.suit+floaterGood.rank, floaterBad.suit+floaterBad.rank];
+    if(floaterKeys[0]===floaterKeys[1]) continue;
+    const othersKeys=[...group1,...group2,...pairTiles,...taatsu1,...taatsu2].map(t=>t.suit+t.rank);
+    if(othersKeys.includes(floaterKeys[0]) || othersKeys.includes(floaterKeys[1])) continue;
+
+    key = allTiles.map(t=>t.suit+t.rank).sort().join(",")+"|"+floaterKeys[1];
+    if(isRecent(7,key)) continue;
+    break;
+  }
+  pushHistory(7,key);
+
+  const items = shuffle([
+    ...group1.map(t=>({t, role:"group"})),
+    ...group2.map(t=>({t, role:"group"})),
+    ...pairTiles.map(t=>({t, role:"pair"})),
+    ...taatsu1.map(t=>({t, role:"taatsu"})),
+    ...taatsu2.map(t=>({t, role:"taatsu"})),
+    {t:floaterGood, role:"floaterGood"},
+    {t:floaterBad, role:"floaterBad"},
+  ]);
+
+  const note = scenario==="middleVsEdge"
+    ? `豆知識：${rb("老頭牌","ロウトウハイ")}や風牌は隣に使える数牌が少なく、${rb("面子","メンツ")}になりにくいので、まん中の数牌より先に切るのが基本です`
+    : `豆知識：${rb("三元牌","さんげんぱい")}（白・發・中）は対子・刻子になれば${rb("役牌","やくはい")}という役がつきますが、風牌は自分の風・場の風でない限り役につながりません。同じ字牌でも風牌の方を先に切るのが基本です`;
+  const goodHint = scenario==="middleVsEdge"
+    ? "（惜しい！そちらも浮いていますが、老頭牌・風牌の方を先に切るのが基本です）"
+    : "（惜しい！そちらは三元牌なので、役牌になる可能性を残して活かしておきたい牌です）";
+
+  return {
+    stage:7,
+    tileClick:true,
+    question:"この14枚の手牌。今、切るべき牌はどれ？（牌をクリックして選ぼう）",
+    tiles: items,
+    note,
+    goodHint,
+  };
+}
+
+/* ==================== 問題生成: ステージ8 危険度を見抜く（現物の考え方・中級編） ==================== */
+// 相手の捨て牌（4〜6枚）を見せ、候補の牌の中から「絶対に安全な牌＝現物」を1つクリックで選ばせる。
+// 筋・壁などの確率的な安全度は扱わず、フリテンのルールで100%断定できる「現物」だけを扱うことで
+// このアプリの他のクイズと同じく「必ず1つに断定できる」正確な出題にしている。
+function genQ8(){
+  let discards, safeTile, unsafeTiles, key;
+  while(true){
+    discards = pickN(TILES, 4+Math.floor(Math.random()*3)); // 相手の捨て牌4〜6枚
+    safeTile = discards[Math.floor(Math.random()*discards.length)]; // 捨て牌の中から現物を1枚選ぶ
+    const discardKeys = discards.map(t=>t.suit+t.rank);
+    const pool = TILES.filter(t=>!discardKeys.includes(t.suit+t.rank));
+    unsafeTiles = pickN(pool, 3); // 捨て牌に含まれない(安全と断定できない)候補3枚
+    key = [...discardKeys, ...unsafeTiles.map(t=>t.suit+t.rank)].sort().join(",")+"|"+safeTile.suit+safeTile.rank;
+    if(isRecent(8,key)) continue;
+    break;
+  }
+  pushHistory(8,key);
+
+  const items = shuffle([
+    {t:safeTile, role:"floaterBad"}, // 正解=現物（絶対安全）。role名は他ステージと共通の仕組みを流用
+    ...unsafeTiles.map(t=>({t, role:"floaterGood"})), // 不正解=まだ捨てられていない「未知の牌」
+  ]);
+
+  const discardsHtml = `<div class="hint" style="margin-bottom:6px;">相手の捨て牌</div><div class="tiles-row" style="margin-bottom:14px;">${discards.map(t=>renderTile(t,"small")).join("")}</div>`;
+
+  return {
+    stage:8,
+    tileClick:true,
+    question:"相手の捨て牌を見て、今切っても絶対にロンされない（100%安全な）牌はどれ？（牌をクリックして選ぼう）",
+    contextHtml: discardsHtml,
+    tiles: items,
+    note:`豆知識：相手がすでに捨てた牌（${rb("現物","げんぶつ")}）は、その人にとって「見逃した待ち牌」になるため、フリテンのルールでロンできません。まだ捨てられていない牌は、危険か安全か断定できない牌です`,
+    goodHint:"（その牌はまだ相手の捨て牌にありません。安全に見えても、本当に安全かどうかは断定できません）",
+  };
+}
+
+/* ==================== ステージ5: 総合ミックス ==================== */
+function genQ5(){
+  const gens=[genQ1,genQ2,genQ3,genQ4,genQ6,genQ7,genQ8];
+  const g = gens[Math.floor(Math.random()*gens.length)]();
+  return {...g, stage:5};
+}
+
+const GENERATORS = {1:genQ1,2:genQ2,3:genQ3,4:genQ4,5:genQ5,6:genQ6,7:genQ7,8:genQ8};
+const QUESTIONS_PER_ROUND = 8;
+const MASTER_MIN_ATTEMPTS = QUESTIONS_PER_ROUND; // このステージの習熟バッジに必要な最低挑戦数
+const MASTER_RATE = 80; // 習熟バッジに必要な正答率(%)
+
+/* ==================== ステージ進行 ==================== */
+function startStage(stageId){
+  go("quiz", {
+    stageId,
+    qIndex:0,
+    correctCount:0,
+    current: GENERATORS[stageId](),
+    answered:false,
+  });
+}
+// 苦手復習モード：間違えた問題（実データ）をそのまま出題し、正解すると一覧から消える
+function startReview(){
+  const queue = [...(progress.missed||[])];
+  if(queue.length===0) return;
+  go("quiz", {
+    stageId:"review",
+    reviewQueue: queue,
+    qIndex:0,
+    correctCount:0,
+    current: queue[0],
+    answered:false,
+  });
+}
+function roundTotal(s){
+  return s.stageId==="review" ? (s.reviewQueue?s.reviewQueue.length:0) : QUESTIONS_PER_ROUND;
+}
+function addMissed(question){
+  if(!progress.missed) progress.missed=[];
+  progress.missed.push(question);
+  if(progress.missed.length>30) progress.missed.shift();
+}
+function removeCurrentFromMissed(){
+  if(state.stageId!=="review") return;
+  const idx = progress.missed.indexOf(state.reviewQueue[state.qIndex]);
+  if(idx!==-1) progress.missed.splice(idx,1);
+}
+
+function renderTileClickArea(items){
+  return `<div class="tiles-row" id="tileClickArea">${items.map((it,i)=>`<button class="tile-choice-btn" data-idx="${i}">${renderTile(it.t,"small")}</button>`).join("")}</div>`;
+}
+function renderQuiz(){
+  const s = state;
+  const def = s.stageId==="review" ? {title:"🔁 苦手復習"} : STAGE_DEF.find(d=>d.id===s.stageId);
+  const total = roundTotal(s);
+  const pct = total ? Math.round((s.qIndex)/total*100) : 0;
+  const isMulti = !!s.current.multi;
+  const isTileClick = !!s.current.tileClick;
+  app.innerHTML = `
+    <div class="card">
+      <div class="quiz-topbar"><button class="quit-btn" id="quitBtn">✕ やめる</button></div>
+      <div class="sub-text">${def.title}　第${s.qIndex+1}問 / ${total}</div>
+      <div class="progressbar"><div class="progressbar-fill" style="width:${pct}%"></div></div>
+      <div class="question-text">${s.current.question}</div>
+      ${isTileClick ? (s.current.contextHtml||"") : ""}
+      ${isTileClick ? renderTileClickArea(s.current.tiles) : s.current.render}
+      ${isTileClick ? "" : '<div class="choices" id="choices"></div>'}
+      ${isMulti ? '<div class="btn-row"><button class="btn" id="submitMultiBtn">この内容で決定</button></div>' : ''}
+      <div class="feedback" id="feedback"></div>
+    </div>
+  `;
+  const quitBtn = document.getElementById("quitBtn");
+  let quitTimer = null;
+  quitBtn.onclick=()=>{
+    if(!quitBtn.classList.contains("armed")){
+      quitBtn.classList.add("armed");
+      quitBtn.textContent = "本当にやめる？(もう一度押す)";
+      quitTimer = setTimeout(()=>{
+        quitBtn.classList.remove("armed");
+        quitBtn.textContent = "✕ やめる";
+      }, 3000);
+    } else {
+      clearTimeout(quitTimer);
+      go("home");
+    }
+  };
+
+  if(isTileClick){
+    document.querySelectorAll(".tile-choice-btn").forEach(b=>{
+      b.onclick = ()=>answerTileClick(parseInt(b.dataset.idx,10));
+    });
+    return;
+  }
+
+  const choicesEl = document.getElementById("choices");
+  const opts = isMulti ? s.current.options : s.current.choices;
+  opts.forEach(choice=>{
+    const b=document.createElement("button");
+    b.className="choice-btn"+(isMulti?" multi":"");
+    b.dataset.value=choice;
+    b.innerHTML=displayHtml(choice);
+    b.onclick = isMulti ? ()=>toggleMultiChoice(b) : ()=>answerQuiz(choice,b);
+    choicesEl.appendChild(b);
+  });
+  if(isMulti){
+    document.getElementById("submitMultiBtn").onclick=()=>answerMultiQuiz();
+  }
+}
+
+function toggleMultiChoice(btn){
+  if(state.answered) return;
+  btn.classList.toggle("selected");
+}
+
+function answerTileClick(idx){
+  if(state.answered) return;
+  state.answered = true;
+  const items = state.current.tiles;
+  const clickedRole = items[idx].role;
+  const correctIdx = items.findIndex(it=>it.role==="floaterBad");
+  const isCorrect = idx===correctIdx;
+
+  const allBtns = document.querySelectorAll(".tile-choice-btn");
+  allBtns.forEach((b,i)=>{
+    b.disabled=true;
+    if(i===correctIdx) b.classList.add("correct");
+    else if(i===idx) b.classList.add("wrong");
+    else b.classList.add("dim");
+  });
+
+  progress.total++;
+  const st = progress.stageStats[state.stageId];
+  if(st) st.t++;
+  pushRecent(isCorrect);
+  const noteHtml = state.current.note ? `<div class="wait-note">${state.current.note}</div>` : "";
+  const feedback = document.getElementById("feedback");
+  if(isCorrect){
+    progress.correct++;
+    if(st) st.c++;
+    state.correctCount++;
+    progress.xp += 10;
+    removeCurrentFromMissed();
+    feedback.innerHTML = "○ 正解！ +10XP" + noteHtml;
+    feedback.className = "feedback ok";
+  } else {
+    const hint = clickedRole==="floaterGood"
+      ? state.current.goodHint
+      : "（その牌はまだ面子・対子・塔子の一部として使えます）";
+    if(state.stageId!=="review") addMissed(state.current);
+    feedback.innerHTML = `× 不正解…${hint}` + noteHtml;
+    feedback.className = "feedback ng";
+  }
+  saveProgress();
+  updateLevelBadge();
+
+  showNextButton();
+}
+
+function advanceOrFinish(){
+  const total = roundTotal(state);
+  if(state.qIndex+1 >= total){
+    finishStage();
+  }else{
+    state.qIndex++;
+    state.current = state.stageId==="review" ? state.reviewQueue[state.qIndex] : GENERATORS[state.stageId]();
+    state.answered = false;
+    render();
+  }
+}
+
+// 回答後は自動で進めず、解説をじっくり読めるよう「次の問題へ」ボタンで進む
+function showNextButton(){
+  const bar = document.createElement("div");
+  bar.className = "next-fixed-bar";
+  bar.id = "nextFixedBar";
+  bar.innerHTML = `<button class="btn" id="nextQBtn">次へ ›</button>`;
+  document.body.appendChild(bar);
+  document.body.classList.add("has-next-bar");
+  document.getElementById("nextQBtn").onclick = advanceOrFinish;
+}
+
+function answerMultiQuiz(){
+  if(state.answered) return;
+  state.answered = true;
+  const allBtns = [...document.querySelectorAll(".choice-btn.multi")];
+  const selected = allBtns.filter(b=>b.classList.contains("selected")).map(b=>b.dataset.value);
+  const correctSet = state.current.correctSet;
+  const selSet = new Set(selected);
+  const corSet = new Set(correctSet);
+  const isMatch = selSet.size===corSet.size && [...selSet].every(v=>corSet.has(v));
+
+  allBtns.forEach(b=>{
+    b.disabled=true;
+    const val=b.dataset.value;
+    if(corSet.has(val) && selSet.has(val)) b.classList.add("correct");
+    else if(corSet.has(val) && !selSet.has(val)) b.classList.add("missed");
+    else if(!corSet.has(val) && selSet.has(val)) b.classList.add("wrong");
+  });
+  const submitBtn=document.getElementById("submitMultiBtn");
+  if(submitBtn) submitBtn.disabled=true;
+
+  progress.total++;
+  const st = progress.stageStats[state.stageId];
+  if(st) st.t++;
+  pushRecent(isMatch);
+  const feedback = document.getElementById("feedback");
+  const correctLabel = correctSet.map(c=>displayHtml(c)).join("」「");
+  const scoreHtml = state.current.scoreInfo
+    ? `<div class="hint">${state.current.scoreInfo.text}</div>` + (state.current.scoreInfo.fuBreakdown ? `<div class="hint" style="opacity:.6;">${state.current.scoreInfo.fuBreakdown}</div>` : "")
+    : "";
+  if(isMatch){
+    progress.correct++;
+    if(st) st.c++;
+    state.correctCount++;
+    progress.xp += 10;
+    removeCurrentFromMissed();
+    feedback.innerHTML = "○ 正解！ +10XP" + scoreHtml;
+    feedback.className = "feedback ok";
+  } else {
+    if(state.stageId!=="review") addMissed(state.current);
+    feedback.innerHTML = `× 不正解… 正解は「${correctLabel}」` + scoreHtml;
+    feedback.className = "feedback ng";
+  }
+  saveProgress();
+  updateLevelBadge();
+
+  showNextButton();
+}
+
+function answerQuiz(choice, btnEl){
+  if(state.answered) return;
+  state.answered = true;
+  const correct = choice === state.current.answer;
+  const feedback = document.getElementById("feedback");
+  const allBtns = document.querySelectorAll(".choice-btn");
+  allBtns.forEach(b=>{
+    b.disabled=true;
+    if(b.dataset.value===state.current.answer) b.classList.add("correct");
+    else if(b===btnEl) b.classList.add("wrong");
+  });
+
+  progress.total++;
+  const st = progress.stageStats[state.stageId];
+  if(st) st.t++;
+  pushRecent(correct);
+  const noteHtml = state.current.note ? `<div class="wait-note">${state.current.note}</div>` : "";
+  if(correct){
+    progress.correct++;
+    if(st) st.c++;
+    state.correctCount++;
+    progress.xp += 10;
+    removeCurrentFromMissed();
+    feedback.innerHTML = "○ 正解！ +10XP" + noteHtml;
+    feedback.className = "feedback ok";
+  } else {
+    if(state.stageId!=="review") addMissed(state.current);
+    feedback.innerHTML = `× 不正解… 正解は「${displayHtml(state.current.answer)}」` + noteHtml;
+    feedback.className = "feedback ng";
+  }
+  saveProgress();
+  updateLevelBadge();
+
+  showNextButton();
+}
+
+function finishStage(){
+  const before = levelInfo(progress.xp - state.correctCount*10 + (progress.total? 0:0));
+  // レベルアップ判定のため、開始前XPを概算(このラウンドで得たXPを引く)
+  const gained = state.correctCount*10;
+  const beforeXp = progress.xp - gained;
+  const beforeLv = levelInfo(beforeXp).cur.lv;
+  const afterLv = levelInfo(progress.xp).cur.lv;
+  const leveledUp = afterLv > beforeLv;
+
+  go("result", {
+    stageId: state.stageId,
+    correctCount: state.correctCount,
+    gained,
+    leveledUp,
+    newLevel: levelInfo(progress.xp).cur,
+  });
+}
+
+function renderResult(){
+  const s = state;
+  const total = roundTotal(s) || 1;
+  const rate = Math.round(s.correctCount/total*100);
+  const isReview = s.stageId==="review";
+  const def = isReview ? {title:"🔁 苦手復習"} : STAGE_DEF.find(d=>d.id===s.stageId);
+  let comment;
+  if(rate>=90) comment="完璧！もう感覚で分かってますね";
+  else if(rate>=70) comment="かなり定着してきています";
+  else if(rate>=50) comment="半分以上正解！あと少し";
+  else comment="繰り返すほど覚えます。もう一度挑戦してみましょう";
+  const remaining = isReview ? (progress.missed||[]).length : null;
+
+  app.innerHTML = `
+    <div class="card">
+      <div class="result-title">${def.title}　結果</div>
+      <div class="result-sub">${s.correctCount} / ${total} 問正解（正答率 ${rate}%）</div>
+      <div class="stat-row">
+        <div><b>+${s.gained}</b>獲得XP</div>
+        <div><b>${progress.xp}</b>累計XP</div>
+      </div>
+      ${s.leveledUp?`<div class="levelup-banner">🎉 レベルアップ！ Lv.${s.newLevel.lv}「${s.newLevel.name}」になりました</div>`:""}
+      ${isReview?`<div class="hint">残りの苦手：${remaining}問</div>`:""}
+      <div class="hint">${comment}</div>
+      <div class="btn-row">
+        ${isReview
+          ? (remaining>0 ? '<button class="btn" id="retryBtn">続けて復習する</button>' : '')
+          : '<button class="btn" id="retryBtn">もう一度挑戦</button>'}
+        <button class="btn ghost" id="homeBtn">ステージ選択へ</button>
+      </div>
+    </div>
+  `;
+  const retryBtn = document.getElementById("retryBtn");
+  if(retryBtn) retryBtn.onclick = isReview ? ()=>startReview() : ()=>startStage(s.stageId);
+  document.getElementById("homeBtn").onclick=()=>go("home");
+}
+
+/* ==================== ルーター ==================== */
+function render(){
+  document.body.classList.remove("has-next-bar");
+  const oldBar = document.getElementById("nextFixedBar");
+  if(oldBar) oldBar.remove();
+  if(state.screen==="home") renderHome();
+  else if(state.screen==="quiz") renderQuiz();
+  else if(state.screen==="result") renderResult();
+  else if(state.screen==="nameEntry" || state.screen==="userSwitch") renderNameEntry();
+  else if(state.screen==="yakuTable") renderYakuTable();
+  else if(state.screen==="tutorial") renderTutorial();
+}
+
+render();
+</script>
+</body>
+</html>
