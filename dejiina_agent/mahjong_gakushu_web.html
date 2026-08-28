@@ -1223,7 +1223,7 @@ function computeYakuForShape(tiles14, shape, opts){
     if(shuntsuKeys.some((k,i)=>shuntsuKeys.indexOf(k)!==i)) regular.push("一盃口");
     if(allShuntsu){
       const sorted=[...shuntsuKeys].sort();
-      if(sorted[0]===sorted[1] && sorted[2]===sorted[3] && sorted[0]!==sorted[2]){
+      if(sorted[0]===sorted[1] && sorted[2]===sorted[3]){
         const idx=regular.indexOf("一盃口"); if(idx!==-1) regular.splice(idx,1);
         regular.push("二盃口");
       }
