@@ -1120,7 +1120,8 @@ const GLOSSARY_ACTIONS = [
   {name:"安全牌", reading:"あんぱい", desc:"ロンされる心配がない（低い）牌のこと。現物が最も確実な安全牌"},
   {name:"危険牌", reading:"きけんぱい", desc:"まだ誰にも捨てられていない牌で、ロンされる可能性を否定できない牌のこと"},
   {name:"筋", reading:"すじ", desc:"ある牌（例：4）が捨てられていると、その牌を含む両面待ち（3・6待ちなど）はその人にはないと考えられるため、反対側の牌（この例では1と7）が比較的安全とされる考え方。ただし単騎・シャンポン・カンチャン待ちには通用しないので絶対安全ではない", example:[T("s",4),T("s",1),T("s",7)]},
-  {name:"壁", reading:"かべ", desc:"ある数字の牌が場に4枚すべて見えている状態のこと（例：5が4枚とも見えている）。その数字を挟む待ち（3・4の3-6待ちなど）が成立しなくなるため、周辺の牌が安全になりやすい"},
+  {name:"壁", reading:"かべ", desc:"ある数字の牌が場に4枚すべて見えている状態のこと（例：5が4枚とも見えている）。待ちの形にかかわらず、その牌自体がもう山にも他家の手にも残っていないため、絶対に誰の上がり牌にもならない"},
+  {name:"両筋", reading:"りょうすじ", desc:"1つの牌が、2人以上の捨て牌から見て「筋」になっている状態のこと（例：4と7の両方が別々の人から捨てられていれば、1はその両方にとって筋）。片方だけの筋（片筋）より安全度が高いとされる"},
   {name:"押し引き", reading:"おしひき", desc:"攻める（危険を承知で自分の手を進める＝押す）か、降りる（安全牌だけを切って上がりを諦める＝引く/オリる）かを判断すること。聴牌しているか、手の強さ、周りのリーチの有無、安全牌の有無などから総合的に判断する"},
   {name:"受け入れ枚数", reading:"うけいれまいすう", desc:"ある牌を切ったとき、次にどんな牌が来ればテンパイ（または上がり）に近づけるか、その種類・枚数のこと。受け入れが広い牌を残し、狭い牌から切っていくのが牌効率の基本"},
   {name:"牌効率", reading:"はいこうりつ", desc:"できるだけ早く・広くテンパイに近づけるように、受け入れ枚数を意識して牌を選ぶ考え方のこと"},
@@ -1895,42 +1896,88 @@ function genQ8(){
 
 /* ==================== 問題生成: ステージ9 筋・押し引きを学ぶ（中級編） ==================== */
 // 筋：ある牌を切っているということは、それを含む両面待ちをその手では作っていないはず、という考え方。
-// 出題は「端に近い牌（1・2・8・9）を切った場合」だけに絞り、スジ候補が必ず1枚に断定できるようにしている
-// （3〜7を切った場合は両側にスジができ2枚候補になるため、このアプリの「必ず1つに断定できる」出題方針に合わせて対象外にしている）。
-function sujiPartner(rank){ return rank<=2 ? rank+3 : rank-3; }
+// 4〜6を切った場合は両側（例：5切りなら2と8）が同時にスジになる「両面2つ分」のケースがあるため、
+// answerTileClickは複数の正解(role==="floaterBad")を許容する仕組みにして、どちらをクリックしても正解にしている。
+function sujiPartners(rank){
+  const arr=[];
+  if(rank-3>=1) arr.push(rank-3);
+  if(rank+3<=9) arr.push(rank+3);
+  return arr;
+}
 function genSujiCheck(){
-  let suit, rank, partner, key;
+  let suit, rank, partners, key;
   do{
     suit = pickSuit();
-    rank = [1,2,8,9][Math.floor(Math.random()*4)];
-    partner = sujiPartner(rank);
+    rank = 1+Math.floor(Math.random()*9);
+    partners = sujiPartners(rank);
     key = "suji|"+suit+rank;
   }while(isRecent(9,key));
   pushHistory(9,key);
 
   const discardTile = T(suit, rank);
-  const correctTile = T(suit, partner);
-  const usedRanks = [rank, partner];
+  const correctTiles = partners.map(r=>T(suit,r));
+  const usedRanks = [rank, ...partners];
   const wrongPool = [];
   for(let r=1;r<=9;r++){ if(!usedRanks.includes(r)) wrongPool.push(T(suit,r)); }
-  const wrongTiles = pickN(wrongPool, 3);
+  const wrongTiles = pickN(wrongPool, Math.min(3, wrongPool.length));
 
   const items = shuffle([
-    {t:correctTile, role:"floaterBad"},
+    ...correctTiles.map(t=>({t, role:"floaterBad"})),
     ...wrongTiles.map(t=>({t, role:"floaterGood"})),
   ]);
 
-  const lo = Math.min(rank,partner), hi = Math.max(rank,partner);
   const discardsHtml = `<div class="hint" style="margin-bottom:6px;">相手が捨てた牌</div><div class="tiles-row" style="margin-bottom:14px;">${renderTile(discardTile)}</div>`;
+
+  let note;
+  if(partners.length===2){
+    note = `豆知識：${rank}を切っているということは、${rank}を含む両面待ち（${rank-2}${rank-1}で${rank-3}・${rank}待ち、${rank+1}${rank+2}で${rank}・${rank+3}待ち）のどちらもこの手では作っていないはずです。そのため${partners[0]}・${partners[1]}のどちらも比較的安全とされる「スジ」になります。ただし単騎・シャンポン・カンチャン待ちには通用しないので「絶対安全」ではありません（絶対安全なのは現物だけ）`;
+  } else {
+    const partner = partners[0];
+    const lo = Math.min(rank,partner), hi = Math.max(rank,partner);
+    note = `豆知識：${rank}を切っているということは、${lo+1}${lo+2}（同じ種類の数牌）で${lo}・${hi}待ちの両面をこの手では作っていないはずです。そのため反対側の${partner}も比較的安全とされる「スジ」になります。ただし単騎・シャンポン・カンチャン待ちには通用しないので「絶対安全」ではありません（絶対安全なのは現物だけ）`;
+  }
 
   return {
     stage:9,
     tileClick:true,
-    question:"この捨て牌からできる「スジ」はどれ？（両面待ちに対して比較的安全とされる牌をクリックして選ぼう）",
+    question: partners.length===2
+      ? "この捨て牌からできる「スジ」はどれ？両方とも選んでクリックしよう（両面待ちに対して比較的安全とされる牌）"
+      : "この捨て牌からできる「スジ」はどれ？（両面待ちに対して比較的安全とされる牌をクリックして選ぼう）",
     contextHtml: discardsHtml,
     tiles: items,
-    note:`豆知識：${rank}を切っているということは、${lo+1}${lo+2}（同じ種類の数牌）で${lo}・${hi}待ちの両面をこの手では作っていないはずです。そのため反対側の${partner}も比較的安全とされる「スジ」になります。ただし単騎・シャンポン・カンチャン待ちには通用しないので「絶対安全」ではありません（絶対安全なのは現物だけ）`,
+    note,
     goodHint:"（その牌はこの捨て牌とスジの関係にありません）",
+  };
+}
+// 壁：ある数字の牌が場に4枚すべて見えていると、その牌はもう山にも他家の手にも残っていない、という考え方。
+// 待ちの種類にかかわらず「その牌そのもの」が誰の上がり牌にもなり得ないという、現物と同じくらい断定的な安全度を持つ。
+function genKabeCheck(){
+  let suit, rank, key;
+  do{
+    suit = pickSuit();
+    rank = 1+Math.floor(Math.random()*9);
+    key = "kabe|"+suit+rank;
+  }while(isRecent(9,key));
+  pushHistory(9,key);
+
+  const wallTile = T(suit, rank);
+  const wrongPool = TILES.filter(t=>!(t.suit===suit && t.rank===rank));
+  const wrongTiles = pickN(wrongPool, 3);
+  const items = shuffle([
+    {t:wallTile, role:"floaterBad"},
+    ...wrongTiles.map(t=>({t, role:"floaterGood"})),
+  ]);
+
+  const wallHtml = `<div class="hint" style="margin-bottom:6px;">場に見えている牌（自分の手牌＋みんなの捨て牌・鳴きなど）</div><div class="tiles-row" style="margin-bottom:14px;">${renderTile(wallTile)}${renderTile(wallTile)}${renderTile(wallTile)}${renderTile(wallTile)}</div>`;
+
+  return {
+    stage:9,
+    tileClick:true,
+    question:"この牌がすでに4枚とも見えています（壁）。この状況で、絶対に誰の上がり牌にもならない牌はどれ？",
+    contextHtml: wallHtml,
+    tiles: items,
+    note:`豆知識：${rank}はすでに4枚とも見えているため、山にも他家の手にも1枚も残っていません。これを「壁」と言います。待ちの形が両面でもカンチャンでも単騎でも関係なく、${rank}そのもので誰かが上がることは絶対にありません`,
+    goodHint:"（その牌はまだ4枚見えているわけではないので、壁としては安全と断定できません）",
   };
 }
 // 押し引き：教科書的にほぼ異論のない基本ケースだけを扱う（実戦の押し引きは点差・巡目なども絡む高度な判断のため、
@@ -1944,6 +1991,14 @@ const OSHI_HIKI_SCENARIOS = [
     correct:"攻める", reason:"まだ誰も上がりに近づいている様子がない序盤なら、危険を気にしすぎず自分の手を育てることを優先するのが基本です。" },
   { situation:"自分は聴牌していますが役はまだついていません。対面がリーチを宣言し、あなたには安全牌がありません。",
     correct:"攻める", reason:"安全牌が無ければ、降りたくても安全には降りられません。役がなくても聴牌しているなら、自分の待ち牌を切り続けて上がりを目指す（＝勝負を続ける）のが現実的な基本方針です。" },
+  { situation:"自分はまだ聴牌していません。すでに2人がリーチを宣言しています。手元には安全牌があります。",
+    correct:"降りる", reason:"リーチしている人が複数いると、放銃のリスクがそれだけ跳ね上がります。自分が聴牌もしていない状況なら、無理をせず安全に進めるのが基本です。" },
+  { situation:"自分は聴牌していて役も2〜3翻ほどついています。誰もリーチしておらず、鳴きも出ていません。",
+    correct:"攻める", reason:"聴牌していて役もある状態で、周りに危険な気配もないなら、素直に和了を目指すのが基本です。" },
+  { situation:"自分はまだ聴牌していません。手元に安全牌が1枚もありません。上家がリーチを宣言しました。",
+    correct:"攻める", reason:"安全牌が1枚もなければ、そもそも安全に降りる手段がありません。この場合は仕方なく、少しでもテンパイに近づく牌を切って手を進めるしかありません。" },
+  { situation:"自分はすでにリーチを宣言しています。そのあとで対面もリーチを宣言しました。",
+    correct:"攻める", reason:"リーチを宣言すると、それ以降は手牌を変えられず、ツモった牌をそのまま切る（手出しできない）というルール上の制約があります。つまりリーチした後は「降りる」という選択肢自体が存在せず、そのまま押すしかありません。" },
 ];
 function genOshiHikiCheck(){
   let idx, key;
@@ -1964,7 +2019,10 @@ function genOshiHikiCheck(){
   };
 }
 function genQ9(){
-  return Math.random()<0.5 ? genSujiCheck() : genOshiHikiCheck();
+  const r = Math.random();
+  if(r<0.4) return genSujiCheck();
+  if(r<0.65) return genKabeCheck();
+  return genOshiHikiCheck();
 }
 
 /* ==================== ステージ5: 総合ミックス ==================== */
@@ -2087,13 +2145,13 @@ function answerTileClick(idx){
   state.answered = true;
   const items = state.current.tiles;
   const clickedRole = items[idx].role;
-  const correctIdx = items.findIndex(it=>it.role==="floaterBad");
-  const isCorrect = idx===correctIdx;
+  // 正解は role==="floaterBad" の牌すべて（1つとは限らない。例：筋が2枚あるケースなど）
+  const isCorrect = clickedRole==="floaterBad";
 
   const allBtns = document.querySelectorAll(".tile-choice-btn");
   allBtns.forEach((b,i)=>{
     b.disabled=true;
-    if(i===correctIdx) b.classList.add("correct");
+    if(items[i].role==="floaterBad") b.classList.add("correct");
     else if(i===idx) b.classList.add("wrong");
     else b.classList.add("dim");
   });
