@@ -308,6 +308,39 @@
   .hint{font-size:.75rem;opacity:.65;text-align:center;margin-top:10px;}
   .wait-note{font-size:1rem;opacity:.9;text-align:center;margin-top:12px;line-height:1.6;font-weight:bold;}
   footer{opacity:.5;font-size:.7rem;margin-top:10px;text-align:center;}
+
+  /* ===== 点数計算機 ===== */
+  .picker-grid{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-top:8px;}
+  @media (max-width:480px){ .picker-grid{grid-template-columns:repeat(7,1fr);} }
+  .picker-tile{background:none;border:none;padding:2px;cursor:pointer;border-radius:8px;transition:.1s;}
+  .picker-tile:hover{background:rgba(255,255,255,.15);}
+  .picker-tile .tile{width:32px;height:44px;}
+  .tile-btn{background:none;border:none;padding:0;cursor:pointer;position:relative;}
+  .tile-btn .remove-x{
+    position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;
+    background:var(--danger);color:#fff;font-size:.7rem;line-height:18px;text-align:center;
+  }
+  .count-badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:.85rem;font-weight:bold;background:rgba(255,255,255,.1);}
+  .count-badge.ready{background:var(--ok);color:#063;}
+  .count-badge.over{background:var(--danger);}
+  .toggle-group{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+  .toggle-btn{
+    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.3);color:#fff;
+    padding:8px 14px;border-radius:16px;font-size:.82rem;cursor:pointer;
+  }
+  .toggle-btn.active{background:var(--gold);color:#3a2c00;border-color:var(--gold);font-weight:bold;}
+  .calc-select{
+    padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.3);
+    background:#0d3320;color:#fff;font-size:.85rem;
+  }
+  .score-big{font-size:1.4rem;font-weight:bold;color:var(--gold);margin:10px 0;text-align:center;}
+  .yaku-chip{
+    display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);
+    border-radius:12px;padding:4px 10px;font-size:.8rem;margin:3px;
+  }
+  .fu-list{font-size:.75rem;opacity:.75;text-align:left;max-width:420px;margin:10px auto;line-height:1.7;}
+  .error-box{background:rgba(231,76,60,.15);border:1px solid var(--danger);border-radius:10px;padding:12px;font-size:.85rem;text-align:center;}
+  .section-label{font-size:.85rem;font-weight:bold;margin:14px 0 6px;opacity:.85;text-align:center;}
 </style>
 <div class="wrap">
   <header>
@@ -703,6 +736,7 @@ function renderHome(){
           ? `<button class="link-btn" id="reviewBtn">🔁 苦手を復習する（${progress.missed.length}問）</button>`
           : `<span style="opacity:.5;">🔁 苦手はまだありません</span>`}
       </div>
+      <div class="hint" style="margin-top:6px;"><button class="link-btn" id="scoreCalcBtn">🧮 実際の手牌の点数を計算する</button></div>
     </div>
     <div class="card">
       <div class="stage-grid" id="stageGrid"></div>
@@ -710,6 +744,7 @@ function renderHome(){
   `;
   document.getElementById("yakuTableBtn").onclick=()=>go("yakuTable");
   document.getElementById("flowDemoBtn").onclick=()=>startFlowDemo();
+  document.getElementById("scoreCalcBtn").onclick=()=>startScoreCalc();
   if((progress.missed||[]).length>0){
     document.getElementById("reviewBtn").onclick=()=>startReview();
   }
@@ -1082,6 +1117,233 @@ function computeScoreInfo(correctSet, regular, yakuman, shapeKind, groups, pair,
   };
 }
 
+/* ==================== 点数計算機（実際の手牌を手入力して計算する・mahjong_score_scanner.htmlと同じエンジン） ==================== */
+// クイズ用のcomputeYaku/computeScoreInfoは「常にリーチあり・ロン限定」という簡略化を前提にしているため、
+// 実際の手牌をそのまま計算する用途には使えない。ここではロン/ツモ・リーチの有無・親子・自風場風・ドラを
+// すべて指定できる、より本格的な役判定・符計算・点数計算エンジンを別名で用意する（mahjong_score_scanner.html本体と同一ロジック）。
+function tilesToCounts(tiles){
+  const counts={};
+  tiles.forEach(t=>{ const k=t.suit+t.rank; counts[k]=(counts[k]||0)+1; });
+  return counts;
+}
+function decomposeMelds(counts){
+  const keys = Object.keys(counts).filter(k=>counts[k]>0).sort();
+  if(keys.length===0) return [[]];
+  const key = keys[0];
+  const suit = key[0];
+  const rank = parseInt(key.slice(1),10);
+  const results = [];
+  if(counts[key] >= 3){
+    counts[key]-=3;
+    decomposeMelds(counts).forEach(r=>results.push([{kind:"kotsu",suit,rank}, ...r]));
+    counts[key]+=3;
+  }
+  if(suit!=="z" && rank<=7){
+    const k2=suit+(rank+1), k3=suit+(rank+2);
+    if((counts[k2]||0)>0 && (counts[k3]||0)>0){
+      counts[key]--; counts[k2]--; counts[k3]--;
+      decomposeMelds(counts).forEach(r=>results.push([{kind:"shuntsu",suit,rank}, ...r]));
+      counts[key]++; counts[k2]++; counts[k3]++;
+    }
+  }
+  return results;
+}
+function decomposeStandard(tiles14){
+  const counts = tilesToCounts(tiles14);
+  const results = [];
+  Object.keys(counts).forEach(pairKey=>{
+    if(counts[pairKey] < 2) return;
+    const suit=pairKey[0], rank=parseInt(pairKey.slice(1),10);
+    counts[pairKey]-=2;
+    const meldSets = decomposeMelds(counts);
+    counts[pairKey]+=2;
+    meldSets.forEach(groups=>{
+      if(groups.length===4) results.push({shapeKind:"standard", groups, pair:{suit,rank}});
+    });
+  });
+  return results;
+}
+function isKokushi14(tiles14){
+  const orphans = [];
+  ["m","p","s"].forEach(s=>{ orphans.push(s+"1"); orphans.push(s+"9"); });
+  for(let r=1;r<=7;r++) orphans.push("z"+r);
+  const counts = tilesToCounts(tiles14);
+  const keys = Object.keys(counts);
+  if(keys.length!==13) return false;
+  if(keys.some(k=>!orphans.includes(k))) return false;
+  const dupCount = keys.filter(k=>counts[k]===2).length;
+  const singleCount = keys.filter(k=>counts[k]===1).length;
+  return dupCount===1 && singleCount===12;
+}
+function isChiitoi14(tiles14){
+  const counts = tilesToCounts(tiles14);
+  const keys = Object.keys(counts);
+  return keys.length===7 && keys.every(k=>counts[k]===2);
+}
+function decomposeHand(tiles14){
+  if(tiles14.length!==14) return [];
+  const results = [];
+  if(isKokushi14(tiles14)) results.push({shapeKind:"kokushi"});
+  if(isChiitoi14(tiles14)) results.push({shapeKind:"chiitoi"});
+  results.push(...decomposeStandard(tiles14));
+  return results;
+}
+function computeYakuForShape(tiles14, shape, opts){
+  const regular=[], yakuman=[];
+  if(shape.shapeKind==="kokushi"){ yakuman.push("国士無双"); return {regular, yakuman}; }
+
+  const numberSuits = new Set(tiles14.filter(t=>t.suit!=="z").map(t=>t.suit));
+  const hasHonor = tiles14.some(t=>t.suit==="z");
+
+  if(tiles14.every(t=>t.suit!=="z" && t.rank>=2 && t.rank<=8)) regular.push("タンヤオ");
+  if(numberSuits.size===1 && hasHonor) regular.push("混一色");
+  if(numberSuits.size===1 && !hasHonor) regular.push("清一色");
+  if(tiles14.every(isTermOrHonor)) regular.push("混老頭");
+  if(tiles14.every(t=>t.suit==="z")) yakuman.push("字一色");
+  if(tiles14.every(t=>t.suit!=="z" && (t.rank===1||t.rank===9))) yakuman.push("清老頭");
+  if(tiles14.every(isGreenTile)) yakuman.push("緑一色");
+
+  if(shape.shapeKind==="chiitoi") regular.push("七対子");
+
+  if(shape.shapeKind==="standard"){
+    const {groups, pair} = shape;
+    groups.forEach(g=>{
+      if(g.kind==="kotsu" && g.suit==="z"){
+        if(g.rank>=5) regular.push(`役牌（${Z_LABEL[g.rank]}）`);
+        if(opts.seatWind && g.rank===opts.seatWind) regular.push(`役牌（自風 ${Z_LABEL[g.rank]}）`);
+        if(opts.roundWind && g.rank===opts.roundWind) regular.push(`役牌（場風 ${Z_LABEL[g.rank]}）`);
+      }
+    });
+    const allKotsu = groups.every(g=>g.kind==="kotsu");
+    const allShuntsu = groups.every(g=>g.kind==="shuntsu");
+    if(allKotsu) regular.push("対々和");
+    if(groups.filter(g=>g.kind==="kotsu").length>=3) regular.push("三暗刻");
+
+    const shuntsuKeys = groups.filter(g=>g.kind==="shuntsu").map(g=>g.suit+"-"+g.rank);
+    if(shuntsuKeys.some((k,i)=>shuntsuKeys.indexOf(k)!==i)) regular.push("一盃口");
+    if(allShuntsu){
+      const sorted=[...shuntsuKeys].sort();
+      if(sorted[0]===sorted[1] && sorted[2]===sorted[3] && sorted[0]!==sorted[2]){
+        const idx=regular.indexOf("一盃口"); if(idx!==-1) regular.splice(idx,1);
+        regular.push("二盃口");
+      }
+    }
+    const shuntsuGroups = groups.filter(g=>g.kind==="shuntsu");
+    const byRankSuits={};
+    shuntsuGroups.forEach(g=>{ (byRankSuits[g.rank]=byRankSuits[g.rank]||new Set()).add(g.suit); });
+    if(Object.values(byRankSuits).some(s=>s.size===3)) regular.push("三色同順");
+    ["m","p","s"].forEach(suit=>{
+      const ranks=new Set(shuntsuGroups.filter(g=>g.suit===suit).map(g=>g.rank));
+      if(ranks.has(1)&&ranks.has(4)&&ranks.has(7)) regular.push("一気通貫");
+    });
+    const kotsuGroups = groups.filter(g=>g.kind==="kotsu"&&g.suit!=="z");
+    const byRankSuitsK={};
+    kotsuGroups.forEach(g=>{ (byRankSuitsK[g.rank]=byRankSuitsK[g.rank]||new Set()).add(g.suit); });
+    if(Object.values(byRankSuitsK).some(s=>s.size===3)) regular.push("三色同刻");
+
+    const chanta = groups.every(g=> g.kind==="kotsu" ? isTermOrHonor({suit:g.suit,rank:g.rank}) : (g.rank===1||g.rank===7)) && isTermOrHonor(pair);
+    if(chanta){
+      const junchan = groups.every(g=> g.kind==="kotsu" ? (g.suit!=="z" && (g.rank===1||g.rank===9)) : (g.rank===1||g.rank===7)) && pair.suit!=="z";
+      if(junchan) regular.push("純全帯幺九"); else regular.push("混全帯幺九（チャンタ）");
+    }
+    const pairIsYakuhai = pair.suit==="z" && (pair.rank>=5 || pair.rank===opts.seatWind || pair.rank===opts.roundWind);
+    if(allShuntsu && !pairIsYakuhai) regular.push("平和");
+
+    const dragonRanks = new Set(groups.filter(g=>g.kind==="kotsu"&&g.suit==="z"&&g.rank>=5).map(g=>g.rank));
+    if(dragonRanks.size===3) yakuman.push("大三元");
+    const windRanks = new Set(groups.filter(g=>g.kind==="kotsu"&&g.suit==="z"&&g.rank<=4).map(g=>g.rank));
+    if(windRanks.size===3 && pair.suit==="z" && pair.rank<=4 && !windRanks.has(pair.rank)) yakuman.push("小四喜");
+    if(windRanks.size===4) yakuman.push("大四喜");
+    if(allKotsu && opts.isTsumo) yakuman.push("四暗刻");
+    if(numberSuits.size===1 && !hasHonor){
+      const suit=[...numberSuits][0];
+      const counts={}; tiles14.forEach(t=>{counts[t.rank]=(counts[t.rank]||0)+1;});
+      const need={1:3,2:1,3:1,4:1,5:1,6:1,7:1,8:1,9:3};
+      if(Object.keys(need).every(r=>(counts[r]||0)>=need[r])) yakuman.push("九蓮宝燈");
+    }
+  }
+
+  if(yakuman.length===0){
+    if(opts.isRiichi) regular.push("立直");
+    if(opts.isTsumo) regular.push("門前清自摸和");
+  }
+  return {regular, yakuman};
+}
+const SCORE_HAN_TABLE = {
+  "立直":1, "タンヤオ":1, "平和":1, "門前清自摸和":1,
+  "対々和":2, "一盃口":1, "混一色":3, "清一色":6,
+  "混老頭":2, "混全帯幺九（チャンタ）":2, "純全帯幺九":3, "七対子":2,
+  "三色同順":2, "一気通貫":2, "三色同刻":2, "三暗刻":2, "二盃口":3,
+};
+function scoreHanValue(name){ if(name.startsWith("役牌")) return 1; return SCORE_HAN_TABLE[name]||0; }
+function scoreTileLabel(suit,rank){ return suit==="z" ? Z_LABEL[rank] : (KANSUJI[rank]+SUIT_NAME[suit]); }
+function computeFuForShape(shape, opts, hasPinfu){
+  if(shape.shapeKind==="chiitoi") return {fu:25, parts:["七対子は25符で固定"]};
+  if(shape.shapeKind==="kokushi") return {fu:null, parts:[]};
+  if(hasPinfu){
+    if(opts.isTsumo) return {fu:20, parts:["平和+ツモは20符で固定"]};
+    return {fu:30, parts:["平和+ロンは基本20符+面前ロン10符=30符で固定"]};
+  }
+  const parts=[]; let fu=20; parts.push("基本20符");
+  if(opts.isTsumo){ fu+=2; parts.push("ツモ+2符"); } else { fu+=10; parts.push("面前ロン+10符"); }
+  shape.groups.forEach(g=>{
+    if(g.kind==="kotsu"){
+      const th = isTermOrHonor({suit:g.suit,rank:g.rank});
+      const add = th?8:4; fu+=add;
+      parts.push(`${scoreTileLabel(g.suit,g.rank)}の暗刻+${add}符`);
+    }
+  });
+  if(shape.pair.suit==="z"){
+    if(shape.pair.rank>=5){ fu+=2; parts.push(`${Z_LABEL[shape.pair.rank]}の雀頭+2符`); }
+    if(opts.seatWind && shape.pair.rank===opts.seatWind){ fu+=2; parts.push(`自風(${Z_LABEL[shape.pair.rank]})の雀頭+2符`); }
+    if(opts.roundWind && shape.pair.rank===opts.roundWind){ fu+=2; parts.push(`場風(${Z_LABEL[shape.pair.rank]})の雀頭+2符`); }
+  }
+  const rounded = Math.ceil(fu/10)*10;
+  if(rounded!==fu) parts.push(`合計${fu}符 → 10の位に切り上げ`);
+  return {fu:rounded, parts};
+}
+function scoreCeil100(n){ return Math.ceil(n/100)*100; }
+function scoreFromBase(base){
+  return {
+    ronNonDealer: scoreCeil100(base*4), ronDealer: scoreCeil100(base*6),
+    tsumoNonDealerFromNonDealer: scoreCeil100(base*1), tsumoNonDealerFromDealer: scoreCeil100(base*2),
+    tsumoDealerEach: scoreCeil100(base*2),
+  };
+}
+function scoreForShape(tiles14, shape, opts, doraCount){
+  const {regular, yakuman} = computeYakuForShape(tiles14, shape, opts);
+  if(yakuman.length>0){
+    const base = 8000*yakuman.length;
+    return { yakuman, regular:[], han:null, fu:null, tier: yakuman.length>1?`役満×${yakuman.length}（ダブル役満）`:"役満", base, points:scoreFromBase(base), fuParts:[], totalPoints: base*4 };
+  }
+  if(regular.length===0){
+    return { yakuman:[], regular:[], han:0, fu:null, tier:"役なし", base:0, points:null, fuParts:[], totalPoints:-1 };
+  }
+  const hasPinfu = regular.includes("平和");
+  const baseHan = regular.reduce((sum,y)=>sum+scoreHanValue(y),0);
+  const han = baseHan + doraCount;
+  const {fu, parts} = computeFuForShape(shape, opts, hasPinfu);
+  let base, tier="";
+  if(han>=13){ base=8000; tier="役満級（13翻以上）"; }
+  else if(han>=11){ base=6000; tier="三倍満"; }
+  else if(han>=8){ base=4000; tier="倍満"; }
+  else if(han>=6){ base=3000; tier="跳満"; }
+  else if(han>=5){ base=2000; tier="満貫"; }
+  else{ base = fu * Math.pow(2, 2+han); if(base>2000){ base=2000; tier="満貫"; } }
+  return { yakuman:[], regular, han, fu, tier, base, points:scoreFromBase(base), fuParts:parts, doraCount, baseHan, totalPoints: base*4 };
+}
+function bestScoreResult(tiles14, opts, doraCount){
+  const shapes = decomposeHand(tiles14);
+  if(shapes.length===0) return null;
+  let best=null;
+  shapes.forEach(shape=>{
+    const r = scoreForShape(tiles14, shape, opts, doraCount);
+    r.shape = shape;
+    if(!best || r.totalPoints>best.totalPoints) best=r;
+  });
+  return best;
+}
+
 /* ==================== 用語解説・役の早見表 ==================== */
 function T(suit,rank){ return {suit,rank}; }
 const WAIT = {wait:true}; // 「あと1枚」を表すプレースホルダー牌
@@ -1299,6 +1561,153 @@ function renderFlowDemo(){
   if(idx>0) document.getElementById("demoPrevBtn").onclick=()=>{ state.demoIndex=idx-1; render(); };
   if(idx<DEMO_STEPS.length-1) document.getElementById("demoNextBtn").onclick=()=>{ state.demoIndex=idx+1; render(); };
   else document.getElementById("demoDoneBtn").onclick=()=>go("home");
+}
+
+/* ==================== 点数計算機画面 ==================== */
+function startScoreCalc(){
+  go("scoreCalc", {
+    calcTiles: [],
+    calcDora: [],
+    calcWinMethod: "ron",
+    calcRiichi: false,
+    calcDealer: false,
+    calcSeatWind: null,
+    calcRoundWind: null,
+  });
+}
+function renderScoreCalcResult(){
+  const s = state;
+  if(s.calcTiles.length!==14){
+    return `<div class="error-box">手牌が${s.calcTiles.length}枚です。14枚になるように調整してください。</div>`;
+  }
+  const opts = {
+    seatWind: s.calcSeatWind, roundWind: s.calcRoundWind,
+    isTsumo: s.calcWinMethod==="tsumo", isRiichi: s.calcRiichi,
+  };
+  let doraCount = 0;
+  s.calcDora.forEach(ind=>{ doraCount += countDora(s.calcTiles, doraTileFromIndicator(ind)); });
+  const r = bestScoreResult(s.calcTiles, opts, doraCount);
+  if(!r){
+    return `<div class="error-box">この14枚では手が成立しません（4面子+雀頭、七対子、国士無双のいずれの形にもなっていません）。牌の組み合わせを確認してください。</div>`;
+  }
+  if(r.tier==="役なし"){
+    return `<div class="error-box">役なし → このままでは上がれません（リーチ・ツモなど、成立条件を見直してください）</div>`;
+  }
+  const yakuList = r.yakuman.length ? r.yakuman : r.regular;
+  const yakuHtml = yakuList.map(y=>`<span class="yaku-chip">${y}</span>`).join("");
+  const p = r.points;
+  let scoreLine, detailLines=[];
+  if(opts.isTsumo){
+    if(s.calcDealer){
+      scoreLine = `${p.tsumoDealerEach.toLocaleString()}点オール（合計${(p.tsumoDealerEach*3).toLocaleString()}点）`;
+    } else {
+      scoreLine = `${p.tsumoNonDealerFromNonDealer.toLocaleString()} / ${p.tsumoNonDealerFromDealer.toLocaleString()}点（合計${(p.tsumoNonDealerFromNonDealer*2+p.tsumoNonDealerFromDealer).toLocaleString()}点）`;
+      detailLines.push(`子から${p.tsumoNonDealerFromNonDealer.toLocaleString()}点ずつ、親から${p.tsumoNonDealerFromDealer.toLocaleString()}点`);
+    }
+  } else {
+    scoreLine = `${(s.calcDealer?p.ronDealer:p.ronNonDealer).toLocaleString()}点`;
+  }
+  const hanFuText = r.yakuman.length ? "" : `${r.han}翻${r.doraCount>0?`（役${r.baseHan}翻+ドラ${r.doraCount}）`:""}${r.fu}符　`;
+  const fuBreakdown = r.fuParts.length ? `<div class="fu-list">符の内訳：${r.fuParts.join("／")}</div>` : "";
+  return `
+    <div class="hint">検出した役</div>
+    <div style="text-align:center;">${yakuHtml}</div>
+    <div class="score-big">${hanFuText}${r.tier}</div>
+    <div style="text-align:center;font-size:1.1rem;">${scoreLine}</div>
+    ${detailLines.map(l=>`<div class="hint">${l}</div>`).join("")}
+    ${fuBreakdown}
+  `;
+}
+function renderScoreCalc(){
+  const s = state;
+  const handHtml = s.calcTiles.map((t,i)=>
+    `<button class="tile-btn" data-idx="${i}">${renderTile(t)}<span class="remove-x">✕</span></button>`
+  ).join("");
+  const countCls = "count-badge" + (s.calcTiles.length===14 ? " ready" : (s.calcTiles.length>14 ? " over" : ""));
+  const pickerHtml = TILES.map((t,i)=>`<button class="picker-tile" data-i="${i}">${renderTile(t,"small")}</button>`).join("");
+  const doraHtml = s.calcDora.length===0
+    ? `<div class="hint">まだ指定されていません</div>`
+    : s.calcDora.map((t,i)=>{
+        const doraTile = doraTileFromIndicator(t);
+        return `<button class="tile-btn" data-dora-idx="${i}" title="ドラは${tileFullName(doraTile)}">${renderTile(t)}<span class="remove-x">✕</span></button>`;
+      }).join("");
+  const windOptions = (current) => `<option value=""${current?"":" selected"}>指定なし</option>` +
+    [1,2,3,4].map(r=>`<option value="${r}"${current===r?" selected":""}>${Z_LABEL[r]}</option>`).join("");
+
+  app.innerHTML = `
+    <div class="card">
+      <div class="result-title" style="font-size:1.2rem;">🧮 点数計算機</div>
+      <div class="hint">実際の手牌を14枚選び、状況を入力すると役・翻・符・点数を計算します</div>
+      <div class="section-label">① 手牌（14枚になるように）</div>
+      <div style="text-align:center;"><span class="${countCls}">${s.calcTiles.length} / 14枚</span></div>
+      <div class="tiles-row hand-row">${handHtml}</div>
+      <div class="section-label">タップして追加</div>
+      <div class="picker-grid" id="calcPickerGrid">${pickerHtml}</div>
+    </div>
+    <div class="card">
+      <div class="section-label">② 上がり方</div>
+      <div class="toggle-group" id="calcWinGroup"></div>
+      <div class="section-label">リーチ</div>
+      <div class="toggle-group" id="calcRiichiGroup"></div>
+      <div class="section-label">親（ディーラー）かどうか</div>
+      <div class="toggle-group" id="calcDealerGroup"></div>
+      <div class="section-label">自風・場風（わからなければ指定なしのままでOK）</div>
+      <div class="row" style="display:flex;gap:8px;justify-content:center;">
+        <select class="calc-select" id="calcSeatWindSelect">${windOptions(s.calcSeatWind)}</select>
+        <select class="calc-select" id="calcRoundWindSelect">${windOptions(s.calcRoundWind)}</select>
+      </div>
+      <div class="section-label">③ ドラ表示牌（0枚〜。裏ドラも同じ欄に追加でOK）</div>
+      <div class="tiles-row hand-row">${doraHtml}</div>
+      <div class="picker-grid" id="calcDoraPickerGrid">${pickerHtml}</div>
+      <div class="hint" style="margin-top:10px;">※門前（鳴きなし）の手を前提とした簡易計算です。待ちの種類による符の違いは両面待ちと仮定します。一発・嶺上開花・海底摸月・河底撈魚・槍槓・赤ドラは含みません。</div>
+    </div>
+    <div class="btn-row" style="justify-content:center;">
+      <button class="btn" id="calcComputeBtn">点数を計算する</button>
+      <button class="btn ghost" id="calcResetBtn">リセット</button>
+    </div>
+    <div class="card" id="calcResultCard" style="display:${s.calcResultVisible?"block":"none"};">${s.calcResultVisible?renderScoreCalcResult():""}</div>
+    <div class="btn-row" style="justify-content:center;margin-top:8px;"><button class="btn ghost" id="calcHomeBtn">ホームに戻る</button></div>
+  `;
+
+  document.querySelectorAll(".card .tile-btn[data-idx]").forEach(b=>{
+    b.onclick = ()=>{ s.calcTiles.splice(parseInt(b.dataset.idx,10),1); s.calcResultVisible=false; render(); };
+  });
+  document.getElementById("calcPickerGrid").querySelectorAll(".picker-tile").forEach(b=>{
+    b.onclick = ()=>{
+      if(s.calcTiles.length>=14) return;
+      s.calcTiles.push(TILES[parseInt(b.dataset.i,10)]);
+      s.calcResultVisible=false;
+      render();
+    };
+  });
+  document.querySelectorAll(".tile-btn[data-dora-idx]").forEach(b=>{
+    b.onclick = ()=>{ s.calcDora.splice(parseInt(b.dataset.doraIdx,10),1); s.calcResultVisible=false; render(); };
+  });
+  document.getElementById("calcDoraPickerGrid").querySelectorAll(".picker-tile").forEach(b=>{
+    b.onclick = ()=>{ s.calcDora.push(TILES[parseInt(b.dataset.i,10)]); s.calcResultVisible=false; render(); };
+  });
+
+  function renderToggle(containerId, options, current, onChange){
+    const el = document.getElementById(containerId);
+    el.innerHTML = options.map(o=>`<button class="toggle-btn${o.value===current?" active":""}" data-v="${o.value}">${o.label}</button>`).join("");
+    el.querySelectorAll(".toggle-btn").forEach(b=>{
+      b.onclick = ()=>{ onChange(b.dataset.v); s.calcResultVisible=false; render(); };
+    });
+  }
+  renderToggle("calcWinGroup", [{value:"ron",label:"ロン"},{value:"tsumo",label:"ツモ"}], s.calcWinMethod, v=>s.calcWinMethod=v);
+  renderToggle("calcRiichiGroup", [{value:"no",label:"リーチなし"},{value:"yes",label:"リーチした"}], s.calcRiichi?"yes":"no", v=>s.calcRiichi=(v==="yes"));
+  renderToggle("calcDealerGroup", [{value:"no",label:"子（非親）"},{value:"yes",label:"親（ディーラー）"}], s.calcDealer?"yes":"no", v=>s.calcDealer=(v==="yes"));
+
+  document.getElementById("calcSeatWindSelect").onchange = (e)=>{ s.calcSeatWind = e.target.value?parseInt(e.target.value,10):null; s.calcResultVisible=false; };
+  document.getElementById("calcRoundWindSelect").onchange = (e)=>{ s.calcRoundWind = e.target.value?parseInt(e.target.value,10):null; s.calcResultVisible=false; };
+
+  document.getElementById("calcComputeBtn").onclick = ()=>{ s.calcResultVisible=true; render(); };
+  document.getElementById("calcResetBtn").onclick = ()=>{
+    s.calcTiles=[]; s.calcDora=[]; s.calcWinMethod="ron"; s.calcRiichi=false; s.calcDealer=false;
+    s.calcSeatWind=null; s.calcRoundWind=null; s.calcResultVisible=false;
+    render();
+  };
+  document.getElementById("calcHomeBtn").onclick = ()=>go("home");
 }
 
 function nameWithReading(y){ return y.reading ? rb(y.name, y.reading) : y.name; }
@@ -2394,6 +2803,7 @@ function render(){
   else if(state.screen==="yakuTable") renderYakuTable();
   else if(state.screen==="tutorial") renderTutorial();
   else if(state.screen==="flowDemo") renderFlowDemo();
+  else if(state.screen==="scoreCalc") renderScoreCalc();
 }
 function startFlowDemo(){
   go("flowDemo", {demoIndex:0});
