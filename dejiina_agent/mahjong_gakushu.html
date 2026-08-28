@@ -1201,7 +1201,12 @@ function computeYakuForShape(tiles14, shape, opts){
     const allKotsu = groups.every(g=>g.kind==="kotsu");
     const allShuntsu = groups.every(g=>g.kind==="shuntsu");
     if(allKotsu) regular.push("対々和");
-    if(groups.filter(g=>g.kind==="kotsu").length>=3) regular.push("三暗刻");
+    // 三暗刻：ロンの場合、その和了牌がシャンポン待ちのどちらかの刻子を完成させた可能性があり、
+    // その刻子は「明刻」扱い（暗刻に数えない）になるルールがある。刻子がちょうど3組のときはロンだと
+    // 本当に3組とも暗刻か断定できないため、安全側に倒してツモの場合のみ認める。刻子が4組（対々和）なら、
+    // ロンでどれか1組が明刻になっても残り3組は確実に暗刻のままなので、ロンでも三暗刻は成立する。
+    const kotsuCount = groups.filter(g=>g.kind==="kotsu").length;
+    if(kotsuCount>=3 && (opts.isTsumo || kotsuCount>=4)) regular.push("三暗刻");
 
     const shuntsuKeys = groups.filter(g=>g.kind==="shuntsu").map(g=>g.suit+"-"+g.rank);
     if(shuntsuKeys.some((k,i)=>shuntsuKeys.indexOf(k)!==i)) regular.push("一盃口");
@@ -1548,6 +1553,10 @@ function renderFlowDemo(){
 }
 
 /* ==================== 点数計算機画面 ==================== */
+const CALC_SUIT_ORDER = {m:0,p:1,s:2,z:3};
+function sortHandTiles(arr){
+  arr.sort((a,b)=> (CALC_SUIT_ORDER[a.suit]-CALC_SUIT_ORDER[b.suit]) || (a.rank-b.rank));
+}
 function startScoreCalc(){
   go("scoreCalc", {
     calcTiles: [],
@@ -1660,6 +1669,7 @@ function renderScoreCalc(){
     b.onclick = ()=>{
       if(s.calcTiles.length>=14) return;
       s.calcTiles.push(TILES[parseInt(b.dataset.i,10)]);
+      sortHandTiles(s.calcTiles); // タップした順ではなく種類順に並べ、目視で確認しやすくする
       s.calcResultVisible=false;
       render();
     };
