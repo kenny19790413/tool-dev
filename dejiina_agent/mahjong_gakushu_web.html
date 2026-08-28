@@ -456,7 +456,7 @@ function shuffle(arr){
 function pickN(arr,n){ return shuffle(arr).slice(0,n); }
 
 /* ==================== 出題重複防止 ==================== */
-const recentHistory = {1:[],2:[],3:[],4:[],5:[],6:[],7:[],8:[]};
+const recentHistory = {1:[],2:[],3:[],4:[],5:[],6:[],7:[],8:[],9:[]};
 function pushHistory(stage,key){
   const h=recentHistory[stage];
   h.push(key);
@@ -483,7 +483,7 @@ const LEGACY_KEY="mahjong_gakushu_progress_v1"; // 旧バージョン(名前な�
 
 function freshProgress(){
   const stageStats={};
-  for(let i=1;i<=8;i++) stageStats[i]={c:0,t:0};
+  for(let i=1;i<=9;i++) stageStats[i]={c:0,t:0};
   return {xp:0, correct:0, total:0, stageStats, missed:[], tutorialSeen:false, recentResults:[]};
 }
 function normalizeProgress(p){
@@ -492,7 +492,7 @@ function normalizeProgress(p){
   if(typeof p.correct!=="number") p.correct=0;
   if(typeof p.total!=="number") p.total=0;
   if(!p.stageStats) p.stageStats={};
-  for(let i=1;i<=8;i++){ if(!p.stageStats[i]) p.stageStats[i]={c:0,t:0}; }
+  for(let i=1;i<=9;i++){ if(!p.stageStats[i]) p.stageStats[i]={c:0,t:0}; }
   if(!Array.isArray(p.missed)) p.missed=[];
   if(typeof p.tutorialSeen!=="boolean"){
     p.tutorialSeen = (p.xp>0 || p.total>0); // 既に活動している人には初回チュートリアルを出さない
@@ -605,14 +605,23 @@ function renderTutorial(){
         <li>XPがたまると新しいステージが自動で解放されます（🔒マークが外れます）</li>
         <li>わからない言葉が出てきたら、ホーム画面の「用語解説・役の早見表」でいつでも確認できます</li>
         <li>間違えた問題は自動で記録され、あとで「苦手を復習する」からまとめて解き直せます</li>
+        <li>ルールがまだピンとこない場合は、下の「1局の流れを見てみる」で実際の牌を使った流れを先に見ておくのがおすすめです</li>
       </ol>
-      <div class="btn-row"><button class="btn" id="tutorialStartBtn">さっそくはじめる</button></div>
+      <div class="btn-row">
+        <button class="btn" id="tutorialStartBtn">さっそくはじめる</button>
+        <button class="btn ghost" id="tutorialDemoBtn">🎬 1局の流れを見てみる</button>
+      </div>
     </div>
   `;
   document.getElementById("tutorialStartBtn").onclick=()=>{
     progress.tutorialSeen = true;
     saveProgress();
     go("home");
+  };
+  document.getElementById("tutorialDemoBtn").onclick=()=>{
+    progress.tutorialSeen = true;
+    saveProgress();
+    startFlowDemo();
   };
 }
 
@@ -666,6 +675,7 @@ const STAGE_DEF = [
   {id:6, title:"役満を見抜こう", desc:"国士無双・大三元・字一色などの役満を見分けよう", unlockXp:660},
   {id:7, title:"何切る？", desc:"14枚の手牌から、今切るべき牌を見抜こう（実践編）", unlockXp:920},
   {id:8, title:"危険度を見抜く", desc:"相手の捨て牌を見て、絶対に安全な牌（現物）を見抜こう（中級編）", unlockXp:1230},
+  {id:9, title:"筋と押し引きを学ぶ", desc:"スジを読む力と、攻めるか降りるかの基本判断を身につけよう（中級編）", unlockXp:1600},
   {id:5, title:"総合レベル診断", desc:"全ジャンルからランダム出題。正答率でレベル判定", unlockXp:0},
 ];
 
@@ -687,6 +697,7 @@ function renderHome(){
         <div class="hint" style="margin-top:4px;">${nextText}</div>
       </div>
       <div class="hint" style="margin-top:8px;"><button class="link-btn" id="yakuTableBtn">📖 用語解説・役の早見表を見る</button></div>
+      <div class="hint" style="margin-top:6px;"><button class="link-btn" id="flowDemoBtn">🎬 1局の流れを実演で見る</button></div>
       <div class="hint" style="margin-top:6px;">
         ${(progress.missed||[]).length>0
           ? `<button class="link-btn" id="reviewBtn">🔁 苦手を復習する（${progress.missed.length}問）</button>`
@@ -698,6 +709,7 @@ function renderHome(){
     </div>
   `;
   document.getElementById("yakuTableBtn").onclick=()=>go("yakuTable");
+  document.getElementById("flowDemoBtn").onclick=()=>startFlowDemo();
   if((progress.missed||[]).length>0){
     document.getElementById("reviewBtn").onclick=()=>startReview();
   }
@@ -1123,6 +1135,11 @@ const GLOSSARY_ACTIONS = [
   {name:"現物", reading:"げんぶつ", desc:"ある人がすでに捨てた牌のこと。その人はフリテンになるため、現物を切っても絶対にロンされない（100%安全）"},
   {name:"安全牌", reading:"あんぱい", desc:"ロンされる心配がない（低い）牌のこと。現物が最も確実な安全牌"},
   {name:"危険牌", reading:"きけんぱい", desc:"まだ誰にも捨てられていない牌で、ロンされる可能性を否定できない牌のこと"},
+  {name:"筋", reading:"すじ", desc:"ある牌（例：4）が捨てられていると、その牌を含む両面待ち（3・6待ちなど）はその人にはないと考えられるため、反対側の牌（この例では1と7）が比較的安全とされる考え方。ただし単騎・シャンポン・カンチャン待ちには通用しないので絶対安全ではない", example:[T("s",4),T("s",1),T("s",7)]},
+  {name:"壁", reading:"かべ", desc:"ある数字の牌が場に4枚すべて見えている状態のこと（例：5が4枚とも見えている）。その数字を挟む待ち（3・4の3-6待ちなど）が成立しなくなるため、周辺の牌が安全になりやすい"},
+  {name:"押し引き", reading:"おしひき", desc:"攻める（危険を承知で自分の手を進める＝押す）か、降りる（安全牌だけを切って上がりを諦める＝引く/オリる）かを判断すること。聴牌しているか、手の強さ、周りのリーチの有無、安全牌の有無などから総合的に判断する"},
+  {name:"受け入れ枚数", reading:"うけいれまいすう", desc:"ある牌を切ったとき、次にどんな牌が来ればテンパイ（または上がり）に近づけるか、その種類・枚数のこと。受け入れが広い牌を残し、狭い牌から切っていくのが牌効率の基本"},
+  {name:"牌効率", reading:"はいこうりつ", desc:"できるだけ早く・広くテンパイに近づけるように、受け入れ枚数を意識して牌を選ぶ考え方のこと"},
 ];
 const YAKU_REFERENCE = [
   {name:"立直", reading:"リーチ", han:"1翻", desc:"門前で聴牌したときに宣言できる。他に役がなくても、これ自体が役になる（鳴いていたら宣言できない）。このアプリでは待ちの形を扱わないため出題対象外", quizzed:false,
@@ -1228,6 +1245,61 @@ const ADVANCED_ROADMAP = [
   {title:"点数計算を素早くできるようにする", desc:"暗記と実践を繰り返して、符・翻からすぐ点数が言えるようにする"},
   {title:"自分の得意な戦い方を見つける", desc:"速攻型・染め手重視・鳴き活用など、自分に合ったスタイルを探してみる"},
 ];
+
+/* ==================== 1局の流れ ミニ実演モード ==================== */
+// 実際の牌を使って「配牌→ツモ→打牌→…→和了→点数計算」の一連の流れをページ送りで見せる。
+// 各ステップのtiles/groupsは説明用に固定した具体例（架空の1局）で、出題ロジックとは独立している。
+const DEMO_STEPS = [
+  { title:"① 配牌", desc:"対局が始まると、まず全員に13枚ずつ牌が配られます。まだバラバラな状態です。",
+    flat:[T("m",2),T("m",3),T("m",5),T("p",4),T("p",5),T("p",7),T("s",7),T("s",8),T("s",9),T("z",6),T("z",6),T("p",9),T("z",1)] },
+  { title:"② 自分の番：ツモ", desc:"自分の番が来たら、山から1枚引きます（これを「ツモ」と言います）。手牌が14枚になります。",
+    flat:[T("m",2),T("m",3),T("m",4),T("m",5),T("p",4),T("p",5),T("p",7),T("s",7),T("s",8),T("s",9),T("z",6),T("z",6),T("p",9),T("z",1)],
+    highlightLast:true },
+  { title:"③ いらない牌を捨てる", desc:"14枚の中から、一番使わなそうな牌を1枚選んで場に捨てます。ここでは孤立している「東」を捨てました。",
+    flat:[T("m",2),T("m",3),T("m",4),T("m",5),T("p",4),T("p",5),T("p",7),T("s",7),T("s",8),T("s",9),T("z",6),T("z",6),T("p",9)],
+    discardNote:"捨てた牌" , discard:[T("z",1)] },
+  { title:"④ 他の人の番", desc:"自分が捨てた牌がほしい人がいれば、「ポン」「チー」「カン」で横取りできます（鳴かなければ、そのまま次の人の番に進みます）。これを全員が順番に繰り返していきます。", noTiles:true },
+  { title:"⑤ 数巡後…手が育ってきた", desc:"何度かツモと打牌を繰り返すうちに、バラバラだった牌が少しずつ面子（まとまり）になっていきます。ここでは3つの面子がそろい、残りは対子候補だけになりました。",
+    chunks:[[T("m",2),T("m",3),T("m",4)],[T("p",4),T("p",5),T("p",6)],[T("s",7),T("s",8),T("s",9)],[T("z",6),T("z",6),T("z",6)],[T("p",9)]] },
+  { title:"⑥ 聴牌：あと1枚で完成", desc:"この状態を「聴牌（テンパイ）」と言います。「九筒」がもう1枚来れば手が完成する状態です。",
+    chunks:[[T("m",2),T("m",3),T("m",4)],[T("p",4),T("p",5),T("p",6)],[T("s",7),T("s",8),T("s",9)],[T("z",6),T("z",6),T("z",6)],[T("p",9),WAIT]] },
+  { title:"⑦ ロン・ツモで和了", desc:"待っていた「九筒」が出た（ロン）、または自分で引いた（ツモ）ら、手が完成して「和了（あがり）」です！",
+    chunks:[[T("m",2),T("m",3),T("m",4)],[T("p",4),T("p",5),T("p",6)],[T("s",7),T("s",8),T("s",9)],[T("z",6),T("z",6),T("z",6)],[T("p",9),T("p",9)]] },
+  { title:"⑧ 役を確認して点数計算", desc:"最後に「どの役に当てはまるか」を確認し、符と翻から点数を計算します。この例なら立直・役牌（發）などが付き、点数が決まります。山の牌がなくなっても誰も上がれなければ「流局」としてその局は終わります。", noTiles:true },
+];
+function demoStepHtml(step){
+  if(step.noTiles) return "";
+  if(step.chunks) return handChunksHtml(step.chunks, "");
+  const tilesHtml = step.flat.map((t,i)=>{
+    const cls = (step.highlightLast && i===step.flat.length-1) ? ' style="box-shadow:0 0 0 3px var(--gold);border-radius:12px;"' : "";
+    return `<span${cls}>${renderTile(t,"small")}</span>`;
+  }).join("");
+  let html = `<div class="tiles-row hand-row">${tilesHtml}</div>`;
+  if(step.discard){
+    html += `<div class="hint" style="margin-top:10px;">${step.discardNote}</div><div class="tiles-row" style="margin-top:2px;">${step.discard.map(t=>renderTile(t,"small")).join("")}</div>`;
+  }
+  return html;
+}
+function renderFlowDemo(){
+  const idx = state.demoIndex||0;
+  const step = DEMO_STEPS[idx];
+  app.innerHTML = `
+    <div class="card">
+      <div class="result-title" style="font-size:1.2rem;">${step.title}</div>
+      <div class="hint" style="font-size:.85rem;margin-top:2px;">${idx+1} / ${DEMO_STEPS.length}</div>
+      ${demoStepHtml(step)}
+      <div class="wait-note" style="margin-top:16px;">${step.desc}</div>
+      <div class="btn-row" style="margin-top:16px;">
+        ${idx>0?'<button class="btn ghost" id="demoPrevBtn">← 前へ</button>':''}
+        ${idx<DEMO_STEPS.length-1?'<button class="btn" id="demoNextBtn">次へ →</button>':'<button class="btn" id="demoDoneBtn">ホームに戻る</button>'}
+      </div>
+    </div>
+  `;
+  if(idx>0) document.getElementById("demoPrevBtn").onclick=()=>{ state.demoIndex=idx-1; render(); };
+  if(idx<DEMO_STEPS.length-1) document.getElementById("demoNextBtn").onclick=()=>{ state.demoIndex=idx+1; render(); };
+  else document.getElementById("demoDoneBtn").onclick=()=>go("home");
+}
+
 function nameWithReading(y){ return y.reading ? rb(y.name, y.reading) : y.name; }
 function exampleTilesHtml(example){
   if(!example || !example.length) return "";
@@ -1298,6 +1370,7 @@ function renderYakuTable(){
       <div class="result-title" style="font-size:1.1rem;">1局の流れ</div>
       <div class="result-sub">麻雀は基本的にこの流れをぐるぐる繰り返すゲーム</div>
       <ol class="fu-rule-list">${flowRows}</ol>
+      <div class="hint" style="margin-top:10px;"><button class="link-btn" id="flowDemoBtnInGlossary">🎬 実際の牌を使って実演で見る</button></div>
     </div>
     <div class="card">
       <div class="result-title" style="font-size:1.1rem;">牌の種類</div>
@@ -1345,6 +1418,7 @@ function renderYakuTable(){
     </div>
     <div class="btn-row"><button class="btn ghost" id="yakuTableBackBtn">ホームに戻る</button></div>
   `;
+  document.getElementById("flowDemoBtnInGlossary").onclick=()=>startFlowDemo();
   document.getElementById("yakuTableBackBtn").onclick=()=>go("home");
 }
 
@@ -1464,7 +1538,34 @@ function genHand4(){
   return {shapeKind:"standard", groups, pair:randomPair()};
 }
 
+// 役の併用ミニ出題：2つの役が同じ手で同時に成立できるかを問う（用語解説の「役の併用」データを流用）
+function genYakuComboCheck(){
+  const isCompatible = Math.random()<0.5;
+  const pool = isCompatible ? YAKU_COMPATIBLE_EXAMPLES : YAKU_EXCLUSIVE_PAIRS;
+  let item, key;
+  do{
+    item = pool[Math.floor(Math.random()*pool.length)];
+    key = "combo|"+(isCompatible?item.combo.join(","):item.pair.join(","));
+  }while(isRecent(4,key));
+  pushHistory(4,key);
+
+  const names = isCompatible ? item.combo : item.pair;
+  const correct = isCompatible ? "併用できる" : "併用できない";
+  const choices = shuffle(["併用できる","併用できない"]);
+  const note = isCompatible ? item.note : item.reason;
+  const namesHtml = names.map(n=>`<span class="yaku-han-chip">${n}</span>`).join(" + ");
+
+  return {
+    stage:4,
+    question:"次の役の組み合わせは、1つの手で同時に成立できますか？",
+    render: `<div class="hint" style="margin:14px 0;font-size:1rem;">${namesHtml}</div>`,
+    choices,
+    answer: correct,
+    note,
+  };
+}
 function genQ4(){
+  if(Math.random()<0.25) return genYakuComboCheck();
   let h, key, tiles;
   while(true){
     h = genHand4();
@@ -1590,7 +1691,106 @@ function genQ6(){
   };
 }
 
+/* ==================== 手牌分解エンジン（受け入れ枚数の判定に使用） ==================== */
+// 14枚が「4面子+雀頭」の形に組めるかどうかをバックトラック法で判定する（mahjong_score_scanner.htmlと同じアルゴリズム）。
+// 七対子・国士無双は「何切る？」の受け入れ判定では稀なケースなので、ここでは標準形のみ簡略的に扱う。
+function tilesToCountsMap(tiles){
+  const counts={};
+  tiles.forEach(t=>{ const k=t.suit+t.rank; counts[k]=(counts[k]||0)+1; });
+  return counts;
+}
+function decomposeMeldsForUkeire(counts){
+  const keys = Object.keys(counts).filter(k=>counts[k]>0).sort();
+  if(keys.length===0) return true; // 全部消費できた
+  const key = keys[0];
+  const suit = key[0];
+  const rank = parseInt(key.slice(1),10);
+  if(counts[key] >= 3){
+    counts[key]-=3;
+    if(decomposeMeldsForUkeire(counts)){ counts[key]+=3; return true; }
+    counts[key]+=3;
+  }
+  if(suit!=="z" && rank<=7){
+    const k2=suit+(rank+1), k3=suit+(rank+2);
+    if((counts[k2]||0)>0 && (counts[k3]||0)>0){
+      counts[key]--; counts[k2]--; counts[k3]--;
+      if(decomposeMeldsForUkeire(counts)){ counts[key]++; counts[k2]++; counts[k3]++; return true; }
+      counts[key]++; counts[k2]++; counts[k3]++;
+    }
+  }
+  return false;
+}
+function isStandardWin14(tiles14){
+  if(tiles14.length!==14) return false;
+  const counts = tilesToCountsMap(tiles14);
+  for(const pairKey of Object.keys(counts)){
+    if(counts[pairKey] < 2) continue;
+    counts[pairKey]-=2;
+    const ok = decomposeMeldsForUkeire(counts);
+    counts[pairKey]+=2;
+    if(ok) return true;
+  }
+  return false;
+}
+// 13枚の手が聴牌かどうかを判定し、聴牌なら待ち牌（受け入れ）をすべて返す
+function tenpaiWaits13(tiles13){
+  const waits=[];
+  TILES.forEach(cand=>{
+    if(isStandardWin14([...tiles13, cand])) waits.push(cand);
+  });
+  return waits;
+}
+
 /* ==================== 問題生成: ステージ7 何切る？（牌効率・実践） ==================== */
+// 本格的な受け入れ枚数の考え方：3面子+雀頭が完成した状態から、あと1組だけ崩れている14枚を作り、
+// 崩れた組の「浮き牌」を切ればテンパイに直結することを、実際に手牌分解エンジンで検証しながら出題する。
+function genUkeireCheck(){
+  let tiles14, correctIdx, waits, key, attempts=0;
+  outer: while(attempts<40){
+    attempts++;
+    const g1 = randomMeldTiles(), g2 = randomMeldTiles(), g3 = randomMeldTiles();
+    const pt = randTile(); const pair=[{...pt},{...pt}];
+    const brokenBase = randomMeldTiles();
+    const keepTwo = brokenBase.slice(0,2);
+    const usedKeys = [...g1,...g2,...g3,...pair,...keepTwo].map(t=>t.suit+t.rank);
+    const strayPool = TILES.filter(t=>!usedKeys.includes(t.suit+t.rank));
+    if(strayPool.length===0) continue;
+    const strayTile = strayPool[Math.floor(Math.random()*strayPool.length)];
+    tiles14 = [...g1,...g2,...g3,...pair,...keepTwo,strayTile];
+    if(exceedsFourCopies(tiles14)) continue;
+
+    const tenpaiChoices=[];
+    for(let i=0;i<tiles14.length;i++){
+      const rest=[...tiles14]; rest.splice(i,1);
+      const w = tenpaiWaits13(rest);
+      if(w.length>0) tenpaiChoices.push({idx:i, waits:w});
+    }
+    if(tenpaiChoices.length!==1) continue; // 正解が一意に定まる手だけ採用する
+
+    key = tiles14.map(t=>t.suit+t.rank).sort().join(",");
+    if(isRecent(7,key)) continue;
+    correctIdx = tenpaiChoices[0].idx;
+    waits = tenpaiChoices[0].waits;
+    break outer;
+  }
+  if(correctIdx===undefined){
+    // ごく稀に40回で条件を満たす手が作れなかった場合は、既存のシンプルな出題にフォールバックする
+    return genQ7Basic();
+  }
+  pushHistory(7,key);
+
+  const items = tiles14.map((t,i)=>({t, role: i===correctIdx ? "floaterBad" : "floaterGood"}));
+  const waitNames = waits.map(w=>displayHtml(tileFullName(w).split("（")[0])).join("・");
+
+  return {
+    stage:7,
+    tileClick:true,
+    question:"この14枚、どれを切ればテンパイに一直線ですか？（受け入れを考えて牌をクリックしよう・上級編）",
+    tiles: shuffle(items),
+    note:`豆知識：この牌を切ると「${waitNames}」待ちの聴牌になります。他の牌を切ると、せっかく完成に近づいていた組み合わせを崩してしまい、テンパイが遠のきます`,
+    goodHint:"（その牌を切ると、まだ完成していない組み合わせが残ってしまい、テンパイには届きません）",
+  };
+}
 function randomMeldTiles(){
   if(Math.random()<0.5){
     const suit=pickSuit(); const low=1+Math.floor(Math.random()*7);
@@ -1603,6 +1803,11 @@ function randomMeldTiles(){
 // タイプA: まん中の数牌 vs 老頭牌/風牌（数牌のつながりやすさを比べる）
 // タイプB: 三元牌 vs 風牌（同じ字牌同士でも、役牌になりうる三元牌の方が価値が高いことを比べる）
 function genQ7(){
+  // 3割の確率で「本格的な受け入れ枚数計算」の上級バージョンに分岐する
+  if(Math.random()<0.3) return genUkeireCheck();
+  return genQ7Basic();
+}
+function genQ7Basic(){
   // 「風牌を切れば正解」に偏りすぎないよう、タイプB(三元牌vs風牌、常に風牌が正解)は少なめの15%にする
   const scenario = Math.random()<0.85 ? "middleVsEdge" : "dragonVsWind"; // ループ外で固定し、比率を安定させる
   let group1,group2,pairTiles,taatsu1,taatsu2,floaterGood,floaterBad,key;
@@ -1701,14 +1906,88 @@ function genQ8(){
   };
 }
 
+/* ==================== 問題生成: ステージ9 筋・押し引きを学ぶ（中級編） ==================== */
+// 筋：ある牌を切っているということは、それを含む両面待ちをその手では作っていないはず、という考え方。
+// 出題は「端に近い牌（1・2・8・9）を切った場合」だけに絞り、スジ候補が必ず1枚に断定できるようにしている
+// （3〜7を切った場合は両側にスジができ2枚候補になるため、このアプリの「必ず1つに断定できる」出題方針に合わせて対象外にしている）。
+function sujiPartner(rank){ return rank<=2 ? rank+3 : rank-3; }
+function genSujiCheck(){
+  let suit, rank, partner, key;
+  do{
+    suit = pickSuit();
+    rank = [1,2,8,9][Math.floor(Math.random()*4)];
+    partner = sujiPartner(rank);
+    key = "suji|"+suit+rank;
+  }while(isRecent(9,key));
+  pushHistory(9,key);
+
+  const discardTile = T(suit, rank);
+  const correctTile = T(suit, partner);
+  const usedRanks = [rank, partner];
+  const wrongPool = [];
+  for(let r=1;r<=9;r++){ if(!usedRanks.includes(r)) wrongPool.push(T(suit,r)); }
+  const wrongTiles = pickN(wrongPool, 3);
+
+  const items = shuffle([
+    {t:correctTile, role:"floaterBad"},
+    ...wrongTiles.map(t=>({t, role:"floaterGood"})),
+  ]);
+
+  const lo = Math.min(rank,partner), hi = Math.max(rank,partner);
+  const discardsHtml = `<div class="hint" style="margin-bottom:6px;">相手が捨てた牌</div><div class="tiles-row" style="margin-bottom:14px;">${renderTile(discardTile)}</div>`;
+
+  return {
+    stage:9,
+    tileClick:true,
+    question:"この捨て牌からできる「スジ」はどれ？（両面待ちに対して比較的安全とされる牌をクリックして選ぼう）",
+    contextHtml: discardsHtml,
+    tiles: items,
+    note:`豆知識：${rank}を切っているということは、${lo+1}${lo+2}（同じ種類の数牌）で${lo}・${hi}待ちの両面をこの手では作っていないはずです。そのため反対側の${partner}も比較的安全とされる「スジ」になります。ただし単騎・シャンポン・カンチャン待ちには通用しないので「絶対安全」ではありません（絶対安全なのは現物だけ）`,
+    goodHint:"（その牌はこの捨て牌とスジの関係にありません）",
+  };
+}
+// 押し引き：教科書的にほぼ異論のない基本ケースだけを扱う（実戦の押し引きは点差・巡目なども絡む高度な判断のため、
+// このアプリでは「聴牌の有無」「自分の手の強さ」「周りのリーチ」「安全牌の有無」による最も基本的な指針にとどめる）
+const OSHI_HIKI_SCENARIOS = [
+  { situation:"自分はまだ聴牌していません。上家がリーチを宣言しました。手元には安全牌（現物）があります。",
+    correct:"降りる", reason:"聴牌していない状態では上がれる見込みが薄いのに、無理に危険な牌を切ると放銃のリスクだけを背負うことになります。安全牌があるなら、まずは安全に進めるのが基本です。" },
+  { situation:"自分は聴牌していて、リーチ＋ドラ2の強い手です。誰もリーチしていません。",
+    correct:"攻める", reason:"自分が聴牌していて手も強く、周りにリーチもない状況なら、積極的に攻めて和了を目指すのが基本です。" },
+  { situation:"自分はまだ聴牌していません。誰もリーチしておらず、鳴きも出ていない序盤です。",
+    correct:"攻める", reason:"まだ誰も上がりに近づいている様子がない序盤なら、危険を気にしすぎず自分の手を育てることを優先するのが基本です。" },
+  { situation:"自分は聴牌していますが役はまだついていません。対面がリーチを宣言し、あなたには安全牌がありません。",
+    correct:"攻める", reason:"安全牌が無ければ、降りたくても安全には降りられません。役がなくても聴牌しているなら、自分の待ち牌を切り続けて上がりを目指す（＝勝負を続ける）のが現実的な基本方針です。" },
+];
+function genOshiHikiCheck(){
+  let idx, key;
+  do{
+    idx = Math.floor(Math.random()*OSHI_HIKI_SCENARIOS.length);
+    key = "oshihiki|"+idx;
+  }while(isRecent(9,key));
+  pushHistory(9,key);
+  const s = OSHI_HIKI_SCENARIOS[idx];
+  const choices = shuffle(["攻める","降りる"]);
+  return {
+    stage:9,
+    question:"次の状況、あなたの基本的な判断は？",
+    render:`<div class="wait-note" style="margin:14px 0;">${s.situation}</div>`,
+    choices,
+    answer:s.correct,
+    note:`豆知識：${s.reason}`,
+  };
+}
+function genQ9(){
+  return Math.random()<0.5 ? genSujiCheck() : genOshiHikiCheck();
+}
+
 /* ==================== ステージ5: 総合ミックス ==================== */
 function genQ5(){
-  const gens=[genQ1,genQ2,genQ3,genQ4,genQ6,genQ7,genQ8];
+  const gens=[genQ1,genQ2,genQ3,genQ4,genQ6,genQ7,genQ8,genQ9];
   const g = gens[Math.floor(Math.random()*gens.length)]();
   return {...g, stage:5};
 }
 
-const GENERATORS = {1:genQ1,2:genQ2,3:genQ3,4:genQ4,5:genQ5,6:genQ6,7:genQ7,8:genQ8};
+const GENERATORS = {1:genQ1,2:genQ2,3:genQ3,4:genQ4,5:genQ5,6:genQ6,7:genQ7,8:genQ8,9:genQ9};
 const QUESTIONS_PER_ROUND = 8;
 const MASTER_MIN_ATTEMPTS = QUESTIONS_PER_ROUND; // このステージの習熟バッジに必要な最低挑戦数
 const MASTER_RATE = 80; // 習熟バッジに必要な正答率(%)
@@ -2056,6 +2335,10 @@ function render(){
   else if(state.screen==="nameEntry" || state.screen==="userSwitch") renderNameEntry();
   else if(state.screen==="yakuTable") renderYakuTable();
   else if(state.screen==="tutorial") renderTutorial();
+  else if(state.screen==="flowDemo") renderFlowDemo();
+}
+function startFlowDemo(){
+  go("flowDemo", {demoIndex:0});
 }
 
 render();
