@@ -46,6 +46,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         .map((v: unknown) => Number(v))
         .filter((n: number) => Number.isInteger(n) && n >= 1 && n <= 12);
     if (body.name !== undefined && String(body.name).trim()) data.name = String(body.name).trim();
+    if (body.valuationUrl !== undefined) data.valuationUrl = body.valuationUrl || null;
 
     const asset = await prisma.asset.update({ where: { id: Number(id) }, data });
     return NextResponse.json({ asset });

@@ -88,6 +88,16 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             </a>
           )}
           {asset.broker && <p className="text-sm text-gray-400">証券会社: {asset.broker}</p>}
+          {isManualValuation && asset.valuationUrl && (
+            <a
+              href={asset.valuationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:underline break-all block"
+            >
+              評価額を確認する（外部サイト）
+            </a>
+          )}
         </div>
         <div className="flex gap-2">
           {autoPriced && <RefreshPriceButton assetId={asset.id} />}
@@ -353,6 +363,8 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             showShareholderPerkFields={isStock}
             shareholderPerk={asset.shareholderPerk}
             shareholderPerkMonths={asset.shareholderPerkMonths}
+            showValuationUrlField={isManualValuation}
+            valuationUrl={asset.valuationUrl}
           />
         </CardContent>
       </Card>
@@ -363,7 +375,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             <CardTitle className="text-base">評価額の履歴</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <AddValuationForm assetId={asset.id} currency={asset.currency} />
+            <AddValuationForm assetId={asset.id} currency={asset.currency} hasValuationUrl={!!asset.valuationUrl} />
             <div className="divide-y">
               {typedAsset.valuations.map((v) => (
                 <div key={v.id} className="py-2 flex justify-between text-sm">
