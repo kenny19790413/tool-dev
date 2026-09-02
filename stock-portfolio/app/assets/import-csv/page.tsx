@@ -61,6 +61,9 @@ interface HoldingRow {
   valuationValue: number;
   applyMonths: boolean;
   distributionMonths: number[];
+  applyQuantity: boolean;
+  quantityValue: number;
+  avgCostValue: number;
 }
 
 type ParsedKind = 'transaction' | 'holdings' | null;
@@ -101,6 +104,7 @@ export default function ImportCsvPage() {
         const nextRows: HoldingRow[] = (data.items as HoldingItem[]).map((item) => {
           const asset = item.matched ? (assetsById.get(item.matched.id) ?? null) : null;
           const isFundLike = item.productType === '投信' || item.productType === '外投';
+          const isStock = item.productType === '株式';
           const months = [...new Set([...(asset?.distributionMonths ?? []), ...item.settlement.months])].sort(
             (a, b) => a - b
           );
@@ -111,6 +115,9 @@ export default function ImportCsvPage() {
             valuationValue: item.suggestedValuation ?? 0,
             applyMonths: !!(isFundLike && asset && (item.settlement.months.length > 0 || item.settlement.noDistribution)),
             distributionMonths: months,
+            applyQuantity: !!(isStock && asset && item.row.quantity !== null),
+            quantityValue: item.row.quantity ?? asset?.quantity ?? 0,
+            avgCostValue: item.row.acquisitionCostPerUnit ?? asset?.avgCost ?? 0,
           };
         });
         setKind('holdings');
@@ -177,7 +184,7 @@ export default function ImportCsvPage() {
   }
 
   async function handleApplyHoldings() {
-    const targets = holdingRows.filter((r) => (r.applyValuation || r.applyMonths) && r.asset);
+    const targets = holdingRows.filter((r) => (r.applyValuation || r.applyMonths || r.applyQuantity) && r.asset);
     if (targets.length === 0) {
       toast.error('反映する項目を選択してください');
       return;
@@ -187,11 +194,17 @@ export default function ImportCsvPage() {
     let failed = 0;
     for (const row of targets) {
       try {
-        if (row.applyMonths) {
+        if (row.applyMonths || row.applyQuantity) {
+          const body: Record<string, unknown> = {};
+          if (row.applyMonths) body.distributionMonths = row.distributionMonths;
+          if (row.applyQuantity) {
+            body.quantity = row.quantityValue;
+            body.avgCost = row.avgCostValue;
+          }
           const res = await fetch(`/api/assets/${row.asset!.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ distributionMonths: row.distributionMonths }),
+            body: JSON.stringify(body),
           });
           if (!res.ok) throw new Error();
         }
@@ -218,7 +231,8 @@ export default function ImportCsvPage() {
       <h1 className="text-2xl font-bold text-gray-800">証券会社のCSVから取り込む</h1>
       <p className="text-sm text-gray-500">
         岡三証券・みずほ証券の「取引履歴」CSVと、岡三証券の「預り資産（預り証券）」CSVに対応しています。ファイルの種類は自動判別します。
-        購入取引（現物買付・現物募集）や株式銘柄は参考情報として表示しますが、保有数量・取得単価への自動反映は現時点では行いません。
+        「預り資産」CSVの株式銘柄は、現時点の保有数量・取得単価をそのまま反映できます（内容を確認してからチェックを入れてください）。
+        「取引履歴」CSVの購入取引は、売却分を考慮していない単純集計のため参考情報のみで自動反映は行いません。
         <Link href="/assets" className="text-blue-600 underline ml-1">
           資産一覧に戻る
         </Link>
@@ -390,7 +404,47 @@ export default function ImportCsvPage() {
                     </div>
                   )}
 
-                  {row.item.productType === '株式' && (
+                  {row.item.productType === '株式' && row.asset && row.item.row.quantity !== null && (
+                    <div className="bg-blue-50 rounded-md p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={row.applyQuantity}
+                          onChange={(e) => updateHoldingRow(i, { applyQuantity: e.target.checked })}
+                        />
+                        <span className="text-sm font-medium text-blue-900">保有数量・取得単価を更新する</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-6">
+                        <div>
+                          <Label className="text-xs text-gray-500">保有数量</Label>
+                          <Input
+                            type="number"
+                            value={row.quantityValue}
+                            onChange={(e) => updateHoldingRow(i, { quantityValue: Number(e.target.value) })}
+                          />
+                          {row.asset.quantity !== null && (
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              現在の登録値: {row.asset.quantity.toLocaleString('ja-JP')}
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">取得単価（円）</Label>
+                          <Input
+                            type="number"
+                            value={row.avgCostValue}
+                            onChange={(e) => updateHoldingRow(i, { avgCostValue: Number(e.target.value) })}
+                          />
+                          {row.asset.avgCost !== null && (
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              現在の登録値: {row.asset.avgCost.toLocaleString('ja-JP')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {row.item.productType === '株式' && (!row.asset || row.item.row.quantity === null) && (
                     <p className="text-xs text-gray-500 bg-gray-50 rounded-md p-2">
                       保有数量{row.item.row.quantity?.toLocaleString('ja-JP') ?? '-'}
                       {row.item.row.acquisitionCostPerUnit !== null &&
@@ -405,7 +459,7 @@ export default function ImportCsvPage() {
             <Button onClick={handleApplyHoldings} disabled={applying} className="w-full">
               {applying
                 ? '反映中…'
-                : `選択した${holdingRows.filter((r) => r.applyValuation || r.applyMonths).length}件を反映する`}
+                : `選択した${holdingRows.filter((r) => r.applyValuation || r.applyMonths || r.applyQuantity).length}件を反映する`}
             </Button>
           </CardContent>
         </Card>
