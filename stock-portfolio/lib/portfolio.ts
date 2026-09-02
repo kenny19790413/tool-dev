@@ -171,6 +171,67 @@ export function calcAssetGainPercent(asset: AssetWithValuations, usdJpyRate: num
   return (gain / cost) * 100;
 }
 
+// 資産1件の取得金額の合計（JPY換算、avgCost×数量）。avgCost未入力ならnull。
+export function calcTotalCostJpy(asset: AssetWithValuations, usdJpyRate: number): number | null {
+  if (asset.avgCost === null || asset.avgCost === undefined) return null;
+  if (asset.type === 'STOCK') {
+    const costInCurrency = toNumber(asset.avgCost) * toNumber(asset.quantity);
+    return asset.currency === 'USD' ? costInCurrency * usdJpyRate : costInCurrency;
+  }
+  if (asset.type === 'FUND') {
+    return (toNumber(asset.avgCost) / FUND_NAV_UNIT) * toNumber(asset.quantity);
+  }
+  return null;
+}
+
+export interface DistributionReceiptLike {
+  amount: DecimalLike;
+}
+
+// 配当・分配金の受取記録（実績）の合計をJPY換算する。資産のcurrency建てで記録されている前提。
+export function sumDistributionReceiptsJpy(
+  receipts: DistributionReceiptLike[],
+  currency: string,
+  usdJpyRate: number
+): number {
+  const total = receipts.reduce((sum, r) => sum + toNumber(r.amount), 0);
+  return currency === 'USD' ? total * usdJpyRate : total;
+}
+
+export interface CostRecoverySummary {
+  totalCostJpy: number; // 取得金額の合計
+  gainJpy: number; // 含み損益（現在レート換算の簡易値、calcAssetGainJpyと同じ）
+  cumulativeDistributionJpy: number; // 累計配当・分配金（実績、DistributionReceiptの合計）
+  totalReturnJpy: number; // 含み損益＋累計配当（配当込みの総合損益）
+  totalReturnPercent: number; // 取得金額に対する配当込み総合リターン率（%）
+  recoveryPercent: number; // 取得金額に対する累計配当の回収率（%）。配当だけでどれだけ元が取れているか
+}
+
+// 取得コストを基準にした投資成果サマリー（含み損益＋配当込みの総合リターン、配当による回収率）。
+// avgCost未入力、または取得金額が0以下の場合はnull。
+export function calcCostRecoverySummary(
+  asset: AssetWithValuations,
+  usdJpyRate: number,
+  receipts: DistributionReceiptLike[]
+): CostRecoverySummary | null {
+  const totalCostJpy = calcTotalCostJpy(asset, usdJpyRate);
+  if (totalCostJpy === null || totalCostJpy <= 0) return null;
+  const gainJpy = calcAssetGainJpy(asset, usdJpyRate);
+  if (gainJpy === null) return null;
+
+  const cumulativeDistributionJpy = sumDistributionReceiptsJpy(receipts, asset.currency, usdJpyRate);
+  const totalReturnJpy = gainJpy + cumulativeDistributionJpy;
+
+  return {
+    totalCostJpy,
+    gainJpy,
+    cumulativeDistributionJpy,
+    totalReturnJpy,
+    totalReturnPercent: (totalReturnJpy / totalCostJpy) * 100,
+    recoveryPercent: (cumulativeDistributionJpy / totalCostJpy) * 100,
+  };
+}
+
 // ポートフォリオ全体の含み損益。avgCost未入力の資産（BOND/PRIVATEなど）は集計から除外し、件数を別途返す。
 export function calcPortfolioGain(
   assets: AssetWithValuations[],
@@ -192,6 +253,27 @@ export function calcPortfolioGain(
   }
   const percent = cost !== 0 ? (gain / cost) * 100 : null;
   return { gain, percent, trackedCount, untrackedCount };
+}
+
+// ポートフォリオ全体の取得コストに対する配当回収状況。avgCost未入力の資産は集計から除外する。
+export function calcPortfolioCostRecovery(
+  assets: AssetWithValuations[],
+  usdJpyRate: number,
+  receiptsByAssetId: Map<number, DistributionReceiptLike[]>
+): { totalCostJpy: number; cumulativeDistributionJpy: number; recoveryPercent: number | null; trackedCount: number } {
+  let totalCostJpy = 0;
+  let cumulativeDistributionJpy = 0;
+  let trackedCount = 0;
+  for (const asset of assets) {
+    const cost = calcTotalCostJpy(asset, usdJpyRate);
+    if (cost === null) continue;
+    trackedCount++;
+    totalCostJpy += cost;
+    const receipts = receiptsByAssetId.get(asset.id) ?? [];
+    cumulativeDistributionJpy += sumDistributionReceiptsJpy(receipts, asset.currency, usdJpyRate);
+  }
+  const recoveryPercent = totalCostJpy > 0 ? (cumulativeDistributionJpy / totalCostJpy) * 100 : null;
+  return { totalCostJpy, cumulativeDistributionJpy, recoveryPercent, trackedCount };
 }
 
 // 銘柄名の名寄せ用に、全角英数字を半角化した上で空白・括弧類を除去

@@ -10,6 +10,7 @@ import {
   calcAfterTaxAmount,
   calcCorporateWithholding,
   calcAssetGainJpy,
+  calcPortfolioCostRecovery,
   DIVIDEND_TAX_RATE,
   CORPORATE_WITHHOLDING_RATE,
   ASSET_TYPE_LABEL,
@@ -35,7 +36,10 @@ export default async function DashboardPage() {
 
   const [assets, latestRate, allocationTargets] = await Promise.all([
     prisma.asset.findMany({
-      include: { valuations: { orderBy: { valuedAt: 'desc' }, take: 1 } },
+      include: {
+        valuations: { orderBy: { valuedAt: 'desc' }, take: 1 },
+        distributionReceipts: { select: { amount: true } },
+      },
     }),
     prisma.exchangeRate.findFirst({ where: { pair: 'USDJPY' }, orderBy: { fetchedAt: 'desc' } }),
     prisma.allocationTarget.findMany(),
@@ -53,6 +57,8 @@ export default async function DashboardPage() {
     .filter((a) => a.ownerType === 'CORPORATE')
     .reduce((sum, a) => sum + calcAssetDistributionJpy(a, usdJpyRate), 0);
   const portfolioGain = calcPortfolioGain(typed, usdJpyRate);
+  const receiptsByAssetId = new Map(assets.map((a) => [a.id, a.distributionReceipts]));
+  const costRecovery = calcPortfolioCostRecovery(typed, usdJpyRate, receiptsByAssetId);
 
   // 損益通算シミュレーション（個人保有・含み損のある資産のみ対象）。
   // 実際に売却（実現）して初めて使える制度である旨、および同一年の他の譲渡益や
@@ -240,6 +246,37 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {costRecovery && costRecovery.trackedCount > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">
+              取得コストに対する<Term slug="dividend-recovery">配当回収状況</Term>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">取得金額（合計）</p>
+                <p className="text-lg font-bold text-gray-800">{formatJpy(costRecovery.totalCostJpy)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">累計配当・分配金（受取実績）</p>
+                <p className="text-lg font-bold text-blue-700">{formatJpy(costRecovery.cumulativeDistributionJpy)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">配当による投資回収率</p>
+                <p className="text-lg font-bold text-blue-700">
+                  {costRecovery.recoveryPercent !== null ? `${costRecovery.recoveryPercent.toFixed(1)}%` : '-'}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-3">
+              取得単価が入力されている{costRecovery.trackedCount}件が対象です。銘柄ごとの詳細は各資産の詳細ページでご確認いただけます。
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {missingDistributionAssets.length > 0 && (
         <Card className="border-amber-300 bg-amber-50">

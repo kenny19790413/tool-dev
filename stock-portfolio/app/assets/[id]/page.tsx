@@ -5,6 +5,8 @@ import {
   calcAssetDistributionJpy,
   calcAssetGainJpy,
   calcGainBreakdown,
+  calcCostRecoverySummary,
+  calcTotalCostJpy,
   calcUpsidePercent,
   calcAfterTaxAmount,
   calcCorporateWithholding,
@@ -58,6 +60,12 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
   const distributionInfo = hasDistributionInfo(typedAsset);
   const gain = calcAssetGainJpy(typedAsset, usdJpyRate);
   const gainBreakdown = calcGainBreakdown(typedAsset, usdJpyRate);
+  const totalCost = calcTotalCostJpy(typedAsset, usdJpyRate);
+  const costRecovery = calcCostRecoverySummary(
+    typedAsset,
+    usdJpyRate,
+    asset.distributionReceipts.map((r) => ({ amount: r.amount }))
+  );
   const isStock = asset.type === 'STOCK';
   const isFund = asset.type === 'FUND';
   const autoPriced = hasAutoPrice(asset.type);
@@ -171,6 +179,48 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
         </Card>
       </div>
 
+      {costRecovery && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">取得コストに対する投資成果</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">取得金額（合計）</span>
+              <span className="font-medium text-gray-800">{formatJpy(costRecovery.totalCostJpy)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">評価額（現在）</span>
+              <span className="font-medium text-gray-800">{formatJpy(value)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">含み損益</span>
+              <span className={costRecovery.gainJpy >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {formatJpy(costRecovery.gainJpy)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">累計配当・分配金（受取実績）</span>
+              <span className="text-blue-700">{formatJpy(costRecovery.cumulativeDistributionJpy)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-1 mt-1 font-medium">
+              <span className="text-gray-600">配当込みの総合損益</span>
+              <span className={costRecovery.totalReturnJpy >= 0 ? 'text-green-600' : 'text-red-600'}>
+                {formatJpy(costRecovery.totalReturnJpy)}（{costRecovery.totalReturnPercent >= 0 ? '+' : ''}
+                {costRecovery.totalReturnPercent.toFixed(1)}%）
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">配当による投資回収率</span>
+              <span className="font-medium text-blue-700">{costRecovery.recoveryPercent.toFixed(1)}%</span>
+            </div>
+            <p className="text-xs text-gray-400 pt-1">
+              取得金額（取得単価×数量）を基準に、値上がり・値下がりに加えて実際に受け取った配当・分配金も加味した成果です。「配当による投資回収率」は、これまで受け取った配当・分配金だけで取得金額の何%を回収できたかを示します。
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {gainBreakdown && (
         <Card>
           <CardHeader className="pb-2">
@@ -215,6 +265,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
               取得単価:{' '}
               {asset.avgCost !== null ? `${toNumber(asset.avgCost).toLocaleString('ja-JP')} ${asset.currency}` : '未入力'}
             </p>
+            {totalCost !== null && <p>取得金額（合計）: {formatJpy(totalCost)}</p>}
             <p>
               年間配当/株:{' '}
               {asset.dividendPerShare !== null
@@ -316,6 +367,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                 ? `${toNumber(asset.avgCost).toLocaleString('ja-JP')}円 / ${FUND_NAV_UNIT.toLocaleString('ja-JP')}口`
                 : '未入力'}
             </p>
+            {totalCost !== null && <p>取得金額（合計）: {formatJpy(totalCost)}</p>}
             <p className="text-xs text-gray-400">
               最終更新: {asset.priceUpdatedAt ? new Date(asset.priceUpdatedAt).toLocaleString('ja-JP') : '未更新'}
             </p>
