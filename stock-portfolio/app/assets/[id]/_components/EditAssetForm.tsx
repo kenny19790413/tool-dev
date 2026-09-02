@@ -26,6 +26,8 @@ interface Props {
   showShareholderPerkFields?: boolean;
   shareholderPerk?: string | null;
   shareholderPerkMonths?: number[];
+  showValuationUrlField?: boolean;
+  valuationUrl?: string | null;
 }
 
 export function EditAssetForm({
@@ -45,6 +47,8 @@ export function EditAssetForm({
   showShareholderPerkFields,
   shareholderPerk,
   shareholderPerkMonths,
+  showValuationUrlField,
+  valuationUrl,
 }: Props) {
   const router = useRouter();
   const [qty, setQty] = useState(quantity !== null ? String(quantity) : '');
@@ -62,6 +66,7 @@ export function EditAssetForm({
   const [months, setMonths] = useState<number[]>(distributionMonths ?? []);
   const [perk, setPerk] = useState(shareholderPerk ?? '');
   const [perkMonths, setPerkMonths] = useState<number[]>(shareholderPerkMonths ?? []);
+  const [valUrl, setValUrl] = useState(valuationUrl ?? '');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -87,6 +92,9 @@ export function EditAssetForm({
       if (showShareholderPerkFields) {
         body.shareholderPerk = perk;
         body.shareholderPerkMonths = perkMonths;
+      }
+      if (showValuationUrlField) {
+        body.valuationUrl = valUrl;
       }
       const res = await fetch(`/api/assets/${assetId}`, {
         method: 'PATCH',
@@ -152,6 +160,22 @@ export function EditAssetForm({
           />
           <p className="text-xs text-gray-400 mt-1">
             入力すると、含み損益を「価格変動」と「為替変動」の要因別に分解表示できるようになります。
+          </p>
+        </div>
+      )}
+      {showValuationUrlField && (
+        <div>
+          <Label htmlFor="valuationUrl">評価額を確認できるページのURL（任意）</Label>
+          <Input
+            id="valuationUrl"
+            type="url"
+            value={valUrl}
+            onChange={(e) => setValUrl(e.target.value)}
+            placeholder="https://..."
+            className="mt-1"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            運用会社・発行体が公開している評価額ページのURL。ログイン不要で見られるページであれば「自動取得を試す」で読み取りを試みます（うまく取れない場合は手動で入力してください）。
           </p>
         </div>
       )}

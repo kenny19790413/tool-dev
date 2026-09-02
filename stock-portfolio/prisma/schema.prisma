@@ -40,6 +40,7 @@ model Asset {
   name      String // 銘柄名・資産名
   ticker    String? // STOCKのみ使用（例: "7203", "AAPL"）
   fundUrl   String? // FUNDのみ使用（運用会社の公式ファンドページURL、基準価額の自動取得元）
+  valuationUrl String? // BOND/PRIVATEのみ使用（運用会社・発行体が公開している評価額確認ページURL、任意）
   currency  String    @default("JPY") // 通貨（JPY/USD）。BOND/PRIVATEは評価額(Valuation)の建値通貨としても使用
   quantity  Decimal? @db.Decimal(18, 4) // STOCK/FUNDのみ使用（保有株数 or 口数）
   avgCost   Decimal? @db.Decimal(18, 4) // STOCK/FUNDのみ使用（平均取得単価、STOCKは1株あたり・FUNDは1万口あたり、任意入力）
