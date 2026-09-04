@@ -282,7 +282,9 @@ textarea{resize:vertical;min-height:60px}
 
 /* ─── 発見（新刊ランキング） ─── */
 .discover-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;padding:16px}
-.discover-card{border:1px solid var(--br);border-radius:10px;overflow:hidden;background:var(--card);display:flex;flex-direction:column}
+.discover-card{position:relative;border:1px solid var(--br);border-radius:10px;overflow:hidden;background:var(--card);display:flex;flex-direction:column}
+.discover-dismiss{position:absolute;top:6px;right:6px;z-index:2;width:22px;height:22px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:13px;line-height:22px;text-align:center;padding:0;cursor:pointer}
+.discover-dismiss:hover{background:rgba(0,0,0,.8)}
 .discover-thumb{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:var(--br)}
 .discover-thumb-ph{width:100%;aspect-ratio:2/3;background:var(--br);display:flex;align-items:center;justify-content:center;font-size:28px}
 .discover-info{padding:8px 10px;display:flex;flex-direction:column;gap:2px;flex:1}
@@ -825,8 +827,9 @@ const auth = firebase.auth();
 const database = firebase.database();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-let currentUser = null, dbSeriesRef = null, dbVolumesRef = null, dbSettingsRef = null, dbFollowedAuthorsRef = null, attachedUid = null;
+let currentUser = null, dbSeriesRef = null, dbVolumesRef = null, dbSettingsRef = null, dbFollowedAuthorsRef = null, dbDismissedDiscoverRef = null, attachedUid = null;
 let followedAuthorsList = {};
+let dismissedDiscoverList = {};
 // オーナー（アプリ管理者）のみ楽天Books APIキー設定を表示・編集できるようにする
 const OWNER_EMAIL = 'ken1979okabe@gmail.com';
 function isOwnerUser() { return !!(currentUser && currentUser.email === OWNER_EMAIL); }
@@ -879,6 +882,7 @@ function attachDatabase(user) {
   if(attachedUid===user.uid && dbSeriesRef)return;
   if(dbSeriesRef) dbSeriesRef.off(); if(dbVolumesRef) dbVolumesRef.off(); if(dbSettingsRef) dbSettingsRef.off();
   if(dbFollowedAuthorsRef) dbFollowedAuthorsRef.off();
+  if(dbDismissedDiscoverRef) dbDismissedDiscoverRef.off();
   attachedUid=user.uid;
   dbSeriesRef=database.ref(`users/${user.uid}/manga_series`);
   dbSeriesRef.on('value', snap => { seriesList=snap.val()||{}; updateSeriesSelect(); render(); });
@@ -890,6 +894,8 @@ function attachDatabase(user) {
   dbFollowedAuthorsRef=database.ref(`users/${user.uid}/followedAuthors`);
   let _authorCheckDone=false;
   dbFollowedAuthorsRef.on('value', snap => { followedAuthorsList=snap.val()||{}; render(); if(!_authorCheckDone){_authorCheckDone=true;setTimeout(checkFollowedAuthorsNewReleases,2000);} });
+  dbDismissedDiscoverRef=database.ref(`users/${user.uid}/dismissedDiscover`);
+  dbDismissedDiscoverRef.on('value', snap => { dismissedDiscoverList=snap.val()||{}; });
 }
 
 function showSaved() { const el=document.getElementById('savingIndicator'); if(!el)return; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),1500); }
@@ -1380,6 +1386,7 @@ function buildUnpurchasedSectionHtml() {
           <td class="td-actions">
             <a class="btn-icon rakuten" href="${getRakutenLink(v)}" target="_blank" rel="noopener sponsored" title="楽天ブックスで購入">R</a>
             <button class="status-btn ${getStatus(v)}" onclick="cycleStatus('${v.id}')">${STATUS_LABEL[getStatus(v)]}</button>
+            <button class="btn-icon" onclick="deleteVolume('${v.id}')" title="削除">✕</button>
           </td>
         </tr>`;
       }).join('')}</tbody>
@@ -1878,6 +1885,23 @@ function isDiscoverItemRegistered(item) {
     return nk(v.title)===nt&&String(v.volume||'')===String(item.volume||'');
   });
 }
+// ── 発見リストの「興味なし」非表示（Firebaseのキーに使える安全な文字列にハッシュ化） ──
+function discoverItemKey(item) {
+  const nk=t=>(t||'').replace(/[\s　\-－・【】「」（）()]/g,'').toLowerCase();
+  const raw=item.isbn?('isbn:'+item.isbn):('nt:'+nk(item.cleanTitle)+':'+String(item.volume||''));
+  let h=0; for(let i=0;i<raw.length;i++){ h=(h*31+raw.charCodeAt(i))|0; }
+  return 'd'+Math.abs(h).toString(36);
+}
+function isDiscoverItemDismissed(item) { return !!dismissedDiscoverList[discoverItemKey(item)]; }
+function dismissDiscoverItem(idx) {
+  const item=(window._inlineResults||[])[idx];
+  if(!item)return;
+  if(dbDismissedDiscoverRef){
+    dbDismissedDiscoverRef.child(discoverItemKey(item)).set({title:item.cleanTitle||'',dismissedAt:Date.now()});
+  }
+  const card=document.querySelector(`.discover-card[data-idx="${idx}"]`);
+  if(card) card.remove();
+}
 function buildDiscoverCardsHtml(items) {
   return items.map((it,idx)=>{
     const registered=isDiscoverItemRegistered(it);
@@ -1886,7 +1910,8 @@ function buildDiscoverCardsHtml(items) {
     const thumbHtml=it.thumb?`<img class="discover-thumb" src="${escHtml(it.thumb)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:'';
     const phStyle=it.thumb?'style="display:none"':'';
     const affLink=getRakutenLink({isbn:it.isbn,title:it.cleanTitle,volume:it.volume});
-    return `<div class="discover-card">
+    return `<div class="discover-card" data-idx="${idx}">
+      <button class="discover-dismiss" onclick="event.stopPropagation();dismissDiscoverItem(${idx})" title="興味なし（非表示にする）">✕</button>
       <a href="${escHtml(affLink)}" target="_blank" rel="noopener sponsored">${thumbHtml}<div class="discover-thumb-ph" ${phStyle}>📚</div></a>
       <div class="discover-info">
         <div class="discover-title">${escHtml(it.cleanTitle)}${it.volume?` ${escHtml(String(it.volume))}`:''}</div>
@@ -1901,12 +1926,13 @@ function buildDiscoverCardsHtml(items) {
   }).join('');
 }
 function renderDiscoverItems(items) {
-  window._inlineResults=items; // selectBookInline()が参照する配列を共有利用
+  const filtered=(items||[]).filter(it=>!isDiscoverItemDismissed(it));
+  window._inlineResults=filtered; // selectBookInline()が参照する配列を共有利用
   const listEl=document.getElementById('discoverList');
   if(!listEl) return;
   listEl.className='discover-grid';
   listEl.style.cssText='';
-  listEl.innerHTML=buildDiscoverCardsHtml(items);
+  listEl.innerHTML=filtered.length?buildDiscoverCardsHtml(filtered):'<div class="empty-state"><div class="icon">📭</div><p>表示できる新刊がありません（すべて非表示にした可能性があります）</p></div>';
 }
 // ── 作者別書籍一覧（タイトルの下の作者名クリックで開く） ──
 async function showAuthorBooks(authorName) {
