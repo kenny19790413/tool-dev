@@ -1776,9 +1776,11 @@ function renderDiscover() {
   document.getElementById('boughtTotal').textContent='';
   document.getElementById('unboughtTotal').textContent='';
   document.getElementById('summaryCard4').style.display='none';
-  const allGenres=Object.keys(followedAuthorsList).length>0
-    ?[{id:'__followed__',label:'⭐ フォロー中'},...DISCOVER_GENRES]
-    :DISCOVER_GENRES;
+  const allGenres=[
+    ...(hasInterestProfileData()?[{id:'__recommended__',label:'🎯 あなたへ'}]:[]),
+    ...(Object.keys(followedAuthorsList).length>0?[{id:'__followed__',label:'⭐ フォロー中'}]:[]),
+    ...DISCOVER_GENRES,
+  ];
   const genreTabs=allGenres.map(g=>{
     const active=_discoverGenreId===g.id;
     return `<button style="padding:5px 12px;border-radius:20px;border:1px solid ${active?'var(--a1)':'var(--br)'};background:${active?'var(--a1)':'var(--cbg)'};color:${active?'#fff':'var(--a1)'};cursor:pointer;font-size:12px;font-weight:${active?'700':'400'}" onclick="setDiscoverGenre('${g.id}')">${g.label}</button>`;
@@ -1814,19 +1816,74 @@ async function loadDiscoverRanking(forceRefresh) {
     let items;
     if(genreId==='__followed__'){
       items=await fetchFollowedAuthorsItems();
+    } else if(genreId==='__recommended__'){
+      items=await fetchRecommendedItems();
     } else {
       const url=`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&booksGenreId=${genreId}&sort=sales&hits=30`;
       const data=await fetch(url).then(r=>r.json());
       items=(data.Items||[]).map(x=>normRakuten(x.Item)).filter(it=>it.cleanTitle);
     }
     if(genreId!==_discoverGenreId) return; // 取得中にジャンルが切り替えられていたら破棄
-    if(items.length===0){ listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>取得できませんでした。時間をおいて「更新」をお試しください</p></div>'; return; }
+    if(items.length===0){
+      const msg=genreId==='__recommended__'
+        ?'おすすめを表示するデータがまだ足りません。作品を登録したり購入済みにしたりすると精度が上がります'
+        :'取得できませんでした。時間をおいて「更新」をお試しください';
+      listEl.innerHTML=`<div class="empty-state"><div class="icon">${genreId==='__recommended__'?'🎯':'📭'}</div><p>${msg}</p></div>`;
+      return;
+    }
     localStorage.setItem(cacheKey, JSON.stringify({items,fetchedAt:Date.now()}));
     renderDiscoverItems(items);
   }catch(e){
     if(genreId!==_discoverGenreId) return;
     listEl.innerHTML='<div class="empty-state"><div class="icon">📭</div><p>取得に失敗しました。時間をおいて「更新」をお試しください</p></div>';
   }
+}
+// ── 「あなたへのおすすめ」: 登録済み作品のジャンル・作者傾向から推薦 ──
+const SERIES_GENRE_TO_DISCOVER_ID={'少年':'001001001','少女':'001001002','青年':'001001003','女性':'001001004','全年齢':'001001012'};
+function computeInterestProfile() {
+  const genreCounts={};
+  Object.values(seriesList).forEach(s=>{ if(s.genre) genreCounts[s.genre]=(genreCounts[s.genre]||0)+1; });
+  const authorCounts={};
+  Object.values(volumesList).forEach(v=>{
+    if(!isPurchased(v))return;
+    const s=seriesList[v.seriesId];
+    if(s&&s.author) authorCounts[s.author]=(authorCounts[s.author]||0)+1;
+  });
+  const followedNames=new Set(Object.values(followedAuthorsList).map(f=>f.name));
+  const topGenres=Object.entries(genreCounts).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([g])=>g);
+  const topAuthors=Object.entries(authorCounts).sort((a,b)=>b[1]-a[1]).filter(([name])=>!followedNames.has(name)).slice(0,5).map(([name])=>name);
+  return {topGenres, topAuthors};
+}
+function hasInterestProfileData() {
+  const {topGenres, topAuthors}=computeInterestProfile();
+  return topGenres.length>0 || topAuthors.length>0;
+}
+async function fetchRecommendedItems() {
+  const {topGenres, topAuthors}=computeInterestProfile();
+  const genreIds=topGenres.map(g=>SERIES_GENRE_TO_DISCOVER_ID[g]).filter(Boolean);
+  const genrePromises=genreIds.map(gid=>
+    fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&booksGenreId=${gid}&sort=sales&hits=15`).then(r=>r.json())
+  );
+  const authorPromises=topAuthors.map(name=>
+    fetch(`https://openapi.rakuten.co.jp/services/api/BooksBook/Search/20170404?format=json&applicationId=${getRakutenAppId()}&accessKey=${getRakutenAccessKey()}&author=${encodeURIComponent(name)}&booksGenreId=001&sort=-releaseDate&hits=5`).then(r=>r.json())
+  );
+  const settled=await Promise.allSettled([...genrePromises,...authorPromises]);
+  const items=[];
+  const seen={};
+  settled.forEach(r=>{
+    if(r.status!=='fulfilled'||!Array.isArray(r.value.Items))return;
+    r.value.Items.forEach(x=>{
+      const it=normRakuten(x.Item);
+      if(!it.cleanTitle)return;
+      if(isDiscoverItemRegistered(it))return;
+      const key=(it.isbn||it.cleanTitle+it.volume);
+      if(seen[key])return;
+      seen[key]=true;
+      items.push(it);
+    });
+  });
+  items.sort((a,b)=>(b.releaseDate||'').localeCompare(a.releaseDate||''));
+  return items;
 }
 // ── フォロー中作家の書籍を並列取得 ──
 async function fetchFollowedAuthorsItems() {
