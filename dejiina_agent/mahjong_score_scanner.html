@@ -322,7 +322,8 @@ function computeYakuForShape(tiles14, shape, opts){
     kotsuGroups.forEach(g=>{ (byRankSuitsK[g.rank]=byRankSuitsK[g.rank]||new Set()).add(g.suit); });
     if(Object.values(byRankSuitsK).some(s=>s.size===3)) regular.push("三色同刻");
 
-    const chanta = groups.every(g=> g.kind==="kotsu" ? isTermOrHonor({suit:g.suit,rank:g.rank}) : (g.rank===1||g.rank===7)) && isTermOrHonor(pair);
+    const chanta = groups.every(g=> g.kind==="kotsu" ? isTermOrHonor({suit:g.suit,rank:g.rank}) : (g.rank===1||g.rank===7)) && isTermOrHonor(pair)
+      && shuntsuGroups.length>0; // 順子が1つもない（全部刻子）手はチャンタではなく混老頭・清老頭になる
     if(chanta){
       const junchan = groups.every(g=> g.kind==="kotsu" ? (g.suit!=="z" && (g.rank===1||g.rank===9)) : (g.rank===1||g.rank===7)) && pair.suit!=="z";
       if(junchan) regular.push("純全帯幺九"); else regular.push("混全帯幺九（チャンタ）");
@@ -332,6 +333,7 @@ function computeYakuForShape(tiles14, shape, opts){
 
     const dragonRanks = new Set(groups.filter(g=>g.kind==="kotsu"&&g.suit==="z"&&g.rank>=5).map(g=>g.rank));
     if(dragonRanks.size===3) yakuman.push("大三元");
+    if(dragonRanks.size===2 && pair.suit==="z" && pair.rank>=5 && !dragonRanks.has(pair.rank)) regular.push("小三元"); // 三元牌2種類が刻子＋残り1種類が雀頭
     const windRanks = new Set(groups.filter(g=>g.kind==="kotsu"&&g.suit==="z"&&g.rank<=4).map(g=>g.rank));
     if(windRanks.size===3 && pair.suit==="z" && pair.rank<=4 && !windRanks.has(pair.rank)) yakuman.push("小四喜");
     if(windRanks.size===4) yakuman.push("大四喜");
@@ -355,7 +357,7 @@ const HAN_TABLE = {
   "立直":1, "タンヤオ":1, "平和":1, "門前清自摸和":1,
   "対々和":2, "一盃口":1, "混一色":3, "清一色":6,
   "混老頭":2, "混全帯幺九（チャンタ）":2, "純全帯幺九":3, "七対子":2,
-  "三色同順":2, "一気通貫":2, "三色同刻":2, "三暗刻":2, "二盃口":3,
+  "三色同順":2, "一気通貫":2, "三色同刻":2, "三暗刻":2, "二盃口":3, "小三元":2,
 };
 function hanValue(name){ if(name.startsWith("役牌")) return 1; return HAN_TABLE[name]||0; }
 function tileLabel(suit,rank){ return suit==="z" ? Z_LABEL[rank] : (KANSUJI[rank]+SUIT_NAME[suit]); }
