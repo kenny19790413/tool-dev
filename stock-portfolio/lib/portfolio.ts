@@ -112,8 +112,16 @@ export function calcMonthlyDistributionJpy(
   return { monthly, unscheduled };
 }
 
-// 資産1件の含み損益（JPY換算、株・投資信託でavgCost入力時のみ）
+// 取得金額（円、帳簿の額）が入力されているか。入力済みなら取得単価×数量より優先する。
+export function hasBookCost(asset: Asset): boolean {
+  return asset.bookCostJpy !== null && asset.bookCostJpy !== undefined;
+}
+
+// 資産1件の含み損益（JPY換算）。
+// 取得金額（円）が入力されていれば「評価額−取得金額」（全資産種別が対象、取得時の為替も織り込まれた円ベースの損益）。
+// 未入力なら、株・投資信託でavgCost入力時のみ取得単価から計算する。
 export function calcAssetGainJpy(asset: AssetWithValuations, usdJpyRate: number): number | null {
+  if (hasBookCost(asset)) return calcAssetValueJpy(asset, usdJpyRate) - toNumber(asset.bookCostJpy);
   if (asset.avgCost === null || asset.avgCost === undefined) return null;
   if (asset.type === 'STOCK') {
     const gainInCurrency = (toNumber(asset.currentPrice) - toNumber(asset.avgCost)) * toNumber(asset.quantity);
@@ -171,8 +179,9 @@ export function calcAssetGainPercent(asset: AssetWithValuations, usdJpyRate: num
   return (gain / cost) * 100;
 }
 
-// 資産1件の取得金額の合計（JPY換算、avgCost×数量）。avgCost未入力ならnull。
+// 資産1件の取得金額の合計（JPY換算）。取得金額（円）入力済みならその値、なければavgCost×数量。どちらもなければnull。
 export function calcTotalCostJpy(asset: AssetWithValuations, usdJpyRate: number): number | null {
+  if (hasBookCost(asset)) return toNumber(asset.bookCostJpy);
   if (asset.avgCost === null || asset.avgCost === undefined) return null;
   if (asset.type === 'STOCK') {
     const costInCurrency = toNumber(asset.avgCost) * toNumber(asset.quantity);
@@ -229,6 +238,92 @@ export function calcCostRecoverySummary(
     totalReturnJpy,
     totalReturnPercent: (totalReturnJpy / totalCostJpy) * 100,
     recoveryPercent: (cumulativeDistributionJpy / totalCostJpy) * 100,
+  };
+}
+
+// 取得額に対する利回り（%）＝年間配当・分配金見込み÷取得金額。取得金額が未入力・0以下ならnull。
+// 時価に対する利回りではなく「払ったお金に対して毎年いくら戻るか」なので、借入金利と比べる物差しになる。
+export function calcYieldOnCostPercent(asset: AssetWithValuations, usdJpyRate: number): number | null {
+  const cost = calcTotalCostJpy(asset, usdJpyRate);
+  if (cost === null || cost <= 0) return null;
+  return (calcAssetDistributionJpy(asset, usdJpyRate) / cost) * 100;
+}
+
+export const HOLDING_PURPOSE_LABEL: Record<'RELATIONSHIP' | 'INCOME' | 'GROWTH', string> = {
+  RELATIONSHIP: '付き合い',
+  INCOME: '配当目的',
+  GROWTH: '値上がり目的',
+};
+
+export interface CompanyHoldingSummary {
+  assetCount: number;
+  costTrackedCount: number; // 取得金額（または取得単価）が分かる件数
+  totalValueJpy: number; // 評価額の合計（全件）
+  totalCostJpy: number; // 取得金額の合計（分かる分だけ）
+  valueOfCostTrackedJpy: number; // 取得金額が分かる資産の評価額合計
+  cumulativeDistributionJpy: number; // 受取済み配当・分配金の合計（取得金額が分かる資産のみ）
+  totalReturnJpy: number; // 通算の損得＝評価額＋受取済み配当−取得金額（取得金額が分かる資産のみ）
+  annualDistributionJpy: number; // 年間配当・分配金見込みの合計（全件）
+  annualDistributionOfCostTrackedJpy: number; // 同上（取得金額が分かる資産のみ、利回り計算用）
+  yieldOnCostPercent: number | null; // 取得額に対する利回り（取得金額が分かる資産のみ）
+  largest: { name: string; valueJpy: number; percent: number } | null; // 評価額が最大の銘柄（集中度）
+  relationshipValueJpy: number; // 付き合いの資産の評価額
+  liquidValueJpy: number; // 付き合いの資産を除いた評価額（いざというとき現金にしやすい額の目安）
+}
+
+// 会社の資産として見るための一覧上部の集計。
+// 「取得金額が分かる資産」と「分からない資産」を混ぜて損得を出すと誤解を招くため、損得・利回りは取得金額が分かる資産だけで計算する。
+export function calcCompanyHoldingSummary(
+  assets: AssetWithValuations[],
+  usdJpyRate: number,
+  receiptsByAssetId: Map<number, DistributionReceiptLike[]>
+): CompanyHoldingSummary {
+  let costTrackedCount = 0;
+  let totalValueJpy = 0;
+  let totalCostJpy = 0;
+  let valueOfCostTrackedJpy = 0;
+  let cumulativeDistributionJpy = 0;
+  let annualDistributionJpy = 0;
+  let annualDistributionOfCostTrackedJpy = 0;
+  let relationshipValueJpy = 0;
+  let largest: CompanyHoldingSummary['largest'] = null;
+
+  for (const asset of assets) {
+    const value = calcAssetValueJpy(asset, usdJpyRate);
+    const annual = calcAssetDistributionJpy(asset, usdJpyRate);
+    totalValueJpy += value;
+    annualDistributionJpy += annual;
+    if (asset.holdingPurpose === 'RELATIONSHIP') relationshipValueJpy += value;
+    if (!largest || value > largest.valueJpy) largest = { name: asset.name, valueJpy: value, percent: 0 };
+
+    const cost = calcTotalCostJpy(asset, usdJpyRate);
+    if (cost === null) continue;
+    costTrackedCount++;
+    totalCostJpy += cost;
+    valueOfCostTrackedJpy += value;
+    annualDistributionOfCostTrackedJpy += annual;
+    cumulativeDistributionJpy += sumDistributionReceiptsJpy(
+      receiptsByAssetId.get(asset.id) ?? [],
+      asset.currency,
+      usdJpyRate
+    );
+  }
+  if (largest && totalValueJpy > 0) largest.percent = (largest.valueJpy / totalValueJpy) * 100;
+
+  return {
+    assetCount: assets.length,
+    costTrackedCount,
+    totalValueJpy,
+    totalCostJpy,
+    valueOfCostTrackedJpy,
+    cumulativeDistributionJpy,
+    totalReturnJpy: valueOfCostTrackedJpy + cumulativeDistributionJpy - totalCostJpy,
+    annualDistributionJpy,
+    annualDistributionOfCostTrackedJpy,
+    yieldOnCostPercent: totalCostJpy > 0 ? (annualDistributionOfCostTrackedJpy / totalCostJpy) * 100 : null,
+    largest,
+    relationshipValueJpy,
+    liquidValueJpy: totalValueJpy - relationshipValueJpy,
   };
 }
 
