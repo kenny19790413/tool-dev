@@ -7,6 +7,8 @@ import {
   calcGainBreakdown,
   calcCostRecoverySummary,
   calcTotalCostJpy,
+  calcYieldOnCostPercent,
+  HOLDING_PURPOSE_LABEL,
   calcUpsidePercent,
   calcAfterTaxAmount,
   calcCorporateWithholding,
@@ -66,6 +68,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
     usdJpyRate,
     asset.distributionReceipts.map((r) => ({ amount: r.amount }))
   );
+  const yieldOnCost = calcYieldOnCostPercent(typedAsset, usdJpyRate);
   const isStock = asset.type === 'STOCK';
   const isFund = asset.type === 'FUND';
   const autoPriced = hasAutoPrice(asset.type);
@@ -78,6 +81,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
           <div className="flex items-center gap-2 mb-1">
             <Badge variant="outline">{ASSET_TYPE_LABEL[asset.type]}</Badge>
             <Badge variant="outline">{ASSET_OWNER_TYPE_LABEL[asset.ownerType]}</Badge>
+            {asset.holdingPurpose && <Badge variant="outline">{HOLDING_PURPOSE_LABEL[asset.holdingPurpose]}</Badge>}
             {asset.market && <span className="text-xs text-gray-400">{MARKET_LABEL[asset.market]}</span>}
             {isManualValuation && asset.currency === 'USD' && (
               <span className="text-xs text-gray-400">米ドル建て</span>
@@ -132,7 +136,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             <p className="text-2xl font-bold text-gray-800">{formatJpy(value)}</p>
           </CardContent>
         </Card>
-        {autoPriced && (
+        {(autoPriced || gain !== null) && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-normal text-gray-500">含み損益</CardTitle>
@@ -143,7 +147,7 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                   gain !== null ? (gain >= 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-300'
                 }`}
               >
-                {gain !== null ? formatJpy(gain) : '取得単価未入力'}
+                {gain !== null ? formatJpy(gain) : '取得金額未入力'}
               </p>
             </CardContent>
           </Card>
@@ -210,12 +214,18 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
                 {costRecovery.totalReturnPercent.toFixed(1)}%）
               </span>
             </div>
+            {yieldOnCost !== null && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">取得額に対する利回り（年間見込み）</span>
+                <span className="font-medium text-blue-700">{yieldOnCost.toFixed(1)}%</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-600">配当による投資回収率</span>
               <span className="font-medium text-blue-700">{costRecovery.recoveryPercent.toFixed(1)}%</span>
             </div>
             <p className="text-xs text-gray-400 pt-1">
-              取得金額（取得単価×数量）を基準に、値上がり・値下がりに加えて実際に受け取った配当・分配金も加味した成果です。「配当による投資回収率」は、これまで受け取った配当・分配金だけで取得金額の何%を回収できたかを示します。
+              取得金額（{asset.bookCostJpy !== null ? '入力した帳簿の額' : '取得単価×数量'}）を基準に、値上がり・値下がりに加えて実際に受け取った配当・分配金も加味した成果です。「配当による投資回収率」は、これまで受け取った配当・分配金だけで取得金額の何%を回収できたかを示します。毎月分配型の投資信託は、分配金の一部が元本の払い戻しのことがあるため、分配金だけでなく「配当込みの総合損益」で判断してください。「取得額に対する利回り」は年間見込み÷取得金額で、借入金利と比べる物差しになります。
             </p>
           </CardContent>
         </Card>
@@ -245,7 +255,9 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             </div>
             <p className="text-xs text-gray-400 pt-1">
               取得時レート {toNumber(asset.avgCostFxRate).toLocaleString('ja-JP')}円、現在レート {usdJpyRate.toLocaleString('ja-JP')}円で計算した概算です。
-              上部の「含み損益」（{gain !== null ? formatJpy(gain) : '-'}）は取得時レートを考慮せず現在レートのみで換算した簡易値のため、この合計とは一致しません。
+              {asset.bookCostJpy !== null
+                ? '上部の「含み損益」は入力した取得金額（円）を基準にしているため、この分解の合計とは一致しないことがあります。'
+                : `上部の「含み損益」（${gain !== null ? formatJpy(gain) : '-'}）は取得時レートを考慮せず現在レートのみで換算した簡易値のため、この合計とは一致しません。`}
             </p>
           </CardContent>
         </Card>
@@ -417,6 +429,8 @@ export default async function AssetDetailPage({ params }: { params: Promise<{ id
             shareholderPerkMonths={asset.shareholderPerkMonths}
             showValuationUrlField={isManualValuation}
             valuationUrl={asset.valuationUrl}
+            bookCostJpy={asset.bookCostJpy !== null ? toNumber(asset.bookCostJpy) : null}
+            holdingPurpose={asset.holdingPurpose}
           />
         </CardContent>
       </Card>

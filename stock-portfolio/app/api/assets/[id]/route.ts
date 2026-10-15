@@ -40,6 +40,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (body.note !== undefined) data.note = body.note || null;
     if (body.broker !== undefined) data.broker = body.broker || null;
     if (body.ownerType === 'INDIVIDUAL' || body.ownerType === 'CORPORATE') data.ownerType = body.ownerType;
+    if (body.bookCostJpy !== undefined)
+      data.bookCostJpy = body.bookCostJpy === '' || body.bookCostJpy === null ? null : Number(body.bookCostJpy);
+    if (body.holdingPurpose !== undefined)
+      data.holdingPurpose = ['RELATIONSHIP', 'INCOME', 'GROWTH'].includes(body.holdingPurpose)
+        ? body.holdingPurpose
+        : null;
     if (body.shareholderPerk !== undefined) data.shareholderPerk = body.shareholderPerk || null;
     if (body.shareholderPerkMonths !== undefined && Array.isArray(body.shareholderPerkMonths))
       data.shareholderPerkMonths = body.shareholderPerkMonths

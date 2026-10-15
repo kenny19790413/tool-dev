@@ -25,6 +25,13 @@ enum AssetOwnerType {
              // 益金不算入割合や法人全体の所得水準により異なるため、このアプリでは簡易計算しない）
 }
 
+// 保有目的（会社の資産として見るときの区分。付き合いの株は売りにくいため、換金しやすい額の計算から外す）
+enum HoldingPurpose {
+  RELATIONSHIP // 付き合い（取引先・銀行との関係で持っているもの）
+  INCOME       // 配当・分配金目的
+  GROWTH       // 値上がり目的
+}
+
 enum Market {
   JP // 日本株
   US // 米国株
@@ -47,6 +54,10 @@ model Asset {
   avgCostFxRate Decimal? @db.Decimal(10, 4) // USD建て資産のみ使用（取得時の想定USD/JPYレート、任意入力）。入力時のみ含み損益を為替要因/価格要因に分解表示できる
   broker    String? // 購入した証券会社（任意）
   ownerType AssetOwnerType @default(CORPORATE) // 保有名義（個人/法人）。既存資産は現状すべて法人所有のためCORPORATEを既定値とする。
+  // 取得金額の合計（円、手数料込み）。法人保有なら決算書の「有価証券の内訳書」の帳簿額を入れる想定。
+  // 入力されていれば、取得単価×数量より優先して含み損益・取得額利回りの基準にする（債券・プライベート資産も対象）。
+  bookCostJpy    Decimal? @db.Decimal(18, 2)
+  holdingPurpose HoldingPurpose? // 保有目的（任意）
   note      String?
 
   // 株価/基準価額APIから取得したキャッシュ値（STOCK/FUNDのみ使用）

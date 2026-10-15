@@ -28,6 +28,8 @@ interface Props {
   shareholderPerkMonths?: number[];
   showValuationUrlField?: boolean;
   valuationUrl?: string | null;
+  bookCostJpy: number | null;
+  holdingPurpose: 'RELATIONSHIP' | 'INCOME' | 'GROWTH' | null;
 }
 
 export function EditAssetForm({
@@ -49,6 +51,8 @@ export function EditAssetForm({
   shareholderPerkMonths,
   showValuationUrlField,
   valuationUrl,
+  bookCostJpy,
+  holdingPurpose,
 }: Props) {
   const router = useRouter();
   const [qty, setQty] = useState(quantity !== null ? String(quantity) : '');
@@ -67,6 +71,8 @@ export function EditAssetForm({
   const [perk, setPerk] = useState(shareholderPerk ?? '');
   const [perkMonths, setPerkMonths] = useState<number[]>(shareholderPerkMonths ?? []);
   const [valUrl, setValUrl] = useState(valuationUrl ?? '');
+  const [bookCost, setBookCost] = useState(bookCostJpy !== null ? String(bookCostJpy) : '');
+  const [purpose, setPurpose] = useState<string>(holdingPurpose ?? '');
   const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -78,6 +84,8 @@ export function EditAssetForm({
         broker: brokerName,
         distributionMonths: months,
         ownerType: owner,
+        bookCostJpy: bookCost,
+        holdingPurpose: purpose,
       };
       if (showQuantityFields) {
         body.quantity = qty;
@@ -114,6 +122,40 @@ export function EditAssetForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
+      <div>
+        <Label htmlFor="bookCost">取得金額（円・手数料込みの合計、任意）</Label>
+        <Input
+          id="bookCost"
+          type="number"
+          inputMode="decimal"
+          step="any"
+          min="0"
+          value={bookCost}
+          onChange={(e) => setBookCost(e.target.value)}
+          placeholder="例: 50435980"
+          className="mt-1"
+        />
+        <p className="text-xs text-gray-400 mt-1">
+          この資産を買うのに払った円の合計です。会社で持っている場合は、決算書の「有価証券の内訳書」の帳簿の額を入れてください（昔に買って証券会社に記録がないものも、帳簿の額が取得金額になります）。入力すると、下の取得単価より優先して含み損益・通算の損得・取得額利回りの基準になります。債券・プライベート資産も入力できます。
+        </p>
+      </div>
+      <div>
+        <Label htmlFor="purpose">持つ目的（任意）</Label>
+        <select
+          id="purpose"
+          value={purpose}
+          onChange={(e) => setPurpose(e.target.value)}
+          className="mt-1 h-10 w-full rounded-md border border-gray-300 px-3 text-sm text-gray-900"
+        >
+          <option value="">未設定</option>
+          <option value="RELATIONSHIP">付き合い（取引先・銀行との関係で持っている）</option>
+          <option value="INCOME">配当目的</option>
+          <option value="GROWTH">値上がり目的</option>
+        </select>
+        <p className="text-xs text-gray-400 mt-1">
+          「付き合い」にした資産は売りにくいものとして、一覧の「現金にしやすい額」から外します。
+        </p>
+      </div>
       {showQuantityFields && (
         <div className="grid grid-cols-2 gap-3">
           <div>

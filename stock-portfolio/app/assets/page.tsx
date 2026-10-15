@@ -5,6 +5,12 @@ import {
   calcAssetDistributionJpy,
   calcAssetGainJpy,
   calcAssetGainPercent,
+  calcTotalCostJpy,
+  calcYieldOnCostPercent,
+  calcCompanyHoldingSummary,
+  sumDistributionReceiptsJpy,
+  HOLDING_PURPOSE_LABEL,
+  type DistributionReceiptLike,
   hasDistributionInfo,
   ASSET_TYPE_LABEL,
   MARKET_LABEL,
@@ -30,11 +36,12 @@ const TABS: { key: AssetType | 'ALL'; label: string }[] = [
   { key: 'PRIVATE', label: 'プライベート資産' },
 ];
 
-type SortKey = 'value' | 'gain';
+type SortKey = 'value' | 'gain' | 'total';
 
 const SORTABLE: { key: SortKey; label: string; className: string }[] = [
   { key: 'value', label: '評価額(JPY)', className: 'text-right' },
-  { key: 'gain', label: '損益', className: 'text-right' },
+  { key: 'gain', label: '含み損益', className: 'text-right' },
+  { key: 'total', label: '通算の損得', className: 'text-right' },
 ];
 
 export default async function AssetsPage({
@@ -46,7 +53,7 @@ export default async function AssetsPage({
   const activeTab = TABS.some((t) => t.key === type) ? (type as AssetType | 'ALL') : 'ALL';
   const query = (q ?? '').trim();
   const activeBroker = (broker ?? '').trim();
-  const sortKey: SortKey | null = sort === 'value' || sort === 'gain' ? sort : null;
+  const sortKey: SortKey | null = sort === 'value' || sort === 'gain' || sort === 'total' ? sort : null;
   const sortDir: 'asc' | 'desc' = dir === 'asc' ? 'asc' : 'desc';
 
   const where = {
@@ -62,7 +69,7 @@ export default async function AssetsPage({
     ...(activeBroker ? { broker: activeBroker } : {}),
   };
 
-  const [assets, latestRate, brokerRows] = await Promise.all([
+  const [assets, latestRate, brokerRows, receiptSums] = await Promise.all([
     prisma.asset.findMany({
       where,
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
@@ -70,6 +77,7 @@ export default async function AssetsPage({
     }),
     prisma.exchangeRate.findFirst({ where: { pair: 'USDJPY' }, orderBy: { fetchedAt: 'desc' } }),
     prisma.asset.findMany({ where: { broker: { not: null } }, select: { broker: true }, distinct: ['broker'] }),
+    prisma.distributionReceipt.groupBy({ by: ['assetId'], _sum: { amount: true } }),
   ]);
   const usdJpyRate = latestRate ? Number(latestRate.rate) : 150;
   const typed = assets as unknown as AssetWithValuations[];
@@ -78,20 +86,37 @@ export default async function AssetsPage({
     .filter((b): b is string => !!b && b.trim().length > 0)
     .sort((a, b) => a.localeCompare(b, 'ja'));
 
-  const rows = typed.map((asset) => ({
-    asset,
-    value: calcAssetValueJpy(asset, usdJpyRate),
-    distribution: calcAssetDistributionJpy(asset, usdJpyRate),
-    gain: calcAssetGainJpy(asset, usdJpyRate),
-    gainPercent: calcAssetGainPercent(asset, usdJpyRate),
-    hasInfo: hasDistributionInfo(asset),
-  }));
+  // 受取済み配当・分配金（実績）を資産ごとに1件の合計として扱う（通算の損得の計算用）
+  const receiptsByAssetId = new Map<number, DistributionReceiptLike[]>();
+  for (const r of receiptSums) receiptsByAssetId.set(r.assetId, [{ amount: r._sum.amount ?? 0 }]);
+  const summary = calcCompanyHoldingSummary(typed, usdJpyRate, receiptsByAssetId);
+
+  const rows = typed.map((asset) => {
+    const value = calcAssetValueJpy(asset, usdJpyRate);
+    const cost = calcTotalCostJpy(asset, usdJpyRate);
+    const received = sumDistributionReceiptsJpy(receiptsByAssetId.get(asset.id) ?? [], asset.currency, usdJpyRate);
+    return {
+      asset,
+      value,
+      cost,
+      received,
+      // 通算の損得＝評価額＋受取済み配当・分配金−取得金額（取得金額が分からなければ出さない）
+      totalReturn: cost !== null ? value + received - cost : null,
+      yieldOnCost: calcYieldOnCostPercent(asset, usdJpyRate),
+      distribution: calcAssetDistributionJpy(asset, usdJpyRate),
+      gain: calcAssetGainJpy(asset, usdJpyRate),
+      gainPercent: calcAssetGainPercent(asset, usdJpyRate),
+      hasInfo: hasDistributionInfo(asset),
+    };
+  });
 
   if (sortKey) {
     const factor = sortDir === 'asc' ? 1 : -1;
     rows.sort((a, b) => {
-      const av = sortKey === 'value' ? a.value : (a.gain ?? -Infinity);
-      const bv = sortKey === 'value' ? b.value : (b.gain ?? -Infinity);
+      const pick = (r: (typeof rows)[number]) =>
+        sortKey === 'value' ? r.value : sortKey === 'gain' ? (r.gain ?? -Infinity) : (r.totalReturn ?? -Infinity);
+      const av = pick(a);
+      const bv = pick(b);
       return (av - bv) * factor;
     });
   }
@@ -195,6 +220,69 @@ export default async function AssetsPage({
         )}
       </form>
 
+      {rows.length > 0 && (
+        <Card>
+          <CardContent className="py-4 space-y-3">
+            <div className="flex items-baseline justify-between flex-wrap gap-2">
+              <h2 className="text-base font-semibold text-gray-800">会社の資産として見る</h2>
+              <span className="text-xs text-gray-400">
+                表示中の{summary.assetCount}件のうち、取得金額が分かるもの{summary.costTrackedCount}件
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+              <div>
+                <div className="text-xs text-gray-400">取得金額の合計</div>
+                <div className="font-medium text-gray-800">{formatJpy(summary.totalCostJpy)}</div>
+                <div className="text-xs text-gray-400">決算書・試算表の投資有価証券と突き合わせる</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400">評価額の合計</div>
+                <div className="font-medium text-gray-800">{formatJpy(summary.totalValueJpy)}</div>
+                <div className="text-xs text-gray-400">うち取得金額が分かる分 {formatJpy(summary.valueOfCostTrackedJpy)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400">通算の損得</div>
+                <div className={`font-medium ${summary.totalReturnJpy >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatJpy(summary.totalReturnJpy)}
+                </div>
+                <div className="text-xs text-gray-400">
+                  評価額＋受取済み配当 {formatJpy(summary.cumulativeDistributionJpy)}−取得金額
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400">年間配当・分配金の見込み</div>
+                <div className="font-medium text-blue-700">{formatJpy(summary.annualDistributionJpy)}</div>
+                <div className="text-xs text-gray-400">
+                  取得額に対する利回り{' '}
+                  {summary.yieldOnCostPercent !== null ? `${summary.yieldOnCostPercent.toFixed(1)}%` : '-'}
+                  （借入金利と比べる）
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400">いちばん大きい銘柄</div>
+                <div className="font-medium text-gray-800">
+                  {summary.largest ? `${summary.largest.name}` : '-'}
+                </div>
+                <div className="text-xs text-gray-400">
+                  {summary.largest ? `評価額の${summary.largest.percent.toFixed(0)}%を占める` : ''}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-gray-400">現金にしやすい額（付き合いの資産を除く）</div>
+                <div className="font-medium text-gray-800">{formatJpy(summary.liquidValueJpy)}</div>
+                <div className="text-xs text-gray-400">付き合いの資産 {formatJpy(summary.relationshipValueJpy)}</div>
+              </div>
+            </div>
+            {summary.costTrackedCount < summary.assetCount && (
+              <p className="text-xs text-amber-700">
+                取得金額が分からない資産が{summary.assetCount - summary.costTrackedCount}
+                件あります。損得と利回りはそれを除いて計算しています。各資産の編集画面で「取得金額」を入れてください。
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {rows.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-gray-400">
@@ -214,6 +302,7 @@ export default async function AssetsPage({
                 <th className="text-left px-4 py-2 font-medium">銘柄・名称</th>
                 <th className="text-right px-4 py-2 font-medium">数量</th>
                 <th className="text-right px-4 py-2 font-medium">現在値</th>
+                <th className="text-right px-4 py-2 font-medium">取得金額</th>
                 {SORTABLE.map((col) => (
                   <th key={col.key} className={`${col.className} px-4 py-2 font-medium`}>
                     <Link href={sortHref(col.key)} className="hover:text-gray-700 inline-flex items-center gap-0.5">
@@ -226,7 +315,7 @@ export default async function AssetsPage({
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ asset, value, distribution, gain, gainPercent, hasInfo }) => {
+              {rows.map(({ asset, value, cost, received, totalReturn, yieldOnCost, distribution, gain, gainPercent, hasInfo }) => {
                 return (
                   <tr key={asset.id} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -244,6 +333,11 @@ export default async function AssetsPage({
                       </Link>
                       {asset.ticker && <div className="text-xs text-gray-400">{asset.ticker}</div>}
                       {asset.broker && <div className="text-xs text-gray-400">{asset.broker}</div>}
+                      {asset.holdingPurpose && (
+                        <Badge variant="outline" className="mt-1">
+                          {HOLDING_PURPOSE_LABEL[asset.holdingPurpose]}
+                        </Badge>
+                      )}
                       {asset.splitAlert && (
                         <Badge variant="outline" className="mt-1 border-amber-400 text-amber-700">
                           ⚠ 分割・併合を検知
@@ -263,6 +357,9 @@ export default async function AssetsPage({
                           : asset.currency === 'USD' && asset.valuations[0]
                             ? formatCurrency(toNumber(asset.valuations[0].value), 'USD')
                             : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {cost !== null ? formatJpy(cost) : <span className="text-amber-600 text-xs">未入力</span>}
                     </td>
                     <td className="px-4 py-3 text-right font-medium">{formatJpy(value)}</td>
                     <td
@@ -284,12 +381,31 @@ export default async function AssetsPage({
                         '-'
                       )}
                     </td>
+                    <td
+                      className={`px-4 py-3 text-right ${
+                        totalReturn !== null ? (totalReturn >= 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-300'
+                      }`}
+                    >
+                      {totalReturn !== null ? (
+                        <>
+                          <div>{formatJpy(totalReturn)}</div>
+                          {received > 0 && (
+                            <div className="text-xs text-gray-400">受取済み配当 {formatJpy(received)}</div>
+                          )}
+                        </>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {!hasInfo ? (
                         <span className="text-gray-300">未入力</span>
                       ) : distribution > 0 ? (
                         <>
                           <div>{formatJpy(distribution)}</div>
+                          {yieldOnCost !== null && (
+                            <div className="text-xs text-blue-700">取得額利回り {yieldOnCost.toFixed(1)}%</div>
+                          )}
                           {asset.distributionMonths.length > 0 && (
                             <div className="text-xs text-gray-400">
                               {asset.distributionMonths.map((m) => `${m}月`).join('・')}
